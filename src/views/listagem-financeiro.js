@@ -2,12 +2,12 @@ import React from 'react';
 
 import Card from '../components/card';
 
-function EmConstrucao(props) {
+function ListagemFinanceiro() {
   return (
-    <Card title={props.title}>
+    <Card title='Financeiro'>
       <p className='mb-0'>Tela em construção.</p>
     </Card>
   );
 }
 
-export default EmConstrucao;
+export default ListagemFinanceiro;

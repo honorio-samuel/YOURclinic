@@ -15,31 +15,31 @@ function MenuLateral(props) {
         <ul className='nav nav-pills flex-column gap-2 menu-lateral'>
           <NavbarItem
             render='true'
-            href='/cadastro'
+            href='/listagem-cadastro'
             label='Cadastro'
             icone={<HowToRegIcon fontSize='small' />}
           />
           <NavbarItem
             render='true'
-            href='/agenda'
+            href='/listagem-agenda'
             label='Agenda'
             icone={<CalendarMonthIcon fontSize='small' />}
           />
           <NavbarItem
             render='true'
-            href='/fila-do-dia'
+            href='/listagem-filadia'
             label='Fila do Dia'
             icone={<FormatListNumberedIcon fontSize='small' />}
           />
           <NavbarItem
             render='true'
-            href='/financeiro'
+            href='/listagem-financeiro'
             label='Financeiro'
             icone={<PaymentsIcon fontSize='small' />}
           />
           <NavbarItem
             render='true'
-            href='/estoque'
+            href='/listagem-estoque'
             label='Estoque'
             icone={<Inventory2Icon fontSize='small' />}
           />

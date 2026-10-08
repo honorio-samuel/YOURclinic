@@ -41,7 +41,7 @@ async function buscarFila() {
   }));
 }
 
-function FilaDoDia() {
+function ListagemFilaDia() {
   const [consultas, setConsultas] = React.useState(null);
   const [erro, setErro] = React.useState(false);
   const [pagina, setPagina] = React.useState(1);
@@ -137,4 +137,4 @@ function FilaDoDia() {
   );
 }
 
-export default FilaDoDia;
+export default ListagemFilaDia;
