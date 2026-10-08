@@ -4,33 +4,80 @@ import Card from '../components/card';
 import PilulaStatus from '../components/pilula-status';
 import Paginacao from '../components/paginacao';
 
+import axios from 'axios';
+import { BASE_URL, DATA_DE_HOJE } from '../config/axios';
+
 const ITENS_POR_PAGINA = 6;
 
-// Dados de exemplo, até a tela ser ligada à API.
-// "espera" é o tempo em minutos desde a chegada; null para quem não chegou.
-const consultas = [
-  { id: 1, paciente: 'Ana Beatriz Souza', horario: '08h00', medico: 'Dra. Helena Prado', status: 'FINALIZADO', espera: 12 },
-  { id: 2, paciente: 'Bruno Carvalho', horario: '08h30', medico: 'Dr. Rafael Moura', status: 'NAO_COMPARECEU', espera: null },
-  { id: 3, paciente: 'Camila Ferreira', horario: '09h00', medico: 'Dra. Helena Prado', status: 'EM_ATENDIMENTO', espera: 18 },
-  { id: 4, paciente: 'Diego Martins', horario: '09h30', medico: 'Dra. Lívia Castro', status: 'NA_RECEPCAO', espera: 7 },
-  { id: 5, paciente: 'Eduarda Lima', horario: '09h30', medico: 'Dr. Rafael Moura', status: 'CANCELADO', espera: null },
-  { id: 6, paciente: 'Felipe Rocha', horario: '10h00', medico: 'Dra. Helena Prado', status: 'AGENDADO', espera: null },
-  { id: 7, paciente: 'Gabriela Nunes', horario: '10h00', medico: 'Dra. Lívia Castro', status: 'NA_RECEPCAO', espera: 3 },
-  { id: 8, paciente: 'Henrique Barbosa', horario: '10h30', medico: 'Dr. Rafael Moura', status: 'AGENDADO', espera: null },
-  { id: 9, paciente: 'Isabela Teixeira', horario: '11h00', medico: 'Dra. Helena Prado', status: 'AGENDADO', espera: null },
-  { id: 10, paciente: 'João Pedro Ribeiro', horario: '11h00', medico: 'Dra. Lívia Castro', status: 'CANCELADO', espera: null },
-  { id: 11, paciente: 'Larissa Gomes', horario: '11h30', medico: 'Dr. Rafael Moura', status: 'AGENDADO', espera: null },
-  { id: 12, paciente: 'Marcelo Azevedo', horario: '14h00', medico: 'Dra. Helena Prado', status: 'AGENDADO', espera: null },
-  { id: 13, paciente: 'Natália Pires', horario: '14h30', medico: 'Dra. Lívia Castro', status: 'AGENDADO', espera: null },
-  { id: 14, paciente: 'Otávio Mendes', horario: '15h00', medico: 'Dr. Rafael Moura', status: 'AGENDADO', espera: null },
-];
+async function buscarFila() {
+  const { data: consultas } = await axios.get(`${BASE_URL}/consultas`, {
+    params: {
+      dataHora_gte: `${DATA_DE_HOJE}T00:00:00`,
+      dataHora_lte: `${DATA_DE_HOJE}T23:59:59`,
+      _sort: 'dataHora',
+    },
+  });
+
+  if (consultas.length === 0) {
+    return [];
+  }
+
+  // Paciente e médico herdam de pessoa pelo id; o nome fica em /pessoas.
+  const ids = [
+    ...new Set(consultas.flatMap((c) => [c.idPaciente, c.idMedico])),
+  ];
+  const { data: pessoas } = await axios.get(`${BASE_URL}/pessoas`, {
+    params: { id: ids },
+    paramsSerializer: { indexes: null },
+  });
+  const nomes = Object.fromEntries(pessoas.map((p) => [p.id, p.nome]));
+
+  return consultas.map((consulta) => ({
+    id: consulta.id,
+    paciente: nomes[consulta.idPaciente],
+    horario: consulta.dataHora.slice(11, 16).replace(':', 'h'),
+    medico: nomes[consulta.idMedico],
+    status: consulta.status,
+  }));
+}
 
 function FilaDoDia() {
+  const [consultas, setConsultas] = React.useState(null);
+  const [erro, setErro] = React.useState(false);
   const [pagina, setPagina] = React.useState(1);
 
-  const totalPaginas = Math.ceil(consultas.length / ITENS_POR_PAGINA);
+  React.useEffect(() => {
+    let ativo = true;
+
+    buscarFila()
+      .then((fila) => {
+        if (ativo) setConsultas(fila);
+      })
+      .catch(() => {
+        if (ativo) setErro(true);
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  if (erro) {
+    return (
+      <Card title='Fila de atendimento do dia'>
+        <div className='alert alert-danger mb-0' role='alert'>
+          Não foi possível carregar a fila de atendimento. Recarregue a página
+          para tentar de novo.
+        </div>
+      </Card>
+    );
+  }
+
+  const carregando = consultas === null;
+  const fila = consultas ?? [];
+  const totalPaginas = Math.max(1, Math.ceil(fila.length / ITENS_POR_PAGINA));
   const inicio = (pagina - 1) * ITENS_POR_PAGINA;
-  const consultasDaPagina = consultas.slice(inicio, inicio + ITENS_POR_PAGINA);
+  const consultasDaPagina = fila.slice(inicio, inicio + ITENS_POR_PAGINA);
 
   return (
     <Card title='Fila de atendimento do dia'>
@@ -52,6 +99,20 @@ function FilaDoDia() {
             </tr>
           </thead>
           <tbody>
+            {carregando && (
+              <tr>
+                <td colSpan='5' className='text-center text-body-secondary'>
+                  Carregando…
+                </td>
+              </tr>
+            )}
+            {!carregando && fila.length === 0 && (
+              <tr>
+                <td colSpan='5' className='text-center text-body-secondary'>
+                  Nenhuma consulta marcada para hoje.
+                </td>
+              </tr>
+            )}
             {consultasDaPagina.map((consulta) => (
               <tr key={consulta.id}>
                 <td>{consulta.paciente}</td>
@@ -60,9 +121,8 @@ function FilaDoDia() {
                 <td>
                   <PilulaStatus estado={consulta.status} />
                 </td>
-                <td>
-                  {consulta.espera === null ? '—' : `${consulta.espera} min`}
-                </td>
+                {/* A API ainda não informa a hora de chegada do paciente. */}
+                <td>—</td>
               </tr>
             ))}
           </tbody>

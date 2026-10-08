@@ -11,7 +11,11 @@ const estados = {
 };
 
 function PilulaStatus(props) {
-  const { rotulo, classe } = estados[props.estado];
+  // Um status fora da lista vindo da API aparece como texto, sem cor.
+  const { rotulo, classe } = estados[props.estado] ?? {
+    rotulo: props.estado,
+    classe: 'bg-light text-dark',
+  };
 
   return (
     <span className={`badge rounded-pill pilula-status ${classe}`}>
