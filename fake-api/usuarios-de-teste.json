@@ -1,0 +1,13 @@
+{
+  "aviso": "Credenciais de demonstração da API simulada local, com dados sintéticos. Não use esta senha em nenhum outro lugar.",
+  "senhaDemonstracao": "Demo@2026",
+  "contas": [
+    { "papel": "ADMINISTRADOR", "login": "admin", "descricao": "Administrador" },
+    { "papel": "SECRETARIA", "login": "secretaria", "descricao": "Secretária do turno da manhã" },
+    { "papel": "MEDICO", "login": "medico", "descricao": "Clínica Médica; tem paciente na recepção sem vínculo" },
+    { "papel": "MEDICO", "login": "medico2", "descricao": "Pediatria; atende a representada" },
+    { "papel": "PACIENTE", "login": "paciente", "descricao": "Paciente com consultas, cobranças, orçamento e documentos" },
+    { "papel": "RESPONSAVEL_LEGAL", "login": "responsavel", "descricao": "Representa uma criança; entra direto no Início" },
+    { "papel": "RESPONSAVEL_LEGAL", "login": "responsavel2", "descricao": "Representa duas crianças; passa pelo seletor G-09" }
+  ]
+}
