@@ -1,70 +1,67 @@
-# Getting Started with Create React App
+# YOURClinic
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+App React de gestão de clínica médica, organizado por papel: Administrador, Médico, Secretária, Paciente e Responsável Legal. As telas seguem o redesenho em [docs/redesenho/](docs/redesenho/): menu próprio de cada papel, listagens num padrão único e tema Bootswatch Yeti ajustado para contraste AA.
 
-## Available Scripts
+## Rodar
 
-In the project directory, you can run:
+O app lê os dados por axios de uma API simulada local, com sessão obrigatória e acesso por papel. A API fica em `fake-api/`, no branch `feat/api-protegida`.
 
-### `npm start`
+```bash
+npm install
+npm run api
+```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Em outro terminal:
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+```bash
+npm start
+```
 
-### `npm test`
+O app abre em `http://localhost:3000` e usa a API em `http://127.0.0.1:3001` (`REACT_APP_API_URL` em `.env.development`). Para apontar para outra API sem mexer nesse arquivo, crie `.env.development.local`.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Contas de demonstração
 
-### `npm run build`
+A tela de login tem um botão por papel que preenche login e senha. As contas e a senha estão em `fake-api/usuarios-de-teste.json` e só valem para a API local, com dados sintéticos.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+| Papel | Login | Começa em |
+|---|---|---|
+| Administrador | `admin` | Painel do dia |
+| Médico | `medico` | Atendimentos do dia |
+| Secretária | `secretaria` | Fila do dia |
+| Paciente | `paciente` | Início do portal |
+| Responsável Legal | `responsavel` (uma representada) ou `responsavel2` (duas, passa pelo seletor) | Início do portal |
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+O dia de referência dos dados é 28/09/2026 (`DATA_DE_HOJE` em `src/config/axios.js`).
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## O que está implementado
 
-### `npm run eject`
+Todas as telas de listagem do redesenho, com filtros, pílulas de status com as transições permitidas a cada papel, ícones de ação e estados de carregando, vazio e erro:
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+- **Administrador:** painel do dia; pacientes, médicos, equipe, convênios e procedimentos; fila do dia (leitura) e bloqueios; contas a receber e a pagar, conciliação, caixas, cancelamentos e estornos, aprovação de orçamentos, recibos e NFS-e; contratos, elegibilidade, guias, lotes, glosas e recursos; produtos, movimentações e alertas; relatórios, log de auditoria, notificações, solicitações dos titulares e parâmetros.
+- **Médico:** atendimentos do dia, meus pacientes, prontuário (prescrição, anexos, anotações privadas e exportações), orçamentos sem valores, estoque e pendências clínicas.
+- **Secretária:** pacientes e anexos (só metadados), reagendar ou cancelar, bloqueios, fila do dia com check-in, cobranças do dia, orçamentos na etapa de valores, recibos, estornos, faturamento TISS e estoque.
+- **Paciente e Responsável Legal:** início, agendamentos com cancelamento, documentos, cobranças e orçamentos com aceite, dados e direitos do titular; o Responsável escolhe o representado e vê a faixa "Representando".
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Telas que não são listagem (formulários de cadastro, novo agendamento, checkout, agenda em grade, anamnese) aparecem no menu como "Em construção", com o código da tela no protótipo.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## Regras que o front respeita
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+O papel vem do servidor. O front só monta menus e rotas do papel da sessão; quem recusa de fato é a API, que responde 401 (sem sessão), 403 (papel sem acesso) e 404 (registro fora do alcance, igual a inexistente). Nenhuma tela mostra texto de regra (RF, RC) ao usuário, e o título da aba nunca leva nome de paciente.
 
-## Learn More
+## Estrutura
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+| Pasta | Conteúdo |
+|---|---|
+| `src/config/` | Cliente axios com o token da sessão |
+| `src/sessao/` | Login, sessão e representado escolhido |
+| `src/navegacao/` | Menus de cada papel |
+| `src/components/` | Cabeçalho, menu em acordeão, listagem, pílula de status, ações da linha, confirmação |
+| `src/views/` | Telas, por domínio: cadastro, agenda, financeiro, TISS, estoque, gestão, clínico e portal |
+| `src/utils/` | Formatos de data e moeda, rótulos dos valores da API |
+| `docs/redesenho/` | Matriz por papel, mapa de navegação, decisões e verificação do redesenho |
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Testes
 
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+```bash
+npm test
+```
