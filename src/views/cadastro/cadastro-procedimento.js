@@ -44,7 +44,7 @@ function CadastroProcedimento({ modo }) {
     if (atual) carregar(paraFormulario(atual));
   }, [atual, carregar]);
 
-  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate(id && !leitura ? `/admin/procedimentos/${id}` : '/admin/procedimentos'));
+  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate(id && !leitura ? `/admin/procedimentos/${id}` : '/admin/listagem-procedimentos'));
 
   if (id && dados && !atual) return <RegistroIndisponivel />;
 

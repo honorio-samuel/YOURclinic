@@ -31,13 +31,13 @@ function PainelDoDia() {
       : null;
     const vencendo = contratos.filter((c) => diasEntre(DATA_DE_HOJE, c.vigenciaFim) <= 90);
     const pendencias = [
-      { id: 1, pendencia: 'Estornos a aprovar', itens: estornos.length, prazo: '—', rota: '/admin/estornos' },
-      { id: 2, pendencia: 'Divergências de caixa', itens: caixas.length, prazo: '—', rota: '/admin/caixas' },
-      { id: 3, pendencia: 'Orçamentos a aprovar', itens: orcamentos.length, prazo: '—', rota: '/admin/orcamentos' },
-      { id: 4, pendencia: 'Recursos de glosa mantidos', itens: recursos.length, prazo: '—', rota: '/admin/recursos' },
-      { id: 5, pendencia: 'Solicitações de titulares', itens: solicitacoes.length, prazo: menorPrazo === null ? '—' : `${menorPrazo} dias`, rota: '/admin/solicitacoes' },
-      { id: 6, pendencia: 'Acessos de exceção a revisar', itens: excecoes.length, prazo: '—', rota: '/admin/log' },
-      { id: 7, pendencia: 'Contratos perto do fim da vigência', itens: vencendo.length, prazo: vencendo.length ? data(vencendo[0].vigenciaFim) : '—', rota: '/admin/contratos' },
+      { id: 1, pendencia: 'Estornos a aprovar', itens: estornos.length, prazo: '—', rota: '/admin/listagem-estornos' },
+      { id: 2, pendencia: 'Divergências de caixa', itens: caixas.length, prazo: '—', rota: '/admin/listagem-caixas' },
+      { id: 3, pendencia: 'Orçamentos a aprovar', itens: orcamentos.length, prazo: '—', rota: '/admin/listagem-orcamentos' },
+      { id: 4, pendencia: 'Recursos de glosa mantidos', itens: recursos.length, prazo: '—', rota: '/admin/listagem-recursos-glosa' },
+      { id: 5, pendencia: 'Solicitações de titulares', itens: solicitacoes.length, prazo: menorPrazo === null ? '—' : `${menorPrazo} dias`, rota: '/admin/listagem-solicitacoes' },
+      { id: 6, pendencia: 'Acessos de exceção a revisar', itens: excecoes.length, prazo: '—', rota: '/admin/listagem-log-auditoria' },
+      { id: 7, pendencia: 'Contratos perto do fim da vigência', itens: vencendo.length, prazo: vencendo.length ? data(vencendo[0].vigenciaFim) : '—', rota: '/admin/listagem-contratos' },
     ];
     return { total: consultas.length, porStatus, pendencias };
   };
@@ -72,7 +72,7 @@ function PainelDoDia() {
       />
       <p className='small text-body-secondary mb-0'>
         {dados ? `${dados.total} consultas marcadas para hoje.` : ''} A fila completa está em{' '}
-        <Link to='/admin/fila'>Fila do dia</Link>.
+        <Link to='/admin/listagem-fila-do-dia'>Fila do dia</Link>.
       </p>
     </Pagina>
   );

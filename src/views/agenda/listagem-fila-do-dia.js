@@ -28,10 +28,10 @@ async function carregarPendenciasRecepcao(consultasDoDia) {
     (c) => c.idConvenio && ['AGENDADO', 'NA_RECEPCAO'].includes(c.status)
   );
   return [
-    { id: 1, pendencia: 'Convênios a conferir', itens: convenioAConferir.length, rota: '/secretaria/elegibilidade', acao: 'Abrir' },
+    { id: 1, pendencia: 'Convênios a conferir', itens: convenioAConferir.length, rota: '/secretaria/listagem-elegibilidades', acao: 'Abrir' },
     { id: 2, pendencia: 'Notificações sem entrega', itens: notificacoes.length, rota: null, acao: 'Reenviar ou ligar' },
-    { id: 3, pendencia: 'Titulares a habilitar por maioridade', itens: maiores.length, rota: '/secretaria/pacientes', acao: 'Abrir' },
-    { id: 4, pendencia: 'Alertas de estoque', itens: alertas.length, rota: '/secretaria/alertas', acao: 'Abrir' },
+    { id: 3, pendencia: 'Titulares a habilitar por maioridade', itens: maiores.length, rota: '/secretaria/listagem-pacientes', acao: 'Abrir' },
+    { id: 4, pendencia: 'Alertas de estoque', itens: alertas.length, rota: '/secretaria/listagem-alertas', acao: 'Abrir' },
   ];
 }
 
@@ -78,7 +78,7 @@ function FilaDoDia() {
       titulo: '',
       render: (c) =>
         c.status === 'FINALIZADO' ? (
-          <button type='button' className='btn btn-link btn-sm p-0' onClick={() => navigate('/secretaria/cobrancas')}>
+          <button type='button' className='btn btn-link btn-sm p-0' onClick={() => navigate('/secretaria/listagem-cobrancas')}>
             Cobrar
           </button>
         ) : (

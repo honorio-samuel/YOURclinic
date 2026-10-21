@@ -78,7 +78,7 @@ function AtendimentosDoDia() {
             titulo: 'Prontuário',
             render: (c) =>
               ['EM_ATENDIMENTO', 'FINALIZADO'].includes(c.status) ? (
-                <button type='button' className='btn btn-link btn-sm p-0' onClick={() => navigate(`/medico/pacientes/${c.idPaciente}`)}>
+                <button type='button' className='btn btn-link btn-sm p-0' onClick={() => navigate(`/medico/prontuario/${c.idPaciente}`)}>
                   Abrir
                 </button>
               ) : (

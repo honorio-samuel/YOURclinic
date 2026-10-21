@@ -65,7 +65,7 @@ function Alertas() {
           { titulo: 'Lote', render: (a) => a.lote },
           { titulo: 'Alerta', render: (a) => <PilulaStatus {...rotuloDe(ALERTA, a.tipo)} /> },
           { titulo: 'Detalhe', render: (a) => a.detalhe },
-          { titulo: 'Ações', render: (a) => <AcoesLinha acoes={[{ tipo: 'ver', alvo: a.produto, aoClicar: () => navigate(`${prefixo}/produtos`) }]} /> },
+          { titulo: 'Ações', render: (a) => <AcoesLinha acoes={[{ tipo: 'ver', alvo: a.produto, aoClicar: () => navigate(`${prefixo}/listagem-produtos`) }]} /> },
         ]}
       />
     </Pagina>

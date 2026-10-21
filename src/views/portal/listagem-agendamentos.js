@@ -31,7 +31,7 @@ function AgendamentosPortal() {
       <Pagina
         titulo={ehResponsavel ? 'Agendamentos' : 'Meus agendamentos'}
         acoes={
-          <button type='button' className='btn btn-primary' onClick={() => navigate('/portal/agendar')}>
+          <button type='button' className='btn btn-primary' onClick={() => navigate('/portal/cadastro-agendamentos')}>
             Agendar consulta
           </button>
         }

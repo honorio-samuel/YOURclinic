@@ -269,6 +269,94 @@ Sem menu lateral: G-01 a G-07, G-09 e G-11. Mantêm o menu do papel: G-07b (moda
 | **R-06** Dados do representado | Menu | R-04 |
 | **R-07** Acesso encerrado por maioridade | G-01 ou G-09, depois que o representado completa 18 anos | G-09 (outros representados) ou G-01 |
 
+## Rotas no app
+
+Desde 21/10/2026 o código segue o padrão de rotas da disciplina: cada entidade tem uma listagem em `/<papel>/listagem-<entidade>` e um cadastro em `/<papel>/cadastro-<entidade>/:idParam?`. Sem `idParam`, o cadastro cria; com ele, edita. O ícone Ver abre o mesmo cadastro em modo consulta (`?consulta`). Telas que não são listagem nem cadastro (painéis, agenda em grade, prontuário, dados do portal) mantêm o nome. As rotas anteriores continuam funcionando e redirecionam para as novas, inclusive as de antes do redesenho (`/listagem-cadastro`, `/listagem-filadia`, `/listagem-agenda`, `/listagem-financeiro` e `/listagem-estoque`). O portal continua sem identificador de paciente na URL (A1-R11), exceto o orçamento, que já levava o do próprio orçamento.
+
+| Papel | Tela | Rota no app | Rota anterior (redireciona) |
+|---|---|---|---|
+| A | A-01 Painel do dia | `/admin/inicio` | — |
+| A | A-02a Pacientes · listagem | `/admin/listagem-pacientes` | `/admin/pacientes` |
+| A | A-02b Pacientes · cadastro | `/admin/cadastro-pacientes/:idParam?` | — |
+| A | A-03 Médicos · listagem | `/admin/listagem-medicos` | `/admin/medicos` |
+| A | A-03 Médicos · cadastro | `/admin/cadastro-medicos/:idParam?` | — |
+| A | A-04 Equipe · listagem | `/admin/listagem-equipe` | `/admin/equipe` |
+| A | A-04 Equipe · cadastro | `/admin/cadastro-equipe/:idParam?` | — |
+| A | A-05 Convênios · listagem | `/admin/listagem-convenios` | `/admin/convenios` |
+| A | A-05 Convênios · cadastro | `/admin/cadastro-convenios/:idParam?` | — |
+| A | A-06 Procedimentos e preços · listagem | `/admin/listagem-procedimentos` | `/admin/procedimentos` |
+| A | A-06 Procedimentos e preços · cadastro | `/admin/cadastro-procedimentos/:idParam?` | — |
+| A | A-07 Agenda da clínica | `/admin/agenda` | — |
+| A | A-08a Novo agendamento | `/admin/cadastro-agendamentos` | `/admin/agendamento` |
+| A | A-09 Fila do dia · leitura | `/admin/listagem-fila-do-dia` | `/admin/fila` |
+| A | A-10 Grade de horários | `/admin/grade` | — |
+| A | A-11a Bloqueios · listagem | `/admin/listagem-bloqueios` | `/admin/bloqueios` |
+| A | A-11a Bloqueios · cadastro | `/admin/cadastro-bloqueios/:idParam?` | — |
+| A | A-12 Painel financeiro | `/admin/painel-financeiro` | — |
+| A | A-13a Contas a receber | `/admin/listagem-contas-receber` | `/admin/contas-receber` |
+| A | A-14 Contas a pagar · listagem | `/admin/listagem-contas-pagar` | `/admin/contas-pagar` |
+| A | A-14 Contas a pagar · cadastro | `/admin/cadastro-contas-pagar/:idParam?` | — |
+| A | A-15 Conciliação | `/admin/listagem-conciliacao` | `/admin/conciliacao` |
+| A | A-16 Caixas · supervisão | `/admin/listagem-caixas` | `/admin/caixas` |
+| A | A-17 Cancelamentos e estornos | `/admin/listagem-estornos` | `/admin/estornos` |
+| A | A-18 Orçamentos · aprovação | `/admin/listagem-orcamentos` | `/admin/orcamentos` |
+| A | A-19 Recibos e NFS-e | `/admin/listagem-recibos-nfse` | `/admin/recibos-nfse` |
+| A | A-20 Contratos e tabelas | `/admin/listagem-contratos` | `/admin/contratos` |
+| A | A-21 Elegibilidade e autorizações | `/admin/listagem-elegibilidades` | `/admin/elegibilidade` |
+| A | A-22 Guias TISS | `/admin/listagem-guias` | `/admin/guias` |
+| A | A-23 Lotes e protocolos | `/admin/listagem-lotes` | `/admin/lotes` |
+| A | A-24 Demonstrativos e glosas | `/admin/listagem-glosas` | `/admin/glosas` |
+| A | A-25 Recursos de glosa | `/admin/listagem-recursos-glosa` | `/admin/recursos` |
+| A | A-26 Produtos e lotes · listagem | `/admin/listagem-produtos` | `/admin/produtos` |
+| A | A-26 Produtos e lotes · cadastro | `/admin/cadastro-produtos/:idParam?` | — |
+| A | A-27 Movimentações | `/admin/listagem-movimentacoes` | `/admin/movimentacoes` |
+| A | A-28 Alertas | `/admin/listagem-alertas` | `/admin/alertas` |
+| A | A-29 Dashboard gerencial | `/admin/dashboard` | — |
+| A | A-30 Relatórios | `/admin/listagem-relatorios` | `/admin/relatorios` |
+| A | A-31 Log de auditoria | `/admin/listagem-log-auditoria` | `/admin/log` |
+| A | A-32 Notificações | `/admin/listagem-notificacoes` | `/admin/notificacoes` |
+| A | A-33 Solicitações dos titulares (LGPD) | `/admin/listagem-solicitacoes` | `/admin/solicitacoes` |
+| A | A-34 Parâmetros do sistema | `/admin/listagem-parametros` | `/admin/parametros` |
+| M | M-01 Atendimentos do dia | `/medico/listagem-atendimentos` | `/medico/atendimentos` |
+| M | M-02a Meus pacientes | `/medico/listagem-pacientes` | `/medico/pacientes` |
+| M | M-02 Prontuário, em abas (M-02d a M-02g) | `/medico/prontuario/:id/:aba` | `/medico/pacientes/:id/:aba` |
+| M | M-03 Minha agenda | `/medico/agenda` | — |
+| M | M-04 Orçamentos · escopo clínico | `/medico/listagem-orcamentos` | `/medico/orcamentos` |
+| M | M-05a Estoque · disponibilidade | `/medico/listagem-produtos` | `/medico/estoque` |
+| M | M-06 Pendências clínicas | `/medico/listagem-pendencias` | `/medico/pendencias` |
+| S | S-01a Pacientes · listagem | `/secretaria/listagem-pacientes` | `/secretaria/pacientes` |
+| S | S-01b Pacientes · cadastro | `/secretaria/cadastro-pacientes/:idParam?` | — |
+| S | S-01c Pacientes · Observações Gerais | `/secretaria/cadastro-pacientes/:idParam/observacoes` | — |
+| S | S-01d Pacientes · anexos | `/secretaria/cadastro-pacientes/:idParam/anexos` | `/secretaria/pacientes/:id/anexos` |
+| S | S-02 Agenda da clínica | `/secretaria/agenda` | — |
+| S | S-03a Novo agendamento | `/secretaria/cadastro-agendamentos` | `/secretaria/agendamento` |
+| S | S-04 Reagendar ou cancelar | `/secretaria/listagem-consultas` | `/secretaria/reagendar` |
+| S | S-05b Bloqueios · listagem | `/secretaria/listagem-bloqueios` | `/secretaria/bloqueios` |
+| S | S-05b Bloqueios · cadastro | `/secretaria/cadastro-bloqueios/:idParam?` | — |
+| S | S-06 Fila do dia | `/secretaria/listagem-fila-do-dia` | `/secretaria/fila` |
+| S | S-07a Checkout | `/secretaria/checkout` | — |
+| S | S-08 Cobranças do dia | `/secretaria/listagem-cobrancas` | `/secretaria/cobrancas` |
+| S | S-09 Meu caixa | `/secretaria/caixa` | — |
+| S | S-10 Orçamentos · valores | `/secretaria/listagem-orcamentos` | `/secretaria/orcamentos` |
+| S | S-11 Recibos | `/secretaria/listagem-recibos` | `/secretaria/recibos` |
+| S | S-12 Estornos · solicitar | `/secretaria/listagem-estornos` | `/secretaria/estornos` |
+| S | S-13 Elegibilidade e autorização | `/secretaria/listagem-elegibilidades` | `/secretaria/elegibilidade` |
+| S | S-14 Guias TISS | `/secretaria/listagem-guias` | `/secretaria/guias` |
+| S | S-15 Lotes e protocolos | `/secretaria/listagem-lotes` | `/secretaria/lotes` |
+| S | S-16a Glosas e recursos | `/secretaria/listagem-glosas` | `/secretaria/glosas` |
+| S | S-17 Produtos e lotes · listagem | `/secretaria/listagem-produtos` | `/secretaria/produtos` |
+| S | S-17 Produtos e lotes · cadastro | `/secretaria/cadastro-produtos/:idParam?` | — |
+| S | S-18 Movimentações | `/secretaria/listagem-movimentacoes` | `/secretaria/movimentacoes` |
+| S | S-19 Alertas | `/secretaria/listagem-alertas` | `/secretaria/alertas` |
+| P e R | P-01 e R-01 Início | `/portal/inicio` | — |
+| P e R | P-02 e R-02 Agendar consulta | `/portal/cadastro-agendamentos` | `/portal/agendar` |
+| P e R | P-03 e R-03 Agendamentos | `/portal/listagem-agendamentos` | `/portal/agendamentos` |
+| P e R | P-04 e R-04 Documentos | `/portal/listagem-documentos` | `/portal/documentos` |
+| P e R | P-05a e R-05a Orçamentos e cobranças | `/portal/listagem-cobrancas` | `/portal/cobrancas` |
+| P e R | P-05b e R-05b Orçamento · aceite | `/portal/orcamentos/:id` | — |
+| P e R | P-06 e R-06 Dados e privacidade | `/portal/dados` | — |
+| R | G-09 Seletor de representado | `/portal/representado` | — |
+
 ## Percursos que atravessam papéis
 
 | Percurso | Passos |

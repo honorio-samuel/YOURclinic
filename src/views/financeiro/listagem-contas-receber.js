@@ -72,7 +72,7 @@ function ContasReceber() {
             render: (t) => {
               const alvo = `título de ${t.devedor}`;
               const ver = { tipo: 'ver', alvo, aoClicar: () => emBreve('O detalhe do título') };
-              if (t.situacao === 'PAGO') return <AcoesLinha acoes={[ver, { tipo: 'estornar', alvo, aoClicar: () => navigate('/admin/estornos') }]} />;
+              if (t.situacao === 'PAGO') return <AcoesLinha acoes={[ver, { tipo: 'estornar', alvo, aoClicar: () => navigate('/admin/listagem-estornos') }]} />;
               if (t.situacao === 'ESTORNADO') return <AcoesLinha acoes={[ver]} />;
               return <AcoesLinha acoes={[ver, { tipo: 'editar', alvo, aoClicar: () => emBreve('A edição da cobrança') }]} />;
             },

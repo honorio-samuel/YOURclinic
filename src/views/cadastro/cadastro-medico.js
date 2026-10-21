@@ -53,7 +53,7 @@ function CadastroMedico({ modo }) {
   }, [dados, carregar]);
 
   const tocarLogin = useLoginSugerido(form, !id, dados?.logins ?? []);
-  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate(id && !leitura ? `/admin/medicos/${id}` : '/admin/medicos'));
+  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate(id && !leitura ? `/admin/medicos/${id}` : '/admin/listagem-medicos'));
 
   if (erro?.status === 404) return <RegistroIndisponivel />;
 

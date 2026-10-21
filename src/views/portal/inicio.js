@@ -21,7 +21,7 @@ function InicioPortal() {
     const proximas = consultas.filter((c) => c.status === 'AGENDADO' && c.dataHora.slice(0, 10) > DATA_DE_HOJE).slice(0, 3);
     const pendencias = [
       ...orcamentos.map((o) => ({ id: `o${o.id}`, pendencia: 'Orçamento aguardando aceite', detalhe: `válido até ${diaMes(o.validade)}`, acao: 'Abrir', rota: `/portal/orcamentos/${o.id}` })),
-      ...cobrancas.filter((c) => c.situacao === 'ABERTA').map((c) => ({ id: `c${c.id}`, pendencia: 'Cobrança em aberto', detalhe: moeda(c.valorTotal), acao: 'Pagar', rota: '/portal/cobrancas' })),
+      ...cobrancas.filter((c) => c.situacao === 'ABERTA').map((c) => ({ id: `c${c.id}`, pendencia: 'Cobrança em aberto', detalhe: moeda(c.valorTotal), acao: 'Pagar', rota: '/portal/listagem-cobrancas' })),
     ];
     return { hoje, proximas, pendencias };
   }, [id]);
@@ -51,7 +51,7 @@ function InicioPortal() {
             { titulo: 'Data e hora', render: (c) => diaMesHora(c.dataHora) },
             { titulo: 'Médico', render: (c) => c.medico },
             { titulo: 'Tipo', render: (c) => c.tipo },
-            { titulo: '', render: () => <Link to='/portal/agendamentos'>Ver</Link> },
+            { titulo: '', render: () => <Link to='/portal/listagem-agendamentos'>Ver</Link> },
           ]}
         />
         <Listagem

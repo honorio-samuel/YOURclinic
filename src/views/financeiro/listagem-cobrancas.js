@@ -56,7 +56,7 @@ function CobrancasDoDia() {
             titulo: '',
             render: (c) =>
               c.situacao === 'PAGA' ? (
-                <button type='button' className='btn btn-link btn-sm p-0' onClick={() => navigate('/secretaria/recibos')}>
+                <button type='button' className='btn btn-link btn-sm p-0' onClick={() => navigate('/secretaria/listagem-recibos')}>
                   Recibo
                 </button>
               ) : (

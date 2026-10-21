@@ -33,7 +33,7 @@ function CadastroConvenio({ modo }) {
     if (atual) carregar({ nome: atual.nome ?? '', razaoSocial: atual.razaoSocial ?? '', registroAns: atual.registroAns ?? '' });
   }, [atual, carregar]);
 
-  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate(id && !leitura ? `/admin/convenios/${id}` : '/admin/convenios'));
+  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate(id && !leitura ? `/admin/convenios/${id}` : '/admin/listagem-convenios'));
 
   if (id && dados && !atual) return <RegistroIndisponivel />;
 

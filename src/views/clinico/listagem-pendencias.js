@@ -80,7 +80,7 @@ function PendenciasClinicas() {
         carregando={carregando}
         linhas={dados?.exa ?? []}
         vazio='Nenhum exame esperando avaliação.'
-        colunas={colunas('Arquivo', 'Avaliar', (x) => navigate(`/medico/pacientes/${x.idPaciente}/anexos`))}
+        colunas={colunas('Arquivo', 'Avaliar', (x) => navigate(`/medico/prontuario/${x.idPaciente}/anexos`))}
       />
     </Pagina>
   );

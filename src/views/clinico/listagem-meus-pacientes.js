@@ -65,7 +65,7 @@ function MeusPacientes() {
             titulo: '',
             render: (p) =>
               ['ATIVO', 'HISTORICO'].includes(p.estado) ? (
-                <button type='button' className='btn btn-link btn-sm p-0' onClick={() => navigate(`/medico/pacientes/${p.idPaciente}`)}>
+                <button type='button' className='btn btn-link btn-sm p-0' onClick={() => navigate(`/medico/prontuario/${p.idPaciente}`)}>
                   Abrir prontuário
                 </button>
               ) : (

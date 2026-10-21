@@ -40,7 +40,7 @@ function Prontuario() {
       <ul className='nav nav-tabs'>
         {ABAS.map(([chave, rotulo]) => (
           <li key={chave} className='nav-item'>
-            <NavLink to={`/medico/pacientes/${idPaciente}/${chave}`} className={() => `nav-link ${aba === chave ? 'active' : ''}`}>
+            <NavLink to={`/medico/prontuario/${idPaciente}/${chave}`} className={() => `nav-link ${aba === chave ? 'active' : ''}`}>
               {rotulo}
             </NavLink>
           </li>

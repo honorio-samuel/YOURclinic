@@ -56,7 +56,7 @@ function CadastroEquipe({ modo }) {
   }, [dados, carregar]);
 
   const tocarLogin = useLoginSugerido(form, !id, dados?.logins ?? []);
-  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate(id && !leitura ? `/admin/equipe/${id}` : '/admin/equipe'));
+  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate(id && !leitura ? `/admin/equipe/${id}` : '/admin/listagem-equipe'));
 
   if (erro?.status === 404 || (id && dados && !dados.atual)) return <RegistroIndisponivel />;
 
