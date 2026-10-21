@@ -517,9 +517,11 @@ function iniciar() {
   const origens = process.env.ORIGENS ? process.env.ORIGENS.split(',') : ORIGENS_PADRAO;
   const minutosSessao = Number(process.env.SESSAO_MINUTOS) || undefined;
 
-  const porta = Number(process.env.PORTA) || 3001;
-  // Só aceita conexões da própria máquina, a menos que HOST diga outra coisa.
-  const host = process.env.HOST || '127.0.0.1';
+  // No Render, a porta vem em PORT e a variável RENDER existe; lá a API
+  // precisa aceitar conexões de fora. Na máquina local, só da própria máquina,
+  // a menos que HOST diga outra coisa.
+  const porta = Number(process.env.PORTA || process.env.PORT) || 3001;
+  const host = process.env.HOST || (process.env.RENDER ? '0.0.0.0' : '127.0.0.1');
   http
     .createServer(criarApi({ db, salvar, origens, minutosSessao }))
     .listen(porta, host, () => console.log(`API simulada em http://${host}:${porta}`));

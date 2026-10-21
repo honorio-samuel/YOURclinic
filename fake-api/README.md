@@ -25,13 +25,26 @@ npm test
 
 | Variável | Padrão | Para quê |
 |---|---|---|
-| `PORTA` | `3001` | Porta HTTP |
-| `HOST` | `127.0.0.1` | Interface de rede |
+| `PORTA` | `PORT`, se houver; senão `3001` | Porta HTTP |
+| `HOST` | `0.0.0.0` no Render (variável `RENDER`); `127.0.0.1` fora dele | Interface de rede |
 | `ORIGENS` | `http://localhost:3000,http://127.0.0.1:3000` | Origens liberadas no CORS |
 | `SESSAO_MINUTOS` | parâmetro X15 (30) | Inatividade até a sessão expirar |
 | `CAMINHO_DB` | `fake-api/db.json` | Arquivo do banco |
 
 No app, aponte `REACT_APP_API_URL` para `http://127.0.0.1:3001`.
+
+## Publicar no Render
+
+Web Service a partir deste repositório, sem variável obrigatória: o Render informa `PORT` e `RENDER`, e a API passa a aceitar conexões de fora.
+
+| Campo | Valor |
+|---|---|
+| Root Directory | `fake-api` |
+| Build Command | `npm install` (não há dependências; o passo só confere o `package.json`) |
+| Start Command | `node servidor.js` |
+| Health Check Path | `/saude` |
+
+O banco sintético é gerado na primeira subida e some a cada novo deploy ou reinício, porque o disco do serviço gratuito não é permanente. As sessões ficam em memória e também caem no reinício. Se um app publicado for usar esta API, inclua o endereço dele em `ORIGENS`. As contas de demonstração e a senha delas estão neste repositório, que é público: qualquer pessoa entra com elas, e por isso o banco só pode ter dados sintéticos.
 
 ## Contas de demonstração
 
