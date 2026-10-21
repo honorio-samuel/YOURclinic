@@ -97,6 +97,9 @@ Exemplos da matriz: Observações Gerais nunca vão ao Administrador (A3-R17); c
 | Contas (RF03, RF09) | Conta nova nasce `CONVITE_PENDENTE`, de uma pessoa já cadastrada no papel, uma por pessoa, com login e e-mail sem repetição. O papel e a pessoa não mudam depois. Só o aceite do convite ativa a conta. A clínica não fica sem Administrador ativo. A Secretária só convida Paciente e Responsável Legal e não lê as contas |
 | Representação (RF08) | Paciente e responsável cadastrados, grau de parentesco e natureza (`PODER_FAMILIAR`, `TUTELA` ou `CURATELA`). A Secretária não encerra a representação |
 | Convênio e procedimento (RF11, RF12) | Registro ANS com 6 dígitos e TUSS com 8, sem repetição; duração de 5 a 480 minutos; preço particular informado |
+| Conta a pagar (RF50) | Nasce `ABERTO`, com fornecedor, categoria, vencimento e valor maior que zero. Paga, só o estorno a muda (`situacao` e `motivoEstorno`); estornada, não muda mais |
+| Bloqueio de agenda (RF14) | Motivo da lista fechada (férias, feriado, congresso, capacitação, intervalo, outro), fim depois do início e médico ativo; sem médico, vale para a clínica inteira |
+| Produto (RF36) | Descrição, tipo (`MEDICAMENTO`, `MATERIAL` ou `AMOSTRA`), unidade (`UN`, `CX`, `PCT`, `FR` ou `DOSE`) e estoque mínimo inteiro. Custo, se informado, não negativo; a Secretária não grava o custo |
 
 ## Dados sintéticos
 

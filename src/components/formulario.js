@@ -117,6 +117,35 @@ export function CampoTexto({
   );
 }
 
+// Valor em reais: "R$" à esquerda e o número alinhado à direita. A máscara
+// (mascararMoeda) vem de quem usa, junto com o tratador do campo.
+export function CampoMoeda({ id, rotulo, valor, aoMudar, erro, ajuda, opcional = false, largura = 'col-md-3' }) {
+  return (
+    <div className={largura}>
+      <Rotulo id={id} rotulo={rotulo} opcional={opcional} />
+      <div className='input-group has-validation'>
+        <span className='input-group-text'>R$</span>
+        <input
+          id={id}
+          className={`form-control text-end${erro ? ' is-invalid' : ''}`}
+          inputMode='numeric'
+          value={valor ?? ''}
+          onChange={(e) => aoMudar(e.target.value)}
+          aria-invalid={erro ? true : undefined}
+          aria-describedby={descricao(id, erro, ajuda)}
+          required={!opcional}
+        />
+        <Erro id={id} erro={erro} />
+      </div>
+      {ajuda && (
+        <div id={`${id}-ajuda`} className='form-text'>
+          {ajuda}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // opcoes: [[valor, rótulo]]. Sem valor escolhido, mostra "Selecione".
 export function CampoSelecao({ id, rotulo, valor, aoMudar, opcoes, erro, ajuda, opcional = false, largura = 'col-md-6', ...resto }) {
   return (

@@ -178,6 +178,9 @@ export const TURNO = { MANHA: 'Manhã', TARDE: 'Tarde', INTEGRAL: 'Integral' };
 
 export const SEXO = { F: 'Feminino', M: 'Masculino' };
 
+// Unidades de estoque do banco (A-26).
+export const UNIDADE_PRODUTO = { UN: 'Unidade', CX: 'Caixa', PCT: 'Pacote', FR: 'Frasco', DOSE: 'Dose' };
+
 export const UFS = 'AC AL AM AP BA CE DF ES GO MA MG MS MT PA PB PE PI PR RJ RN RO RR RS SC SE SP TO'.split(' ');
 
 export function rotuloDe(mapa, valor) {

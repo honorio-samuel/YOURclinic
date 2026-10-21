@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import { CampoTexto, Formulario, Rodape, Secao, useFormulario, useSairSemSalvar } from '../../components/formulario';
@@ -9,17 +9,16 @@ import { RegistroIndisponivel } from '../geral/avisos';
 import { criar, listar } from '../../servicos/dados';
 import { atualizarSeMudou } from '../../servicos/pessoas';
 import { useCarregar } from '../../hooks/use-carregar';
+import { useCadastro } from '../../navegacao/caminhos';
 import { mascararDigitos } from '../../utils/mascaras';
 
 const VAZIO = { nome: '', razaoSocial: '', registroAns: '' };
 
 // A-05 · Cadastro do convênio (RF11). Preços e prazos por operadora ficam no
 // contrato, em Faturamento TISS › Contratos e tabelas (A-20).
-function CadastroConvenio({ modo }) {
-  const { id: idTexto } = useParams();
-  const id = idTexto ? Number(idTexto) : null;
+function CadastroConvenio() {
+  const { id, consulta: leitura, listagem, editar } = useCadastro('convenios');
   const navigate = useNavigate();
-  const leitura = modo === 'ver';
   const form = useFormulario(VAZIO);
   const { carregar } = form;
   const [modal, confirmar] = useConfirmacao();
@@ -33,7 +32,7 @@ function CadastroConvenio({ modo }) {
     if (atual) carregar({ nome: atual.nome ?? '', razaoSocial: atual.razaoSocial ?? '', registroAns: atual.registroAns ?? '' });
   }, [atual, carregar]);
 
-  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate(id && !leitura ? `/admin/convenios/${id}` : '/admin/listagem-convenios'));
+  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate(listagem));
 
   if (id && dados && !atual) return <RegistroIndisponivel />;
 
@@ -54,11 +53,10 @@ function CadastroConvenio({ modo }) {
     setSalvando(true);
     const campos = { nome: v.nome.trim(), razaoSocial: v.razaoSocial.trim(), registroAns: v.registroAns };
     try {
-      let idSalvo = id;
       if (id) await atualizarSeMudou('convenios', id, campos, atual);
-      else idSalvo = (await criar('convenios', { ...campos, situacao: 'ATIVO' })).id;
+      else await criar('convenios', { ...campos, situacao: 'ATIVO' });
       mensagemSucesso(id ? 'Convênio atualizado.' : 'Convênio cadastrado.');
-      navigate(`/admin/convenios/${idSalvo}`);
+      navigate(listagem);
     } catch (falha) {
       mensagemErro(mensagemDeErro(falha));
       setSalvando(false);
@@ -72,7 +70,7 @@ function CadastroConvenio({ modo }) {
       acoes={
         leitura &&
         !inativo && (
-          <button type='button' className='btn btn-primary' onClick={() => navigate(`/admin/convenios/${id}/editar`)}>
+          <button type='button' className='btn btn-primary' onClick={() => navigate(editar())}>
             Editar
           </button>
         )

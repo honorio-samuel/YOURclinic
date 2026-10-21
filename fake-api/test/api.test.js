@@ -505,7 +505,8 @@ describe('escrita', () => {
 
   test('campo oculto não é gravado', async () => {
     const token = await api.entrar('secretaria');
-    const r = await api.pedir('POST', '/produtos', { token, corpo: { descricao: 'Teste', custoAquisicao: 1 } });
+    const corpo = { descricao: 'Teste', tipo: 'MATERIAL', unidade: 'UN', estoqueMinimo: 0, custoAquisicao: 1 };
+    const r = await api.pedir('POST', '/produtos', { token, corpo });
     assert.equal(r.status, 201);
     assert.equal(api.db.produtos.find((p) => p.id === r.corpo.id).custoAquisicao, undefined);
   });
@@ -885,5 +886,52 @@ describe('cadastros', () => {
     assert.equal((await api.pedir('POST', '/procedimentos', { token, corpo: procedimento('90000099') })).status, 201);
     const medico = await api.pedir('POST', '/procedimentos', { token: tokens.medico, corpo: procedimento('90000098') });
     assert.equal(medico.status, 403);
+  });
+});
+
+describe('cadastros de produto, conta a pagar e bloqueio', () => {
+  let api;
+  const tokens = {};
+  before(async () => {
+    api = await subir();
+    for (const login of ['admin', 'secretaria']) tokens[login] = await api.entrar(login);
+  });
+  after(() => api.fechar());
+
+  test('conta a pagar nasce em aberto e, depois de paga, só o estorno a muda', async () => {
+    const token = tokens.admin;
+    const conta = (extra) => ({ fornecedor: 'Fornecedor Teste', categoria: 'MATERIAL', vencimento: '2026-10-30', valor: 120, situacao: 'ABERTO', idAdministrador: 1, ...extra });
+    assert.equal((await api.pedir('POST', '/titulosPagar', { token, corpo: conta({ situacao: 'PAGO' }) })).status, 422);
+    assert.equal((await api.pedir('POST', '/titulosPagar', { token, corpo: conta({ valor: 0 }) })).status, 422);
+    const criada = await api.pedir('POST', '/titulosPagar', { token, corpo: conta() });
+    assert.equal(criada.status, 201);
+    const id = criada.corpo.id;
+    assert.equal((await api.pedir('PATCH', `/titulosPagar/${id}`, { token, corpo: { valor: 150 } })).status, 200);
+    assert.equal((await api.pedir('PATCH', `/titulosPagar/${id}`, { token, corpo: { situacao: 'PAGO' } })).status, 200);
+    assert.equal((await api.pedir('PATCH', `/titulosPagar/${id}`, { token, corpo: { valor: 99 } })).status, 422);
+    const estorno = await api.pedir('PATCH', `/titulosPagar/${id}`, { token, corpo: { situacao: 'ESTORNADO', motivoEstorno: 'Pago em duplicidade.' } });
+    assert.equal(estorno.status, 200);
+    assert.equal((await api.pedir('PATCH', `/titulosPagar/${id}`, { token, corpo: { situacao: 'ABERTO' } })).status, 422);
+  });
+
+  test('bloqueio: motivo da lista, fim depois do início e médico ativo', async () => {
+    const token = tokens.secretaria;
+    const inativo = api.db.medicos.find((m) => m.situacao === 'INATIVO');
+    const bloqueio = (extra) => ({ dataInicio: '2026-11-02T08:00:00', dataFim: '2026-11-02T12:00:00', motivo: 'CONGRESSO', idMedico: null, situacao: 'ATIVO', consultasAfetadas: 0, ...extra });
+    assert.equal((await api.pedir('POST', '/bloqueiosAgenda', { token, corpo: bloqueio({ motivo: 'DOENCA' }) })).status, 422);
+    assert.equal((await api.pedir('POST', '/bloqueiosAgenda', { token, corpo: bloqueio({ dataFim: '2026-11-02T07:00:00' }) })).status, 422);
+    assert.equal((await api.pedir('POST', '/bloqueiosAgenda', { token, corpo: bloqueio({ idMedico: inativo.id }) })).status, 422);
+    assert.equal((await api.pedir('POST', '/bloqueiosAgenda', { token, corpo: bloqueio() })).status, 201);
+  });
+
+  test('produto: a Secretária cadastra sem custo; o Administrador informa o custo', async () => {
+    const produto = (extra) => ({ descricao: 'Gaze estéril', tipo: 'MATERIAL', unidade: 'PCT', estoqueMinimo: 10, controlaLote: true, situacao: 'ATIVO', ...extra });
+    assert.equal((await api.pedir('POST', '/produtos', { token: tokens.admin, corpo: produto({ unidade: 'KG' }) })).status, 422);
+    const daSecretaria = await api.pedir('POST', '/produtos', { token: tokens.secretaria, corpo: produto({ custoAquisicao: 3 }) });
+    assert.equal(daSecretaria.status, 201);
+    assert.equal(api.db.produtos.find((p) => p.id === daSecretaria.corpo.id).custoAquisicao, undefined);
+    const doAdmin = await api.pedir('POST', '/produtos', { token: tokens.admin, corpo: produto({ descricao: 'Luva de procedimento', custoAquisicao: 0.3 }) });
+    assert.equal(doAdmin.status, 201);
+    assert.equal(doAdmin.corpo.custoAquisicao, 0.3);
   });
 });

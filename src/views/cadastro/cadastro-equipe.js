@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import { CampoSelecao, Formulario, Rodape, Secao, useFormulario, useSairSemSalvar } from '../../components/formulario';
@@ -9,6 +9,7 @@ import { RegistroIndisponivel } from '../geral/avisos';
 import { buscar, listar } from '../../servicos/dados';
 import { dadosDaPessoa, loginsEmUso, salvarProfissional } from '../../servicos/profissionais';
 import { useCarregar } from '../../hooks/use-carregar';
+import { useCadastro } from '../../navegacao/caminhos';
 import { PAPEIS, TURNO } from '../../utils/rotulos';
 import {
   errosDoProfissional,
@@ -34,11 +35,9 @@ async function carregarMembro(id) {
 
 // A-04 · Cadastro de usuário da equipe: Secretária ou Administrador (RF03).
 // O papel não muda depois de criado; para outro papel, outra conta.
-function CadastroEquipe({ modo }) {
-  const { id: idTexto } = useParams();
-  const id = idTexto ? Number(idTexto) : null;
+function CadastroEquipe() {
+  const { id, consulta: leitura, listagem, editar } = useCadastro('equipe');
   const navigate = useNavigate();
-  const leitura = modo === 'ver';
   const form = useFormulario(VAZIO);
   const { carregar } = form;
   const [modal, confirmar] = useConfirmacao();
@@ -56,7 +55,7 @@ function CadastroEquipe({ modo }) {
   }, [dados, carregar]);
 
   const tocarLogin = useLoginSugerido(form, !id, dados?.logins ?? []);
-  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate(id && !leitura ? `/admin/equipe/${id}` : '/admin/listagem-equipe'));
+  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate(listagem));
 
   if (erro?.status === 404 || (id && dados && !dados.atual)) return <RegistroIndisponivel />;
 
@@ -74,7 +73,7 @@ function CadastroEquipe({ modo }) {
     if (!form.validar(erros)) return;
     setSalvando(true);
     try {
-      const idSalvo = await salvarProfissional({
+      await salvarProfissional({
         id,
         colecao: COLECAO[v.papel],
         rotulo: ehSecretaria ? 'uma secretária' : 'um administrador',
@@ -85,10 +84,10 @@ function CadastroEquipe({ modo }) {
         original: atual,
       });
       mensagemSucesso(id ? 'Cadastro atualizado.' : `Usuário cadastrado. O convite foi enviado para ${v.email.trim()}.`);
-      navigate(`/admin/equipe/${idSalvo}`);
+      navigate(listagem);
     } catch (falha) {
       mensagemErro(mensagemDeErro(falha));
-      if (falha.idCriado) navigate(`/admin/equipe/${falha.idCriado}/editar`);
+      if (falha.idCriado) navigate(editar(falha.idCriado));
       setSalvando(false);
     }
   };
@@ -101,7 +100,7 @@ function CadastroEquipe({ modo }) {
       acoes={
         leitura &&
         !inativo && (
-          <button type='button' className='btn btn-primary' onClick={() => navigate(`/admin/equipe/${id}/editar`)}>
+          <button type='button' className='btn btn-primary' onClick={() => navigate(editar())}>
             Editar
           </button>
         )

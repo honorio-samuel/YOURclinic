@@ -461,6 +461,60 @@ function validarRepresentacao(novo, antigo, ctx) {
   return null;
 }
 
+// A-14: conta nova começa em aberto; depois de paga, só o estorno muda o
+// título (situação e motivo); estornada, não muda mais.
+const CATEGORIAS_DE_DESPESA = ['ALUGUEL', 'FOLHA', 'INSUMOS', 'MATERIAL', 'SERVICOS', 'TRIBUTOS', 'TAXA_ADQUIRENTE', 'OUTRAS'];
+const dataValida = (valor) => typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}/.test(valor);
+
+function validarTituloPagar(novo, antigo, ctx, mudancas) {
+  if (!antigo && novo.situacao !== 'ABERTO') return 'A conta nova começa em aberto.';
+  if (antigo && antigo.situacao !== 'ABERTO') {
+    const permitidos = antigo.situacao === 'PAGO' ? ['situacao', 'motivoEstorno'] : [];
+    if (Object.keys(mudancas).some((campo) => !permitidos.includes(campo))) {
+      return 'Título pago não muda; para corrigir, estorne o pagamento.';
+    }
+  }
+  if (mudou('fornecedor', novo, antigo) && !preenchido(novo.fornecedor, 3)) return 'Informe o fornecedor.';
+  if (mudou('categoria', novo, antigo) && !CATEGORIAS_DE_DESPESA.includes(novo.categoria)) return 'Escolha a categoria.';
+  if (mudou('vencimento', novo, antigo) && !dataValida(novo.vencimento)) return 'Informe o vencimento.';
+  if (mudou('valor', novo, antigo) && !(typeof novo.valor === 'number' && novo.valor > 0)) return 'Informe o valor.';
+  return null;
+}
+
+// A-11a e S-05b: motivo de lista fechada (sem motivo clínico), fim depois do
+// início e médico ativo; sem médico, o bloqueio vale para a clínica inteira.
+const MOTIVOS_DE_BLOQUEIO = ['FERIAS', 'FERIADO', 'CONGRESSO', 'CAPACITACAO', 'INTERVALO', 'OUTRO'];
+
+function validarBloqueio(novo, antigo, ctx) {
+  if (mudou('motivo', novo, antigo) && !MOTIVOS_DE_BLOQUEIO.includes(novo.motivo)) return 'Escolha o motivo.';
+  if (mudou('dataInicio', novo, antigo) || mudou('dataFim', novo, antigo)) {
+    if (!dataValida(novo.dataInicio) || !dataValida(novo.dataFim) || novo.dataFim <= novo.dataInicio) {
+      return 'O fim do bloqueio vem depois do início.';
+    }
+  }
+  if (mudou('idMedico', novo, antigo) && novo.idMedico != null && ctx.buscar('medicos', novo.idMedico)?.situacao !== 'ATIVO') {
+    return 'Escolha um médico ativo.';
+  }
+  return null;
+}
+
+// A-26 e S-17: o produto; lote e saldo nascem das movimentações.
+const TIPOS_DE_PRODUTO = ['MEDICAMENTO', 'MATERIAL', 'AMOSTRA'];
+const UNIDADES = ['UN', 'CX', 'PCT', 'FR', 'DOSE'];
+
+function validarProduto(novo, antigo) {
+  if (mudou('descricao', novo, antigo) && !preenchido(novo.descricao, 3)) return 'Informe a descrição.';
+  if (mudou('tipo', novo, antigo) && !TIPOS_DE_PRODUTO.includes(novo.tipo)) return 'Escolha o tipo.';
+  if (mudou('unidade', novo, antigo) && !UNIDADES.includes(novo.unidade)) return 'Escolha a unidade.';
+  if (mudou('estoqueMinimo', novo, antigo) && !(Number.isInteger(novo.estoqueMinimo) && novo.estoqueMinimo >= 0)) {
+    return 'O estoque mínimo é um número inteiro.';
+  }
+  if (mudou('custoAquisicao', novo, antigo) && novo.custoAquisicao != null && !(typeof novo.custoAquisicao === 'number' && novo.custoAquisicao >= 0)) {
+    return 'Custo de aquisição inválido.';
+  }
+  return null;
+}
+
 // Os itens seguem a etapa do orçamento a que pertencem.
 const orcamentoDoItem = (r, ctx) => ctx.buscar('orcamentos', r.idOrcamento);
 const podeEditarItem = (atual, ctx) => {
@@ -650,8 +704,8 @@ const politica = {
     [R]: { ler: todos },
   },
   bloqueiosAgenda: {
-    [A]: { ler: todos, criar: true, editar: true, excluir: true },
-    [S]: { ler: todos, criar: true, editar: true, excluir: true },
+    [A]: { ler: todos, criar: true, editar: true, excluir: true, validar: validarBloqueio },
+    [S]: { ler: todos, criar: true, editar: true, excluir: true, validar: validarBloqueio },
     // Bloqueio da clínica inteira (feriado) tem idMedico nulo e vale para todos.
     [M]: { ler: ou(doMedico, comCampo('idMedico', null)), criar: true, fixar: fixarPessoa('idMedico') },
   },
@@ -867,7 +921,7 @@ const politica = {
     [R]: { ler: doPaciente('documentosFiscais') },
   },
   titulosPagar: {
-    [A]: { ler: todos, criar: true, editar: true },
+    [A]: { ler: todos, criar: true, editar: true, validar: validarTituloPagar },
   },
 
   // ── Convênio, TISS e estoque ─────────────────────────────────────────────
@@ -931,8 +985,8 @@ const politica = {
   // P-04: o titular vê o nome e o lote dos itens dispensados a ele, e nada
   // mais do estoque (RF37).
   produtos: {
-    [A]: { ler: todos, criar: true, editar: true },
-    [S]: { ler: todos, criar: true, editar: true, ocultar: ['custoAquisicao'] },
+    [A]: { ler: todos, criar: true, editar: true, validar: validarProduto },
+    [S]: { ler: todos, criar: true, editar: true, ocultar: ['custoAquisicao'], validar: validarProduto },
     [M]: { ler: todos, ocultar: ['custoAquisicao', 'estoqueMinimo'] },
     [P]: { ler: produtoDispensadoAoTitular, ocultar: soMostrar('id', 'descricao', 'tipo', 'unidade') },
     [R]: { ler: produtoDispensadoAoTitular, ocultar: soMostrar('id', 'descricao', 'tipo', 'unidade') },

@@ -1,14 +1,25 @@
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
-import { CampoMarcar, CampoSelecao, CampoTexto, Formulario, Rodape, Secao, useFormulario, useSairSemSalvar } from '../../components/formulario';
+import {
+  CampoMarcar,
+  CampoMoeda,
+  CampoSelecao,
+  CampoTexto,
+  Formulario,
+  Rodape,
+  Secao,
+  useFormulario,
+  useSairSemSalvar,
+} from '../../components/formulario';
 import { mensagemDeErro, useConfirmacao } from '../../components/confirmacao';
 import { mensagemErro, mensagemSucesso } from '../../components/toastr';
 import { RegistroIndisponivel } from '../geral/avisos';
 import { criar, listar } from '../../servicos/dados';
 import { atualizarSeMudou } from '../../servicos/pessoas';
 import { useCarregar } from '../../hooks/use-carregar';
+import { useCadastro } from '../../navegacao/caminhos';
 import { mascararDigitos, mascararMoeda, moedaParaNumero, numeroParaMoeda } from '../../utils/mascaras';
 import { TIPO_PROCEDIMENTO } from './comum';
 
@@ -27,11 +38,9 @@ const paraFormulario = (p) => ({
 // A-06 · Cadastro do procedimento e do preço particular (RF12). O preço
 // negociado com cada operadora fica no contrato (A-20). O Médico nunca vê o
 // preço (RC06).
-function CadastroProcedimento({ modo }) {
-  const { id: idTexto } = useParams();
-  const id = idTexto ? Number(idTexto) : null;
+function CadastroProcedimento() {
+  const { id, consulta: leitura, listagem, editar } = useCadastro('procedimentos');
   const navigate = useNavigate();
-  const leitura = modo === 'ver';
   const form = useFormulario(VAZIO);
   const { carregar } = form;
   const [modal, confirmar] = useConfirmacao();
@@ -44,7 +53,7 @@ function CadastroProcedimento({ modo }) {
     if (atual) carregar(paraFormulario(atual));
   }, [atual, carregar]);
 
-  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate(id && !leitura ? `/admin/procedimentos/${id}` : '/admin/listagem-procedimentos'));
+  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate(listagem));
 
   if (id && dados && !atual) return <RegistroIndisponivel />;
 
@@ -77,11 +86,10 @@ function CadastroProcedimento({ modo }) {
       exigeAutorizacao: v.exigeAutorizacao,
     };
     try {
-      let idSalvo = id;
       if (id) await atualizarSeMudou('procedimentos', id, campos, atual);
-      else idSalvo = (await criar('procedimentos', { ...campos, situacao: 'ATIVO' })).id;
+      else await criar('procedimentos', { ...campos, situacao: 'ATIVO' });
       mensagemSucesso(id ? 'Procedimento atualizado.' : 'Procedimento cadastrado.');
-      navigate(`/admin/procedimentos/${idSalvo}`);
+      navigate(listagem);
     } catch (falha) {
       mensagemErro(mensagemDeErro(falha));
       setSalvando(false);
@@ -95,7 +103,7 @@ function CadastroProcedimento({ modo }) {
       acoes={
         leitura &&
         !inativo && (
-          <button type='button' className='btn btn-primary' onClick={() => navigate(`/admin/procedimentos/${id}/editar`)}>
+          <button type='button' className='btn btn-primary' onClick={() => navigate(editar())}>
             Editar
           </button>
         )
@@ -135,29 +143,7 @@ function CadastroProcedimento({ modo }) {
               largura='col-md-3'
               ajuda='Ocupa a agenda do médico.'
             />
-            <div className='col-md-3'>
-              <label htmlFor='campo-precoParticular' className='form-label'>
-                Preço particular
-              </label>
-              <div className='input-group has-validation'>
-                <span className='input-group-text'>R$</span>
-                <input
-                  id='campo-precoParticular'
-                  className={`form-control text-end${form.erros.precoParticular ? ' is-invalid' : ''}`}
-                  inputMode='numeric'
-                  value={v.precoParticular}
-                  onChange={(e) => form.definir('precoParticular', mascararMoeda(e.target.value))}
-                  aria-invalid={form.erros.precoParticular ? true : undefined}
-                  aria-describedby={form.erros.precoParticular ? 'campo-precoParticular-erro' : undefined}
-                  required
-                />
-                {form.erros.precoParticular && (
-                  <div id='campo-precoParticular-erro' className='invalid-feedback'>
-                    {form.erros.precoParticular}
-                  </div>
-                )}
-              </div>
-            </div>
+            <CampoMoeda {...form.campo('precoParticular', mascararMoeda)} rotulo='Preço particular' />
             <CampoMarcar
               {...form.marcar('exigeAutorizacao')}
               rotulo='Exige autorização prévia da operadora'

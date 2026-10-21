@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
@@ -10,6 +11,7 @@ import { mensagemErro, mensagemSucesso } from '../../components/toastr';
 import { api } from '../../config/axios';
 import { listar, pessoasPorId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
+import { useCaminhosDaListagem } from '../../navegacao/caminhos';
 import { useSessao } from '../../sessao/sessao';
 import { data, nomeMedico } from '../../utils/formatos';
 import { MOTIVO_BLOQUEIO, rotuloDe, SITUACAO_CADASTRO } from '../../utils/rotulos';
@@ -17,6 +19,8 @@ import { MOTIVO_BLOQUEIO, rotuloDe, SITUACAO_CADASTRO } from '../../utils/rotulo
 // A-11a e S-05b · Bloqueios de agenda. A lixeira só aparece no bloqueio que
 // ainda não atingiu nenhuma consulta (A1-R09, hipótese 1).
 function Bloqueios() {
+  const navigate = useNavigate();
+  const caminhos = useCaminhosDaListagem('bloqueios');
   const { sessao } = useSessao();
   const ehAdmin = sessao.usuario.papel === 'ADMINISTRADOR';
   const carregar = async () => {
@@ -63,7 +67,7 @@ function Bloqueios() {
     <Pagina
       titulo='Bloqueios de agenda'
       acoes={
-        <button type='button' className='btn btn-primary' onClick={() => emBreve('O cadastro de bloqueio')}>
+        <button type='button' className='btn btn-primary' onClick={() => navigate(caminhos.novo)}>
           + Novo bloqueio
         </button>
       }
@@ -111,20 +115,20 @@ function Bloqueios() {
                 return (
                   <AcoesLinha
                     acoes={[
-                      { tipo: 'ver', alvo, aoClicar: () => emBreve('O detalhe do bloqueio') },
+                      { tipo: 'ver', alvo, aoClicar: () => navigate(caminhos.ver(b.id)) },
                       { tipo: 'reativar', alvo, aoClicar: () => alternar(b, alvo, 'ATIVO') },
                     ]}
                   />
                 );
               const base = [
-                { tipo: 'editar', alvo, aoClicar: () => emBreve('A edição do bloqueio') },
+                { tipo: 'editar', alvo, aoClicar: () => navigate(caminhos.editar(b.id)) },
                 { tipo: 'inativar', alvo, aoClicar: () => alternar(b, alvo, 'INATIVO') },
               ];
               return (
                 <AcoesLinha
                   acoes={
                     b.consultasAfetadas > 0
-                      ? [{ tipo: 'ver', alvo, aoClicar: () => emBreve('O detalhe do bloqueio') }, ...base]
+                      ? [{ tipo: 'ver', alvo, aoClicar: () => navigate(caminhos.ver(b.id)) }, ...base]
                       : [...base, { tipo: 'excluir', alvo, aoClicar: () => excluir(b) }]
                   }
                 />

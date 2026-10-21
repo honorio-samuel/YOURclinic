@@ -7,6 +7,7 @@ import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
 import { useAlternarSituacao } from '../../components/confirmacao';
 import { listar, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
+import { useCaminhosDaListagem } from '../../navegacao/caminhos';
 import { corresponde, nomeMedico } from '../../utils/formatos';
 import { colunasDeSituacao, OPCOES_STATUS } from './comum';
 
@@ -19,6 +20,7 @@ const CONTA = {
 // A-03 · Cadastro › Médicos.
 function Medicos() {
   const navigate = useNavigate();
+  const caminhos = useCaminhosDaListagem('medicos');
   const carregar = async () => {
     const [medicos, pessoas, usuarios] = await Promise.all([
       listar('medicos'),
@@ -43,7 +45,7 @@ function Medicos() {
     <Pagina
       titulo='Médicos'
       acoes={
-        <button type='button' className='btn btn-primary' onClick={() => navigate('/admin/medicos/novo')}>
+        <button type='button' className='btn btn-primary' onClick={() => navigate(caminhos.novo)}>
           + Novo médico
         </button>
       }
@@ -63,7 +65,7 @@ function Medicos() {
           { titulo: 'Registro', render: (m) => `CRM ${m.crm}/${m.ufCrm}` },
           { titulo: 'Especialidade', render: (m) => m.especialidade },
           { titulo: 'Conta', render: (m) => m.conta },
-          ...colunasDeSituacao(alternar, (m) => m.nome, { aoVer: (l) => navigate(`/admin/medicos/${l.id}`), aoEditar: (l) => navigate(`/admin/medicos/${l.id}/editar`) }),
+          ...colunasDeSituacao(alternar, (m) => m.nome, { aoVer: (l) => navigate(caminhos.ver(l.id)), aoEditar: (l) => navigate(caminhos.editar(l.id)) }),
         ]}
       />
       {modal}

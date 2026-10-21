@@ -8,6 +8,7 @@ import { useAlternarSituacao } from '../../components/confirmacao';
 import { mensagemErro, mostrarMensagem } from '../../components/toastr';
 import { listar, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
+import { caminhoCadastro, useCaminhosDaListagem } from '../../navegacao/caminhos';
 import { corresponde } from '../../utils/formatos';
 import { PAPEIS } from '../../utils/rotulos';
 import { colunasDeSituacao } from './comum';
@@ -16,6 +17,7 @@ import { colunasDeSituacao } from './comum';
 // são só leitura aqui: o médico nasce em A-03 e o titular, por convite.
 function Equipe() {
   const navigate = useNavigate();
+  const caminhos = useCaminhosDaListagem('equipe');
   const carregar = async () => {
     const [usuarios, pessoas] = await Promise.all([listar('usuarios'), listar('pessoas')]);
     const pessoa = porId(pessoas);
@@ -30,9 +32,9 @@ function Equipe() {
   const gerenciavel = (u) => ['ADMINISTRADOR', 'SECRETARIA'].includes(u.papel);
   // Médico e paciente abrem o próprio cadastro; o responsável aparece no do paciente.
   const ver = (u) => {
-    if (gerenciavel(u)) navigate(`/admin/equipe/${u.idPessoa}`);
-    else if (u.papel === 'MEDICO') navigate(`/admin/medicos/${u.idPessoa}`);
-    else if (u.papel === 'PACIENTE') navigate(`/admin/cadastro-pacientes/${u.idPessoa}?consulta`);
+    if (gerenciavel(u)) navigate(caminhos.ver(u.idPessoa));
+    else if (u.papel === 'MEDICO') navigate(caminhoCadastro('ADMINISTRADOR', 'medicos', u.idPessoa, { consulta: true }));
+    else if (u.papel === 'PACIENTE') navigate(caminhoCadastro('ADMINISTRADOR', 'pacientes', u.idPessoa, { consulta: true }));
     else mostrarMensagem('Responsável legal', 'Os dados do responsável ficam no cadastro do paciente que ele representa.', 'info');
   };
 
@@ -52,7 +54,7 @@ function Equipe() {
     <Pagina
       titulo='Equipe · usuários e papéis'
       acoes={
-        <button type='button' className='btn btn-primary' onClick={() => navigate('/admin/equipe/novo')}>
+        <button type='button' className='btn btn-primary' onClick={() => navigate(caminhos.novo)}>
           + Novo usuário
         </button>
       }
@@ -81,7 +83,7 @@ function Equipe() {
           ...colunasDeSituacao(alternar, (u) => u.nome, {
             podeAlterar: gerenciavel,
             aoVer: ver,
-            aoEditar: (u) => navigate(`/admin/equipe/${u.idPessoa}/editar`),
+            aoEditar: (u) => navigate(caminhos.editar(u.idPessoa)),
           }),
         ]}
       />

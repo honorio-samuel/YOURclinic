@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import { CampoSelecao, CampoTexto, Formulario, Rodape, Secao, useFormulario, useSairSemSalvar } from '../../components/formulario';
@@ -9,6 +9,7 @@ import { RegistroIndisponivel } from '../geral/avisos';
 import { listar } from '../../servicos/dados';
 import { carregarProfissional, dadosDaPessoa, loginsEmUso, salvarProfissional } from '../../servicos/profissionais';
 import { useCarregar } from '../../hooks/use-carregar';
+import { useCadastro } from '../../navegacao/caminhos';
 import { nomeMedico, soDigitos } from '../../utils/formatos';
 import { mascararDigitos } from '../../utils/mascaras';
 import { UFS } from '../../utils/rotulos';
@@ -26,11 +27,9 @@ const VAZIO = { ...PROFISSIONAL_VAZIO, crm: '', ufCrm: '', especialidade: '' };
 // A-03 · Cadastro do médico: dados pessoais, registro profissional e conta de
 // acesso no mesmo fluxo (RF10, RF03). Inativar fica na lista e encerra a
 // conta e os vínculos.
-function CadastroMedico({ modo }) {
-  const { id: idTexto } = useParams();
-  const id = idTexto ? Number(idTexto) : null;
+function CadastroMedico() {
+  const { id, consulta: leitura, listagem, editar } = useCadastro('medicos');
   const navigate = useNavigate();
-  const leitura = modo === 'ver';
   const form = useFormulario(VAZIO);
   const { carregar } = form;
   const [modal, confirmar] = useConfirmacao();
@@ -53,7 +52,7 @@ function CadastroMedico({ modo }) {
   }, [dados, carregar]);
 
   const tocarLogin = useLoginSugerido(form, !id, dados?.logins ?? []);
-  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate(id && !leitura ? `/admin/medicos/${id}` : '/admin/listagem-medicos'));
+  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate(listagem));
 
   if (erro?.status === 404) return <RegistroIndisponivel />;
 
@@ -73,7 +72,7 @@ function CadastroMedico({ modo }) {
     if (!form.validar(erros)) return;
     setSalvando(true);
     try {
-      const idSalvo = await salvarProfissional({
+      await salvarProfissional({
         id,
         colecao: 'medicos',
         rotulo: 'um médico',
@@ -84,10 +83,10 @@ function CadastroMedico({ modo }) {
         original: atual,
       });
       mensagemSucesso(id ? 'Cadastro atualizado.' : `Médico cadastrado. O convite foi enviado para ${v.email.trim()}.`);
-      navigate(`/admin/medicos/${idSalvo}`);
+      navigate(listagem);
     } catch (falha) {
       mensagemErro(mensagemDeErro(falha));
-      if (falha.idCriado) navigate(`/admin/medicos/${falha.idCriado}/editar`);
+      if (falha.idCriado) navigate(editar(falha.idCriado));
       setSalvando(false);
     }
   };
@@ -100,7 +99,7 @@ function CadastroMedico({ modo }) {
       acoes={
         leitura &&
         !inativo && (
-          <button type='button' className='btn btn-primary' onClick={() => navigate(`/admin/medicos/${id}/editar`)}>
+          <button type='button' className='btn btn-primary' onClick={() => navigate(editar())}>
             Editar
           </button>
         )

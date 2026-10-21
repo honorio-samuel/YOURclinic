@@ -7,6 +7,7 @@ import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
 import { useAlternarSituacao } from '../../components/confirmacao';
 import { listar } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
+import { useCaminhosDaListagem } from '../../navegacao/caminhos';
 import { corresponde, moeda } from '../../utils/formatos';
 import { colunasDeSituacao, TIPO_PROCEDIMENTO } from './comum';
 
@@ -14,6 +15,7 @@ import { colunasDeSituacao, TIPO_PROCEDIMENTO } from './comum';
 // fica no contrato (A-20).
 function Procedimentos() {
   const navigate = useNavigate();
+  const caminhos = useCaminhosDaListagem('procedimentos');
   const { dados, carregando, erro, recarregar } = useCarregar(() => listar('procedimentos', { _sort: 'nome' }));
   const [modal, alternar] = useAlternarSituacao('procedimentos', recarregar);
   const [busca, setBusca] = React.useState('');
@@ -26,7 +28,7 @@ function Procedimentos() {
     <Pagina
       titulo='Procedimentos e preços'
       acoes={
-        <button type='button' className='btn btn-primary' onClick={() => navigate('/admin/procedimentos/novo')}>
+        <button type='button' className='btn btn-primary' onClick={() => navigate(caminhos.novo)}>
           + Novo procedimento
         </button>
       }
@@ -53,7 +55,7 @@ function Procedimentos() {
           { titulo: 'Descrição', render: (p) => p.nome },
           { titulo: 'Duração', render: (p) => `${p.duracaoPadrao} min` },
           { titulo: 'Preço part.', classe: 'text-end', render: (p) => moeda(p.precoParticular) },
-          ...colunasDeSituacao(alternar, (p) => p.nome, { aoVer: (l) => navigate(`/admin/procedimentos/${l.id}`), aoEditar: (l) => navigate(`/admin/procedimentos/${l.id}/editar`) }),
+          ...colunasDeSituacao(alternar, (p) => p.nome, { aoVer: (l) => navigate(caminhos.ver(l.id)), aoEditar: (l) => navigate(caminhos.editar(l.id)) }),
         ]}
       />
       {modal}

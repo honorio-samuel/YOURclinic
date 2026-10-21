@@ -1,19 +1,23 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
 import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
-import { emBreve, salvarComAviso, useConfirmacao } from '../../components/confirmacao';
+import { salvarComAviso, useConfirmacao } from '../../components/confirmacao';
 import { listar } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
+import { useCaminhosDaListagem } from '../../navegacao/caminhos';
 import { corresponde, data, moeda } from '../../utils/formatos';
 import { CATEGORIA_DESPESA, rotuloDe, SITUACAO_TITULO } from '../../utils/rotulos';
 import { situacaoDoTitulo } from './comum';
 
 // A-14 · Contas a pagar. Título pago não é editado, só estornado (RN-50.1).
 function ContasPagar() {
+  const navigate = useNavigate();
+  const caminhos = useCaminhosDaListagem('contas-pagar');
   const { dados, carregando, erro, recarregar } = useCarregar(async () =>
     (await listar('titulosPagar', { _sort: 'vencimento' })).map((t) => ({ ...t, situacaoEfetiva: situacaoDoTitulo(t) }))
   );
@@ -49,7 +53,7 @@ function ContasPagar() {
     <Pagina
       titulo='Contas a pagar'
       acoes={
-        <button type='button' className='btn btn-primary' onClick={() => emBreve('O cadastro de conta a pagar')}>
+        <button type='button' className='btn btn-primary' onClick={() => navigate(caminhos.novo)}>
           + Nova conta
         </button>
       }
@@ -89,10 +93,10 @@ function ContasPagar() {
             titulo: 'Ações',
             render: (t) => {
               const alvo = `conta de ${t.fornecedor}`;
-              const ver = { tipo: 'ver', alvo, aoClicar: () => emBreve('O detalhe da conta') };
+              const ver = { tipo: 'ver', alvo, aoClicar: () => navigate(caminhos.ver(t.id)) };
               if (t.situacao === 'PAGO') return <AcoesLinha acoes={[ver, { tipo: 'estornar', alvo, aoClicar: () => estornar(t) }]} />;
               if (t.situacao === 'ESTORNADO') return <AcoesLinha acoes={[ver]} />;
-              return <AcoesLinha acoes={[ver, { tipo: 'editar', alvo, aoClicar: () => emBreve('A edição da conta') }]} />;
+              return <AcoesLinha acoes={[ver, { tipo: 'editar', alvo, aoClicar: () => navigate(caminhos.editar(t.id)) }]} />;
             },
           },
         ]}

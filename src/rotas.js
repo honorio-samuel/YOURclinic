@@ -17,6 +17,9 @@ import CadastroMedico from './views/cadastro/cadastro-medico';
 import CadastroEquipe from './views/cadastro/cadastro-equipe';
 import CadastroConvenio from './views/cadastro/cadastro-convenio';
 import CadastroProcedimento from './views/cadastro/cadastro-procedimento';
+import CadastroBloqueio from './views/agenda/cadastro-bloqueio';
+import CadastroContaPagar from './views/financeiro/cadastro-conta-pagar';
+import CadastroProduto from './views/estoque/cadastro-produto';
 import FilaDoDia from './views/agenda/listagem-fila-do-dia';
 import AtendimentosDoDia from './views/agenda/listagem-atendimentos';
 import Bloqueios from './views/agenda/listagem-bloqueios';
@@ -72,29 +75,23 @@ const TELAS = [
   ['/admin/listagem-pacientes', A, <Pacientes />],
   ['/admin/cadastro-pacientes/:idParam?', A, <CadastroPaciente />],
   ['/admin/listagem-medicos', A, <Medicos />],
-  ['/admin/medicos/novo', A, <CadastroMedico modo='novo' />],
-  ['/admin/medicos/:id', A, <CadastroMedico modo='ver' />],
-  ['/admin/medicos/:id/editar', A, <CadastroMedico modo='editar' />],
+  ['/admin/cadastro-medicos/:idParam?', A, <CadastroMedico />],
   ['/admin/listagem-equipe', A, <Equipe />],
-  ['/admin/equipe/novo', A, <CadastroEquipe modo='novo' />],
-  ['/admin/equipe/:id', A, <CadastroEquipe modo='ver' />],
-  ['/admin/equipe/:id/editar', A, <CadastroEquipe modo='editar' />],
+  ['/admin/cadastro-equipe/:idParam?', A, <CadastroEquipe />],
   ['/admin/listagem-convenios', A, <Convenios />],
-  ['/admin/convenios/novo', A, <CadastroConvenio modo='novo' />],
-  ['/admin/convenios/:id', A, <CadastroConvenio modo='ver' />],
-  ['/admin/convenios/:id/editar', A, <CadastroConvenio modo='editar' />],
+  ['/admin/cadastro-convenios/:idParam?', A, <CadastroConvenio />],
   ['/admin/listagem-procedimentos', A, <Procedimentos />],
-  ['/admin/procedimentos/novo', A, <CadastroProcedimento modo='novo' />],
-  ['/admin/procedimentos/:id', A, <CadastroProcedimento modo='ver' />],
-  ['/admin/procedimentos/:id/editar', A, <CadastroProcedimento modo='editar' />],
+  ['/admin/cadastro-procedimentos/:idParam?', A, <CadastroProcedimento />],
   ['/admin/agenda', A, <EmBreve codigo='A-07' titulo='Agenda da clínica' />],
   ['/admin/cadastro-agendamentos', A, <EmBreve codigo='A-08a' titulo='Novo agendamento' />],
   ['/admin/listagem-fila-do-dia', A, <FilaDoDia />],
   ['/admin/grade', A, <EmBreve codigo='A-10' titulo='Grade de horários' />],
   ['/admin/listagem-bloqueios', A, <Bloqueios />],
+  ['/admin/cadastro-bloqueios/:idParam?', A, <CadastroBloqueio />],
   ['/admin/painel-financeiro', A, <EmBreve codigo='A-12' titulo='Painel financeiro' />],
   ['/admin/listagem-contas-receber', A, <ContasReceber />],
   ['/admin/listagem-contas-pagar', A, <ContasPagar />],
+  ['/admin/cadastro-contas-pagar/:idParam?', A, <CadastroContaPagar />],
   ['/admin/listagem-conciliacao', A, <Conciliacao />],
   ['/admin/listagem-caixas', A, <Caixas />],
   ['/admin/listagem-estornos', A, <Estornos />],
@@ -107,6 +104,7 @@ const TELAS = [
   ['/admin/listagem-glosas', A, <Glosas />],
   ['/admin/listagem-recursos-glosa', A, <RecursosGlosa />],
   ['/admin/listagem-produtos', A, <Produtos />],
+  ['/admin/cadastro-produtos/:idParam?', A, <CadastroProduto />],
   ['/admin/listagem-movimentacoes', A, <Movimentacoes />],
   ['/admin/listagem-alertas', A, <Alertas />],
   ['/admin/dashboard', A, <EmBreve codigo='A-29' titulo='Dashboard gerencial' />],
@@ -133,6 +131,7 @@ const TELAS = [
   ['/secretaria/cadastro-agendamentos', S, <EmBreve codigo='S-03a' titulo='Novo agendamento' />],
   ['/secretaria/listagem-consultas', S, <ReagendarOuCancelar />],
   ['/secretaria/listagem-bloqueios', S, <Bloqueios />],
+  ['/secretaria/cadastro-bloqueios/:idParam?', S, <CadastroBloqueio />],
   ['/secretaria/listagem-fila-do-dia', S, <FilaDoDia />],
   ['/secretaria/checkout', S, <EmBreve codigo='S-07a' titulo='Checkout' />],
   ['/secretaria/listagem-cobrancas', S, <CobrancasDoDia />],
@@ -145,6 +144,7 @@ const TELAS = [
   ['/secretaria/listagem-lotes', S, <Lotes />],
   ['/secretaria/listagem-glosas', S, <Glosas />],
   ['/secretaria/listagem-produtos', S, <Produtos />],
+  ['/secretaria/cadastro-produtos/:idParam?', S, <CadastroProduto />],
   ['/secretaria/listagem-movimentacoes', S, <Movimentacoes />],
   ['/secretaria/listagem-alertas', S, <Alertas />],
   // Paciente e Responsável Legal

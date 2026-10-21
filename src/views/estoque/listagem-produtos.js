@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
@@ -8,6 +9,7 @@ import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
 import { emBreve, useAlternarSituacao } from '../../components/confirmacao';
 import { DATA_DE_HOJE } from '../../config/axios';
 import { useCarregar } from '../../hooks/use-carregar';
+import { useCaminhosDaListagem } from '../../navegacao/caminhos';
 import { useSessao } from '../../sessao/sessao';
 import { corresponde, data, diasEntre, moeda } from '../../utils/formatos';
 import { rotuloDe, SITUACAO_CADASTRO, TIPO_PRODUTO } from '../../utils/rotulos';
@@ -25,6 +27,8 @@ function situacaoDoLote(lote) {
 // A-26 e S-17 Produtos e lotes, e M-05a Estoque · disponibilidade. Só o
 // Administrador vê o custo de aquisição (RC06, nível 3).
 function Produtos() {
+  const navigate = useNavigate();
+  const caminhos = useCaminhosDaListagem('produtos');
   const { sessao } = useSessao();
   const papel = sessao.usuario.papel;
   const ehAdmin = papel === 'ADMINISTRADOR';
@@ -75,7 +79,7 @@ function Produtos() {
           <AcoesLinha
             acoes={[
               ver,
-              { tipo: 'editar', alvo: p.descricao, aoClicar: () => emBreve('A edição do produto') },
+              { tipo: 'editar', alvo: p.descricao, aoClicar: () => navigate(caminhos.editar(p.id)) },
               { tipo: 'inativar', alvo: p.descricao, aoClicar: () => alternar(p, p.descricao, 'INATIVO') },
             ]}
           />
@@ -93,7 +97,7 @@ function Produtos() {
             Registrar saída
           </button>
         ) : (
-          <button type='button' className='btn btn-primary' onClick={() => emBreve('O cadastro de produto')}>
+          <button type='button' className='btn btn-primary' onClick={() => navigate(caminhos.novo)}>
             + Novo produto
           </button>
         )
