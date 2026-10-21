@@ -13,7 +13,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const {
-  COLECOES, CLINICAS, MEDICO, PACIENTE, RESPONSAVEL_LEGAL,
+  COLECOES, CLINICAS, ESPECIALIZACOES, MEDICO, PACIENTE, RESPONSAVEL_LEGAL,
   politica, regraPara, projetar, camposGravaveis, igual,
 } = require('./permissoes');
 const { Sessoes, conferirSenha, gerarHash, HASH_DE_ENGANO } = require('./sessao');
@@ -390,6 +390,13 @@ function criarApi({ db, salvar = () => {}, relogio = () => new Date(), minutosSe
       const corpo = await lerCorpo(req);
       const fixos = regra.fixar ? regra.fixar(ctx) : {};
       const novo = { ...camposGravaveis(regra, corpo, { ...corpo, ...fixos }, ctx, { edicao: false }), ...fixos };
+      // Paciente, médico e os demais papéis nascem com o id da pessoa.
+      if (ESPECIALIZACOES.has(colecao)) {
+        const pessoa = ctx.buscar('pessoas', corpo.id);
+        if (!pessoa) throw new ErroHttp(422, 'Cadastre a pessoa antes.');
+        if (ctx.buscar(colecao, pessoa.id)) throw new ErroHttp(409, 'Esta pessoa já tem este cadastro.');
+        novo.id = pessoa.id;
+      }
       const erro = regra.validar?.(novo, null, ctx, novo);
       if (erro) throw new ErroHttp(422, erro);
       if (!(regra.alcanceDeEscrita ?? regra.ler)(novo, ctx)) {

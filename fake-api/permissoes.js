@@ -286,6 +286,181 @@ const produtoDispensadoAoTitular = (r, ctx) =>
 
 const pedidoDeExportacao = { situacao: 'SOLICITADA', dataConclusao: null };
 
+// ── Cadastros (A-02b, S-01b, A-03, A-04, A-05, A-06) ───────────────────────
+// Paciente, médico, secretária, administrador e responsável legal são
+// especializações de uma pessoa: nascem com o id dela, informado no corpo.
+const ESPECIALIZACOES = new Set(['pacientes', 'medicos', 'secretarias', 'administradores', 'responsaveisLegais']);
+const COLECAO_DO_PAPEL = {
+  [A]: 'administradores', [M]: 'medicos', [S]: 'secretarias', [P]: 'pacientes', [R]: 'responsaveisLegais',
+};
+const UFS = new Set('AC AL AM AP BA CE DF ES GO MA MG MS MT PA PB PE PI PR RJ RN RO RR RS SC SE SP TO'.split(' '));
+const soDigitos = (valor) => String(valor ?? '').replace(/\D/g, '');
+const preenchido = (valor, minimo = 1) => typeof valor === 'string' && valor.trim().length >= minimo;
+const emailValido = (valor) => typeof valor === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor.trim());
+// Outro registro da coleção com o mesmo valor, sem contar o próprio.
+const repetido = (lista, novo, mesmo) => lista.some((r) => !igual(r.id, novo.id) && mesmo(r));
+// Na edição, só se confere o campo que mudou: o banco sintético tem registros
+// anteriores a estas regras.
+const mudou = (campo, novo, antigo) => !antigo || novo[campo] !== antigo[campo];
+
+// O CPF é conferido só no formato: o banco sintético usa dígitos verificadores
+// inválidos de propósito, para que nenhum coincida com o de uma pessoa real.
+function validarPessoa(novo, antigo, ctx) {
+  if (mudou('nome', novo, antigo) && !preenchido(novo.nome, 3)) return 'Informe o nome completo.';
+  if (novo.cpf != null && novo.cpf !== '' && mudou('cpf', novo, antigo)) {
+    if (soDigitos(novo.cpf).length !== 11) return 'O CPF tem 11 dígitos.';
+    if (repetido(ctx.db.pessoas, novo, (p) => p.cpf && soDigitos(p.cpf) === soDigitos(novo.cpf))) {
+      return 'Já existe uma pessoa com este CPF.';
+    }
+  }
+  if (novo.email && mudou('email', novo, antigo) && !emailValido(novo.email)) return 'E-mail inválido.';
+  if (novo.dataNascimento && mudou('dataNascimento', novo, antigo)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(novo.dataNascimento) || novo.dataNascimento > ctx.agoraTexto().slice(0, 10)) {
+      return 'Data de nascimento inválida.';
+    }
+  }
+  return null;
+}
+
+function validarPaciente(novo, antigo, ctx, mudancas) {
+  if ('tipoAtendimento' in mudancas && novo.tipoAtendimento != null) {
+    if (!['PARTICULAR', 'CONVENIO'].includes(novo.tipoAtendimento)) return 'Tipo de atendimento inválido.';
+    if (novo.tipoAtendimento === 'CONVENIO') {
+      if (ctx.buscar('convenios', novo.idConvenio)?.situacao !== 'ATIVO') return 'Escolha um convênio ativo.';
+      if (!preenchido(novo.numeroCarteirinha, 3)) return 'Informe o número da carteirinha.';
+    }
+  }
+  if (novo.pendenteDeCpf === true && 'pendenteDeCpf' in mudancas && !preenchido(novo.justificativaSemCpf, 10)) {
+    return 'Justifique o cadastro sem CPF.';
+  }
+  return null;
+}
+
+function validarMedico(novo, antigo, ctx) {
+  if (mudou('crm', novo, antigo) && !/^\d{4,7}$/.test(soDigitos(novo.crm))) return 'Informe o número do CRM.';
+  if (mudou('ufCrm', novo, antigo) && !UFS.has(novo.ufCrm)) return 'UF do CRM inválida.';
+  if (mudou('especialidade', novo, antigo) && !preenchido(novo.especialidade, 3)) return 'Informe a especialidade.';
+  if (
+    (mudou('crm', novo, antigo) || mudou('ufCrm', novo, antigo)) &&
+    repetido(ctx.db.medicos, novo, (m) => soDigitos(m.crm) === soDigitos(novo.crm) && m.ufCrm === novo.ufCrm)
+  ) {
+    return 'Já existe um médico com este CRM nesta UF.';
+  }
+  return null;
+}
+
+// A-03: inativar o médico encerra a conta e os vínculos; reativar devolve a
+// conta, e os vínculos voltam no próximo atendimento.
+function aposEditarMedico(novo, antigo, ctx) {
+  if (novo.situacao === antigo.situacao) return;
+  const conta = ctx.db.usuarios.find((u) => igual(u.idPessoa, novo.id) && u.papel === M);
+  if (novo.situacao === 'INATIVO') {
+    if (conta && conta.situacao !== 'INATIVO') conta.situacao = 'INATIVO';
+    const hoje = ctx.agoraTexto().slice(0, 10);
+    for (const v of ctx.db.vinculos) {
+      if (igual(v.idMedico, novo.id) && v.estado === 'ATIVO') {
+        Object.assign(v, { estado: 'ENCERRADO', dataFim: hoje, motivoEncerramento: 'Médico inativado' });
+      }
+    }
+  } else if (novo.situacao === 'ATIVO' && conta?.situacao === 'INATIVO') {
+    conta.situacao = conta.senhaHash ? 'ATIVO' : 'CONVITE_PENDENTE';
+  }
+}
+
+// RF03 e RF09: conta nova nasce como convite; a senha quem define é a pessoa,
+// no primeiro acesso. O papel acompanha o cadastro da pessoa.
+function validarUsuario(novo, antigo, ctx) {
+  if (!antigo) {
+    if (!COLECAO_DO_PAPEL[novo.papel]) return 'Papel inválido.';
+    if (!ctx.buscar(COLECAO_DO_PAPEL[novo.papel], novo.idPessoa)) {
+      return 'Cadastre a pessoa neste papel antes de criar a conta.';
+    }
+    if (ctx.db.usuarios.some((u) => igual(u.idPessoa, novo.idPessoa))) return 'Esta pessoa já tem conta.';
+    if (novo.situacao !== 'CONVITE_PENDENTE') return 'A conta nova começa com o convite pendente.';
+  }
+  if (mudou('login', novo, antigo)) {
+    if (!/^[a-z0-9._-]{3,30}$/.test(novo.login ?? '')) {
+      return 'O login tem de 3 a 30 caracteres: letras minúsculas, números, ponto, hífen ou sublinhado.';
+    }
+    if (repetido(ctx.db.usuarios, novo, (u) => u.login === novo.login)) return 'Este login já está em uso.';
+  }
+  if (mudou('email', novo, antigo)) {
+    if (!emailValido(novo.email)) return 'E-mail inválido.';
+    const email = novo.email.trim().toLowerCase();
+    if (repetido(ctx.db.usuarios, novo, (u) => u.email?.toLowerCase() === email)) return 'Este e-mail já está em uso.';
+  }
+  if (antigo && novo.situacao !== antigo.situacao) {
+    if (novo.situacao === 'ATIVO' && antigo.situacao === 'CONVITE_PENDENTE') {
+      return 'A conta fica ativa quando a pessoa aceita o convite.';
+    }
+    const outrosAdmins = ctx.db.usuarios.filter(
+      (u) => !igual(u.id, novo.id) && u.papel === A && u.situacao === 'ATIVO'
+    );
+    if (antigo.papel === A && antigo.situacao === 'ATIVO' && outrosAdmins.length === 0) {
+      return 'A clínica precisa de pelo menos um Administrador ativo.';
+    }
+  }
+  return null;
+}
+
+// A Secretária convida só para o portal (S-01b).
+const validarConvitePortal = (novo, antigo, ctx) =>
+  [P, R].includes(novo.papel) ? validarUsuario(novo, antigo, ctx) : 'A Secretária convida só Paciente e Responsável Legal.';
+
+function validarConvenio(novo, antigo, ctx) {
+  if (mudou('nome', novo, antigo) && !preenchido(novo.nome, 2)) return 'Informe o nome do convênio.';
+  if (mudou('razaoSocial', novo, antigo) && !preenchido(novo.razaoSocial, 3)) return 'Informe a operadora.';
+  if (mudou('registroAns', novo, antigo)) {
+    if (!/^\d{6}$/.test(novo.registroAns ?? '')) return 'O registro ANS tem 6 dígitos.';
+    if (repetido(ctx.db.convenios, novo, (c) => c.registroAns === novo.registroAns)) {
+      return 'Já existe um convênio com este registro ANS.';
+    }
+  }
+  return null;
+}
+
+const TIPOS_DE_PROCEDIMENTO = ['CONSULTA', 'EXAME', 'PROCEDIMENTO'];
+
+function validarProcedimento(novo, antigo, ctx) {
+  if (mudou('codigo', novo, antigo)) {
+    if (!/^\d{8}$/.test(novo.codigo ?? '')) return 'O código TUSS tem 8 dígitos.';
+    if (repetido(ctx.db.procedimentos, novo, (p) => p.codigo === novo.codigo)) {
+      return 'Já existe um procedimento com este código TUSS.';
+    }
+  }
+  if (mudou('codigoInterno', novo, antigo) && novo.codigoInterno) {
+    if (repetido(ctx.db.procedimentos, novo, (p) => p.codigoInterno === novo.codigoInterno)) {
+      return 'Já existe um procedimento com este código interno.';
+    }
+  }
+  if (mudou('nome', novo, antigo) && !preenchido(novo.nome, 3)) return 'Informe a descrição.';
+  if (mudou('tipo', novo, antigo) && !TIPOS_DE_PROCEDIMENTO.includes(novo.tipo)) return 'Tipo inválido.';
+  if (mudou('duracaoPadrao', novo, antigo)) {
+    if (!Number.isInteger(novo.duracaoPadrao) || novo.duracaoPadrao < 5 || novo.duracaoPadrao > 480) {
+      return 'A duração vai de 5 a 480 minutos.';
+    }
+  }
+  if (mudou('precoParticular', novo, antigo)) {
+    if (typeof novo.precoParticular !== 'number' || !(novo.precoParticular >= 0)) return 'Informe o preço particular.';
+  }
+  return null;
+}
+
+const NATUREZAS_DA_REPRESENTACAO = ['PODER_FAMILIAR', 'TUTELA', 'CURATELA'];
+
+function validarRepresentacao(novo, antigo, ctx) {
+  if (!antigo) {
+    if (!ctx.buscar('pacientes', novo.idPaciente)) return 'Paciente inexistente.';
+    if (!ctx.buscar('responsaveisLegais', novo.idResponsavelLegal)) return 'Cadastre o responsável legal antes.';
+    if (igual(novo.idPaciente, novo.idResponsavelLegal)) return 'O paciente não representa a si mesmo.';
+  }
+  if (mudou('grauParentesco', novo, antigo) && !preenchido(novo.grauParentesco, 2)) return 'Informe o grau de parentesco.';
+  if (mudou('natureza', novo, antigo) && !NATUREZAS_DA_REPRESENTACAO.includes(novo.natureza)) {
+    return 'Informe a natureza da representação.';
+  }
+  return null;
+}
+
 // Os itens seguem a etapa do orçamento a que pertencem.
 const orcamentoDoItem = (r, ctx) => ctx.buscar('orcamentos', r.idOrcamento);
 const podeEditarItem = (atual, ctx) => {
@@ -307,8 +482,8 @@ const podeEditarItem = (atual, ctx) => {
 const politica = {
   // ── Pessoas ──────────────────────────────────────────────────────────────
   pessoas: {
-    [A]: { ler: todos, criar: true, editar: true },
-    [S]: { ler: todos, criar: true, editar: true },
+    [A]: { ler: todos, criar: true, editar: true, validar: validarPessoa },
+    [S]: { ler: todos, criar: true, editar: true, validar: validarPessoa },
     // RF07 e RF08: o Médico consulta pacientes e responsáveis; dos demais,
     // só o nome (RF10).
     [M]: {
@@ -336,7 +511,7 @@ const politica = {
     [S]: { ler: proprio },
   },
   medicos: {
-    [A]: { ler: todos, criar: true, editar: true },
+    [A]: { ler: todos, criar: true, editar: true, validar: validarMedico, aposEditar: aposEditarMedico },
     [S]: { ler: todos },
     [M]: { ler: todos, ocultar: (r, ctx) => (proprio(r, ctx) ? [] : soMostrar('id', 'especialidade')(r)) },
     [P]: { ler: todos, ocultar: soMostrar('id', 'crm', 'ufCrm', 'especialidade') },
@@ -344,8 +519,8 @@ const politica = {
   },
   pacientes: {
     // A3-R17: Observações Gerais nunca vão ao Administrador.
-    [A]: { ler: todos, criar: true, editar: true, ocultar: ['observacoesGerais'] },
-    [S]: { ler: todos, criar: true, editar: true },
+    [A]: { ler: todos, criar: true, editar: true, ocultar: ['observacoesGerais'], validar: validarPaciente },
+    [S]: { ler: todos, criar: true, editar: true, validar: validarPaciente },
     [M]: { ler: todos },
     [P]: { ler: proprio, ocultar: ['observacoesGerais'] },
     [R]: { ler: doPaciente('pacientes'), ocultar: ['observacoesGerais'] },
@@ -359,8 +534,11 @@ const politica = {
 
   // ── Acesso e autorização ─────────────────────────────────────────────────
   // A senha nunca sai: nenhum campo "senha*" é devolvido nem gravado por aqui.
+  // O papel e a pessoa de uma conta não mudam depois de criada.
   usuarios: {
-    [A]: { ler: todos, criar: true, editar: true },
+    [A]: { ler: todos, criar: true, editar: true, editaveis: ['login', 'email', 'situacao'], validar: validarUsuario },
+    // S-01b: a Secretária manda o convite do portal, mas não lê as contas.
+    [S]: { criar: true, alcanceDeEscrita: (r) => [P, R].includes(r.papel), validar: validarConvitePortal },
   },
   // RF40: só o Administrador lê; ninguém escreve pela API.
   logsAuditoria: {
@@ -376,9 +554,16 @@ const politica = {
     [M]: { ler: todos },
     [S]: { ler: todos },
   },
+  // S-01b: a Secretária registra o responsável, mas não encerra a representação.
   representacoes: {
-    [A]: { ler: todos, criar: true, editar: true },
-    [S]: { ler: todos, criar: true, editar: true },
+    [A]: { ler: todos, criar: true, editar: true, validar: validarRepresentacao },
+    [S]: {
+      ler: todos,
+      criar: true,
+      editar: true,
+      editaveis: ['grauParentesco', 'natureza', 'documento'],
+      validar: validarRepresentacao,
+    },
     [M]: { ler: todos },
     [P]: { ler: doPaciente('representacoes') },
     [R]: { ler: (r, ctx) => igual(r.idResponsavelLegal, ctx.sessao.idPessoa) },
@@ -442,7 +627,7 @@ const politica = {
 
   // ── Agenda e prontuário ──────────────────────────────────────────────────
   convenios: {
-    [A]: { ler: todos, criar: true, editar: true },
+    [A]: { ler: todos, criar: true, editar: true, validar: validarConvenio },
     [M]: { ler: todos },
     [S]: { ler: todos },
     [P]: { ler: todos },
@@ -451,7 +636,7 @@ const politica = {
   // RF12: o preço de tabela não vai ao Médico; ao titular, só dentro do
   // próprio orçamento ou cobrança.
   procedimentos: {
-    [A]: { ler: todos, criar: true, editar: true },
+    [A]: { ler: todos, criar: true, editar: true, validar: validarProcedimento },
     [S]: { ler: todos },
     [M]: { ler: todos, ocultar: ['precoParticular'] },
     [P]: { ler: todos, ocultar: ['precoParticular'] },
@@ -845,6 +1030,7 @@ module.exports = {
   RESPONSAVEL_LEGAL: R,
   COLECOES,
   CLINICAS,
+  ESPECIALIZACOES,
   politica,
   regraPara,
   projetar,

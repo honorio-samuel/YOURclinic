@@ -90,6 +90,13 @@ Exemplos da matriz: Observações Gerais nunca vão ao Administrador (A3-R17); c
 | Orçamento (RF31, D32) | Cada papel mexe só na sua etapa. Devolver (Secretária para o Médico, Administrador para a Secretária) exige `observacaoDevolucao`, que o titular não vê |
 | Caixa (RF47, D5) | O servidor calcula o esperado e a divergência no fechamento; diferença sem `justificativa` é recusada |
 | Prontuário (A5-R03) | Registro selado só muda por retificação |
+| Pessoas (A-02b, S-01b) | Nome completo; CPF com 11 dígitos e sem repetição (só o formato é conferido, porque os CPFs sintéticos têm o dígito verificador errado); e-mail válido; nascimento que não seja futuro |
+| Paciente, médico, secretária, administrador e responsável legal | Nascem com o `id` da pessoa, informado no corpo do POST. Sem a pessoa, 422; com o cadastro já existente, 409 |
+| Paciente (RF07) | Convênio exige um convênio ativo e `numeroCarteirinha`; `pendenteDeCpf` exige `justificativaSemCpf` |
+| Médico (A-03) | CRM sem repetição na mesma UF. Inativar passa a conta a Inativa e encerra os vínculos ativos; reativar devolve a conta |
+| Contas (RF03, RF09) | Conta nova nasce `CONVITE_PENDENTE`, de uma pessoa já cadastrada no papel, uma por pessoa, com login e e-mail sem repetição. O papel e a pessoa não mudam depois. Só o aceite do convite ativa a conta. A clínica não fica sem Administrador ativo. A Secretária só convida Paciente e Responsável Legal e não lê as contas |
+| Representação (RF08) | Paciente e responsável cadastrados, grau de parentesco e natureza (`PODER_FAMILIAR`, `TUTELA` ou `CURATELA`). A Secretária não encerra a representação |
+| Convênio e procedimento (RF11, RF12) | Registro ANS com 6 dígitos e TUSS com 8, sem repetição; duração de 5 a 480 minutos; preço particular informado |
 
 ## Dados sintéticos
 

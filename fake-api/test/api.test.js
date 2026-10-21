@@ -223,7 +223,8 @@ describe('recusa por papel', () => {
     for (const conta of contas.contas) {
       const papel = conta.papel;
       for (const colecao of COLECOES) {
-        if (!politica[colecao][papel]) continue;
+        // Regra só de escrita (o convite da Secretária em usuarios) não lê.
+        if (typeof politica[colecao][papel]?.ler !== 'function') continue;
         const r = await api.pedir('GET', `/${colecao}`, { token: tokens[conta.login] });
         assert.equal(r.status, 200, `${conta.login} ${colecao}`);
         const comSenha = [...chavesDe(r.corpo)].filter((c) => /^senha/i.test(c));
@@ -748,5 +749,141 @@ describe('CORS', () => {
     assert.equal(doApp.cabecalhos.get('access-control-allow-origin'), 'http://localhost:3000');
     const deFora = await api.pedir('OPTIONS', '/pacientes', { cabecalhos: { Origin: 'https://exemplo.test' } });
     assert.equal(deFora.cabecalhos.get('access-control-allow-origin'), null);
+  });
+});
+
+describe('cadastros', () => {
+  let api;
+  const tokens = {};
+  before(async () => {
+    api = await subir();
+    for (const login of ['admin', 'secretaria', 'medico']) tokens[login] = await api.entrar(login);
+  });
+  after(() => api.fechar());
+
+  const criarPessoa = async (token, corpo) => api.pedir('POST', '/pessoas', { token, corpo });
+
+  test('paciente nasce com o id da pessoa, e o CPF não se repete', async () => {
+    const token = tokens.secretaria;
+    const pessoa = await criarPessoa(token, { nome: 'Pessoa Nova Teste', cpf: '111.222.333-44', dataNascimento: '1990-01-01' });
+    assert.equal(pessoa.status, 201);
+    const paciente = await api.pedir('POST', '/pacientes', {
+      token,
+      corpo: { id: pessoa.corpo.id, situacao: 'ATIVO', pendenteDeCpf: false, tipoAtendimento: 'PARTICULAR' },
+    });
+    assert.equal(paciente.status, 201);
+    assert.equal(paciente.corpo.id, pessoa.corpo.id);
+    const repetido = await api.pedir('POST', '/pacientes', { token, corpo: { id: pessoa.corpo.id } });
+    assert.equal(repetido.status, 409);
+    const semPessoa = await api.pedir('POST', '/pacientes', { token, corpo: { id: 999999 } });
+    assert.equal(semPessoa.status, 422);
+    const mesmoCpf = await criarPessoa(token, { nome: 'Outra Pessoa', cpf: '11122233344' });
+    assert.equal(mesmoCpf.status, 422);
+    assert.match(mesmoCpf.corpo.erro, /CPF/);
+  });
+
+  test('paciente de convênio exige convênio ativo; sem CPF exige justificativa', async () => {
+    const token = tokens.admin;
+    const p1 = await criarPessoa(token, { nome: 'Paciente Convênio', cpf: '22233344455' });
+    const inativo = api.db.convenios.find((c) => c.situacao === 'INATIVO');
+    const r1 = await api.pedir('POST', '/pacientes', {
+      token,
+      corpo: { id: p1.corpo.id, tipoAtendimento: 'CONVENIO', idConvenio: inativo.id, numeroCarteirinha: '123456' },
+    });
+    assert.equal(r1.status, 422);
+    const p2 = await criarPessoa(token, { nome: 'Paciente Sem CPF', cpf: null });
+    const r2 = await api.pedir('POST', '/pacientes', { token, corpo: { id: p2.corpo.id, pendenteDeCpf: true } });
+    assert.equal(r2.status, 422);
+  });
+
+  test('médico: CRM único por UF; inativar encerra a conta e os vínculos', async () => {
+    const token = tokens.admin;
+    const existente = api.db.medicos[0];
+    const pessoa = await criarPessoa(token, { nome: 'Médica Nova Teste', cpf: '33344455566' });
+    const repetido = await api.pedir('POST', '/medicos', {
+      token,
+      corpo: { id: pessoa.corpo.id, crm: existente.crm, ufCrm: existente.ufCrm, especialidade: 'Pediatria', situacao: 'ATIVO' },
+    });
+    assert.equal(repetido.status, 422);
+
+    const medico = api.db.medicos.find(
+      (m) => m.situacao === 'ATIVO' && api.db.vinculos.some((v) => v.idMedico === m.id && v.estado === 'ATIVO')
+    );
+    const r = await api.pedir('PATCH', `/medicos/${medico.id}`, { token, corpo: { situacao: 'INATIVO' } });
+    assert.equal(r.status, 200);
+    assert.equal(api.db.usuarios.find((u) => u.idPessoa === medico.id).situacao, 'INATIVO');
+    assert.ok(api.db.vinculos.filter((v) => v.idMedico === medico.id).every((v) => v.estado !== 'ATIVO'));
+    await api.pedir('PATCH', `/medicos/${medico.id}`, { token, corpo: { situacao: 'ATIVO' } });
+    assert.equal(api.db.usuarios.find((u) => u.idPessoa === medico.id).situacao, 'ATIVO');
+  });
+
+  test('conta nova nasce como convite, com login único, e o papel não muda depois', async () => {
+    const token = tokens.admin;
+    const pessoa = await criarPessoa(token, { nome: 'Secretária Nova Teste', cpf: '44455566677', email: 'nova@exemplo.test' });
+    const conta = (extra = {}) => ({
+      login: 'nova.sec', email: 'nova@exemplo.test', papel: 'SECRETARIA', situacao: 'CONVITE_PENDENTE', idPessoa: pessoa.corpo.id, ...extra,
+    });
+    const semCadastro = await api.pedir('POST', '/usuarios', { token, corpo: conta() });
+    assert.equal(semCadastro.status, 422);
+    await api.pedir('POST', '/secretarias', { token, corpo: { id: pessoa.corpo.id, turno: 'MANHA', situacao: 'ATIVO' } });
+    const ativa = await api.pedir('POST', '/usuarios', { token, corpo: conta({ situacao: 'ATIVO' }) });
+    assert.equal(ativa.status, 422);
+    const loginUsado = await api.pedir('POST', '/usuarios', { token, corpo: conta({ login: 'admin' }) });
+    assert.equal(loginUsado.status, 422);
+    const criada = await api.pedir('POST', '/usuarios', { token, corpo: conta() });
+    assert.equal(criada.status, 201);
+    const mudaPapel = await api.pedir('PATCH', `/usuarios/${criada.corpo.id}`, { token, corpo: { papel: 'ADMINISTRADOR' } });
+    assert.equal(mudaPapel.status, 200);
+    assert.equal(api.db.usuarios.find((u) => u.id === criada.corpo.id).papel, 'SECRETARIA');
+    const ativar = await api.pedir('PATCH', `/usuarios/${criada.corpo.id}`, { token, corpo: { situacao: 'ATIVO' } });
+    assert.equal(ativar.status, 422);
+  });
+
+  test('o último Administrador ativo não é inativado', async () => {
+    const token = tokens.admin;
+    const admins = api.db.usuarios.filter((u) => u.papel === 'ADMINISTRADOR' && u.situacao === 'ATIVO');
+    const [primeiro, ...outros] = admins;
+    for (const outro of outros) {
+      const r = await api.pedir('PATCH', `/usuarios/${outro.id}`, { token, corpo: { situacao: 'INATIVO' } });
+      assert.equal(r.status, 200);
+    }
+    const ultimo = await api.pedir('PATCH', `/usuarios/${primeiro.id}`, { token, corpo: { situacao: 'INATIVO' } });
+    assert.equal(ultimo.status, 422);
+    for (const outro of outros) outro.situacao = 'ATIVO';
+  });
+
+  test('a Secretária convida para o portal, mas não cria conta de equipe nem lê contas', async () => {
+    const token = tokens.secretaria;
+    const semConta = api.db.pacientes.find((p) => !api.db.usuarios.some((u) => u.idPessoa === p.id));
+    const convite = (extra) => ({
+      login: `paciente.${semConta.id}`, email: `paciente.${semConta.id}@exemplo.test`, situacao: 'CONVITE_PENDENTE', idPessoa: semConta.id, ...extra,
+    });
+    const equipe = await api.pedir('POST', '/usuarios', { token, corpo: convite({ papel: 'SECRETARIA' }) });
+    assert.equal(equipe.status, 422);
+    const criado = await api.pedir('POST', '/usuarios', { token, corpo: convite({ papel: 'PACIENTE' }) });
+    assert.equal(criado.status, 201);
+    assert.equal(criado.corpo.senhaHash, undefined);
+    const lista = await api.pedir('GET', '/usuarios', { token });
+    assert.equal(lista.status, 403);
+  });
+
+  test('a Secretária não encerra a representação', async () => {
+    const token = tokens.secretaria;
+    const representacao = api.db.representacoes.find((r) => r.fimVigencia === null);
+    const r = await api.pedir('PATCH', `/representacoes/${representacao.id}`, { token, corpo: { fimVigencia: '2026-09-28' } });
+    assert.equal(r.status, 200);
+    assert.equal(api.db.representacoes.find((x) => x.id === representacao.id).fimVigencia, null);
+  });
+
+  test('convênio e procedimento: registro ANS e TUSS no formato e sem repetição', async () => {
+    const token = tokens.admin;
+    const convenio = (registroAns) => ({ nome: 'Novo', razaoSocial: 'Operadora Nova S.A.', registroAns, situacao: 'ATIVO' });
+    assert.equal((await api.pedir('POST', '/convenios', { token, corpo: convenio('000001') })).status, 422);
+    assert.equal((await api.pedir('POST', '/convenios', { token, corpo: convenio('000099') })).status, 201);
+    const procedimento = (codigo) => ({ codigo, nome: 'Curativo simples', tipo: 'PROCEDIMENTO', duracaoPadrao: 15, precoParticular: 80, situacao: 'ATIVO' });
+    assert.equal((await api.pedir('POST', '/procedimentos', { token, corpo: procedimento('123') })).status, 422);
+    assert.equal((await api.pedir('POST', '/procedimentos', { token, corpo: procedimento('90000099') })).status, 201);
+    const medico = await api.pedir('POST', '/procedimentos', { token: tokens.medico, corpo: procedimento('90000098') });
+    assert.equal(medico.status, 403);
   });
 });
