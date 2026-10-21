@@ -5,38 +5,50 @@ import { AreaLogada, Permitido } from './components/layout';
 import Login from './views/geral/login';
 import SelecionarRepresentado from './views/geral/selecionar-representado';
 import { EmBreve, RegistroIndisponivel } from './views/geral/avisos';
-import Pacientes from './views/cadastro/pacientes';
-import { Convenios, Equipe, Medicos, Procedimentos } from './views/cadastro/cadastros-admin';
-import { AtendimentosDoDia, Bloqueios, FilaDoDia, ReagendarOuCancelar } from './views/agenda/agenda';
-import {
-  Caixas,
-  CobrancasDoDia,
-  Conciliacao,
-  ContasPagar,
-  ContasReceber,
-  DocumentosFiscais,
-  Estornos,
-} from './views/financeiro/financeiro';
-import { OrcamentosAprovacao, OrcamentosMedico, OrcamentosValores } from './views/financeiro/orcamentos';
-import { Contratos, Elegibilidade, Glosas, Guias, Lotes, RecursosGlosa } from './views/tiss/tiss';
-import { Alertas, Movimentacoes, Produtos } from './views/estoque/estoque';
-import {
-  LogAuditoria,
-  Notificacoes,
-  PainelDoDia,
-  Parametros,
-  Relatorios,
-  SolicitacoesTitulares,
-} from './views/gestao/gestao';
-import { AnexosRecepcao, MeusPacientes, PendenciasClinicas, Prontuario } from './views/clinico/clinico';
-import {
-  AgendamentosPortal,
-  CobrancasPortal,
-  DadosPortal,
-  DocumentosPortal,
-  InicioPortal,
-  OrcamentoPortal,
-} from './views/portal/portal';
+import Pacientes from './views/cadastro/listagem-pacientes';
+import Medicos from './views/cadastro/listagem-medicos';
+import Equipe from './views/cadastro/listagem-equipe';
+import Convenios from './views/cadastro/listagem-convenios';
+import Procedimentos from './views/cadastro/listagem-procedimentos';
+import AnexosRecepcao from './views/cadastro/anexos-paciente';
+import FilaDoDia from './views/agenda/fila-do-dia';
+import AtendimentosDoDia from './views/agenda/atendimentos-do-dia';
+import Bloqueios from './views/agenda/bloqueios';
+import ReagendarOuCancelar from './views/agenda/reagendar-ou-cancelar';
+import ContasReceber from './views/financeiro/contas-receber';
+import ContasPagar from './views/financeiro/contas-pagar';
+import Conciliacao from './views/financeiro/conciliacao';
+import Caixas from './views/financeiro/caixas';
+import Estornos from './views/financeiro/estornos';
+import DocumentosFiscais from './views/financeiro/documentos-fiscais';
+import CobrancasDoDia from './views/financeiro/cobrancas-do-dia';
+import OrcamentosAprovacao from './views/financeiro/orcamentos-aprovacao';
+import OrcamentosValores from './views/financeiro/orcamentos-valores';
+import OrcamentosMedico from './views/financeiro/orcamentos-medico';
+import Contratos from './views/tiss/contratos';
+import Elegibilidade from './views/tiss/elegibilidade';
+import Guias from './views/tiss/guias';
+import Lotes from './views/tiss/lotes';
+import Glosas from './views/tiss/glosas';
+import RecursosGlosa from './views/tiss/recursos-glosa';
+import Produtos from './views/estoque/produtos';
+import Movimentacoes from './views/estoque/movimentacoes';
+import Alertas from './views/estoque/alertas';
+import PainelDoDia from './views/gestao/painel-do-dia';
+import Relatorios from './views/gestao/relatorios';
+import LogAuditoria from './views/gestao/log-auditoria';
+import Notificacoes from './views/gestao/notificacoes';
+import SolicitacoesTitulares from './views/gestao/solicitacoes-titulares';
+import Parametros from './views/gestao/parametros';
+import MeusPacientes from './views/clinico/meus-pacientes';
+import Prontuario from './views/clinico/prontuario';
+import PendenciasClinicas from './views/clinico/pendencias-clinicas';
+import InicioPortal from './views/portal/inicio';
+import AgendamentosPortal from './views/portal/agendamentos';
+import DocumentosPortal from './views/portal/documentos';
+import CobrancasPortal from './views/portal/cobrancas';
+import OrcamentoPortal from './views/portal/orcamento';
+import DadosPortal from './views/portal/dados';
 import { INICIO } from './navegacao/menus';
 import { useSessao } from './sessao/sessao';
 
