@@ -1,13 +1,33 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 import { MENUS } from '../navegacao/menus';
 
-const contemRota = (grupo, caminho) =>
-  grupo.itens.some((item) => caminho === item.rota || caminho.startsWith(item.rota + '/'));
+// O item fica aceso na própria rota e nas telas que se abrem a partir dele:
+// o cadastro acende a listagem da mesma entidade, e o prontuário, Meus pacientes.
+function rotaDaListagem(caminho) {
+  const cadastro = caminho.match(/^(\/[a-z]+)\/cadastro-([a-z-]+)/);
+  if (cadastro) return `${cadastro[1]}/listagem-${cadastro[2]}`;
+  if (caminho.startsWith('/medico/prontuario/')) return '/medico/listagem-pacientes';
+  return null;
+}
+
+const itemAtivo = (rota, caminho) =>
+  caminho === rota || caminho.startsWith(rota + '/') || rotaDaListagem(caminho) === rota;
+
+const contemRota = (grupo, caminho) => grupo.itens.some((item) => itemAtivo(item.rota, caminho));
+
+function ItemMenu({ rota, caminho, children }) {
+  const ativo = itemAtivo(rota, caminho);
+  return (
+    <Link to={rota} className={`nav-link${ativo ? ' active' : ''}`} aria-current={ativo ? 'page' : undefined}>
+      {children}
+    </Link>
+  );
+}
 
 function GrupoMenu({ grupo, caminho }) {
   const ativo = contemRota(grupo, caminho);
@@ -40,9 +60,9 @@ function GrupoMenu({ grupo, caminho }) {
         <ul id={id} className='nav flex-column submenu'>
           {grupo.itens.map((item) => (
             <li key={item.rota} className='nav-item'>
-              <NavLink to={item.rota} className='nav-link'>
+              <ItemMenu rota={item.rota} caminho={caminho}>
                 {item.rotulo}
-              </NavLink>
+              </ItemMenu>
             </li>
           ))}
         </ul>
@@ -65,12 +85,12 @@ function MenuLateral({ papel }) {
               <GrupoMenu key={item.rotulo} grupo={item} caminho={pathname} />
             ) : (
               <li key={item.rota} className='nav-item'>
-                <NavLink to={item.rota} className='nav-link'>
+                <ItemMenu rota={item.rota} caminho={pathname}>
                   <span className='nav-link-icone'>
                     <item.icone fontSize='small' aria-hidden='true' />
                   </span>
                   {item.rotulo}
-                </NavLink>
+                </ItemMenu>
               </li>
             )
           )}

@@ -70,9 +70,7 @@ const TELAS = [
   // Administrador
   ['/admin/inicio', A, <PainelDoDia />],
   ['/admin/listagem-pacientes', A, <Pacientes />],
-  ['/admin/pacientes/novo', A, <CadastroPaciente modo='novo' />],
-  ['/admin/pacientes/:id', A, <CadastroPaciente modo='ver' />],
-  ['/admin/pacientes/:id/editar', A, <CadastroPaciente modo='editar' />],
+  ['/admin/cadastro-pacientes/:idParam?', A, <CadastroPaciente />],
   ['/admin/listagem-medicos', A, <Medicos />],
   ['/admin/medicos/novo', A, <CadastroMedico modo='novo' />],
   ['/admin/medicos/:id', A, <CadastroMedico modo='ver' />],
@@ -128,11 +126,9 @@ const TELAS = [
   ['/medico/listagem-pendencias', M, <PendenciasClinicas />],
   // Secretária
   ['/secretaria/listagem-pacientes', S, <Pacientes />],
-  ['/secretaria/pacientes/novo', S, <CadastroPaciente modo='novo' />],
-  ['/secretaria/pacientes/:id', S, <CadastroPaciente modo='ver' />],
-  ['/secretaria/pacientes/:id/editar', S, <CadastroPaciente modo='editar' />],
-  ['/secretaria/pacientes/:id/observacoes', S, <ObservacoesGerais />],
-  ['/secretaria/pacientes/:id/anexos', S, <AnexosRecepcao />],
+  ['/secretaria/cadastro-pacientes/:idParam?', S, <CadastroPaciente />],
+  ['/secretaria/cadastro-pacientes/:idParam/observacoes', S, <ObservacoesGerais />],
+  ['/secretaria/cadastro-pacientes/:idParam/anexos', S, <AnexosRecepcao />],
   ['/secretaria/agenda', S, <EmBreve codigo='S-02' titulo='Agenda da clínica' />],
   ['/secretaria/cadastro-agendamentos', S, <EmBreve codigo='S-03a' titulo='Novo agendamento' />],
   ['/secretaria/listagem-consultas', S, <ReagendarOuCancelar />],
@@ -232,6 +228,7 @@ const ANTIGAS = {
 const ANTIGAS_COM_PARAMETRO = [
   ['/medico/pacientes/:id', (p) => `/medico/prontuario/${p.id}`],
   ['/medico/pacientes/:id/:aba', (p) => `/medico/prontuario/${p.id}/${p.aba}`],
+  ['/secretaria/pacientes/:id/anexos', (p) => `/secretaria/cadastro-pacientes/${p.id}/anexos`],
 ];
 
 function Redirecionar({ para }) {

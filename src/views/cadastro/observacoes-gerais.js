@@ -42,8 +42,8 @@ function Exemplos({ titulo, itens }) {
 // S-01c · Observações Gerais do paciente (RF15, RC07). Só a Secretária vê e
 // escreve; o Administrador nunca recebe este campo (A3-R17).
 function ObservacoesGerais() {
-  const { id } = useParams();
-  const idPaciente = Number(id);
+  const { idParam } = useParams();
+  const idPaciente = Number(idParam);
   const navigate = useNavigate();
   const form = useFormulario({ observacoesGerais: '' });
   const { carregar } = form;
@@ -59,7 +59,7 @@ function ObservacoesGerais() {
     if (dados) carregar({ observacoesGerais: dados.paciente.observacoesGerais ?? '' });
   }, [dados, carregar]);
 
-  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate(`/secretaria/pacientes/${idPaciente}`));
+  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate('/secretaria/listagem-pacientes'));
 
   if (erro?.status === 404) return <RegistroIndisponivel />;
 

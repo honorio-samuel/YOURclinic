@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import PilulaStatus from '../../components/pilula-status';
@@ -22,6 +22,7 @@ import { criar, listar } from '../../servicos/dados';
 import { convidar } from '../../servicos/pessoas';
 import { carregarPaciente, encerrarRepresentacao, PACIENTE_VAZIO, salvarPaciente } from '../../servicos/pacientes';
 import { useCarregar } from '../../hooks/use-carregar';
+import { useCadastro } from '../../navegacao/caminhos';
 import { useSessao } from '../../sessao/sessao';
 import { soDigitos } from '../../utils/formatos';
 import {
@@ -65,17 +66,16 @@ function validar(v, temRepresentacao) {
   return erros;
 }
 
-// A-02b e S-01b · Cadastro do paciente: novo, consulta e edição. O
-// Administrador não vê Observações Gerais nem anexos (A3-R17), então não tem
-// abas; a Secretária não encerra a representação nem lê as contas de acesso.
-function CadastroPaciente({ modo }) {
-  const { id: idTexto } = useParams();
-  const id = idTexto ? Number(idTexto) : null;
+// A-02b e S-01b · Cadastro do paciente: uma tela para criar (sem idParam),
+// editar (com idParam) e consultar (?consulta). Salvar e Cancelar voltam à
+// listagem. O Administrador não vê Observações Gerais nem anexos (A3-R17),
+// então não tem abas; a Secretária não encerra a representação nem lê as
+// contas de acesso.
+function CadastroPaciente() {
+  const { id, consulta: leitura, listagem, editar } = useCadastro('pacientes');
   const { sessao } = useSessao();
   const navigate = useNavigate();
   const ehSecretaria = sessao.usuario.papel === 'SECRETARIA';
-  const base = ehSecretaria ? '/secretaria/pacientes' : '/admin/pacientes';
-  const leitura = modo === 'ver';
   const form = useFormulario(PACIENTE_VAZIO);
   const { carregar } = form;
   const [modal, confirmar] = useConfirmacao();
@@ -106,7 +106,7 @@ function CadastroPaciente({ modo }) {
     if (menorDeIdade && !leitura) definir('representado', true);
   }, [menorDeIdade, leitura, definir]);
 
-  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate(id && !leitura ? `${base}/${id}` : base));
+  const sair = useSairSemSalvar(form.sujo, confirmar, () => navigate(listagem));
 
   if (erro?.status === 404) return <RegistroIndisponivel />;
 
@@ -115,12 +115,12 @@ function CadastroPaciente({ modo }) {
     if (!form.validar(validar(v, Boolean(representacao)))) return;
     setSalvando(true);
     try {
-      const idSalvo = await salvarPaciente(id, v, original);
+      await salvarPaciente(id, v, original);
       mensagemSucesso(id ? 'Cadastro atualizado.' : 'Paciente cadastrado.');
-      navigate(`${base}/${idSalvo}`);
+      navigate(listagem);
     } catch (falha) {
       mensagemErro(mensagemDeErro(falha));
-      if (falha.idCriado) navigate(`${base}/${falha.idCriado}/editar`);
+      if (falha.idCriado) navigate(editar(falha.idCriado));
       setSalvando(false);
     }
   };
@@ -197,7 +197,7 @@ function CadastroPaciente({ modo }) {
       acoes={
         leitura &&
         !inativo && (
-          <button type='button' className='btn btn-primary' onClick={() => navigate(`${base}/${id}/editar`)}>
+          <button type='button' className='btn btn-primary' onClick={() => navigate(editar())}>
             Editar
           </button>
         )

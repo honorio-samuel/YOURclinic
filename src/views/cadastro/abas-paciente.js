@@ -5,7 +5,7 @@ import { NavLink } from 'react-router-dom';
 // gerais (S-01c) e Anexos (S-01d). O Administrador não tem as duas últimas
 // (A3-R17). No cadastro novo, só Dados fica disponível.
 const ABAS = [
-  ['dados', 'Dados', ''],
+  ['dados', 'Dados', '?consulta'],
   ['observacoes', 'Observações gerais', '/observacoes'],
   ['anexos', 'Anexos', '/anexos'],
 ];
@@ -17,7 +17,7 @@ function AbasPaciente({ id, ativa }) {
         <li key={chave} className='nav-item'>
           {id ? (
             <NavLink
-              to={`/secretaria/pacientes/${id}${sufixo}`}
+              to={`/secretaria/cadastro-pacientes/${id}${sufixo}`}
               end
               className={`nav-link${ativa === chave ? ' active' : ''}`}
               aria-current={ativa === chave ? 'page' : undefined}

@@ -32,7 +32,7 @@ function Equipe() {
   const ver = (u) => {
     if (gerenciavel(u)) navigate(`/admin/equipe/${u.idPessoa}`);
     else if (u.papel === 'MEDICO') navigate(`/admin/medicos/${u.idPessoa}`);
-    else if (u.papel === 'PACIENTE') navigate(`/admin/pacientes/${u.idPessoa}`);
+    else if (u.papel === 'PACIENTE') navigate(`/admin/cadastro-pacientes/${u.idPessoa}?consulta`);
     else mostrarMensagem('Responsável legal', 'Os dados do responsável ficam no cadastro do paciente que ele representa.', 'info');
   };
 

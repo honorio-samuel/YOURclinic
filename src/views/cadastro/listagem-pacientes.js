@@ -9,7 +9,7 @@ import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
 import { useAlternarSituacao } from '../../components/confirmacao';
 import { listar, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
-import { useSessao } from '../../sessao/sessao';
+import { useCaminhosDaListagem } from '../../navegacao/caminhos';
 import { corresponde, data, soDigitos } from '../../utils/formatos';
 import { SITUACAO_CADASTRO, rotuloDe } from '../../utils/rotulos';
 
@@ -32,9 +32,7 @@ async function carregarPacientes() {
 // A-02a e S-01a · Cadastro › Pacientes. Sem campo clínico e sem Observações
 // Gerais (RC02); a pílula alterna Ativo e Inativo, sem Excluir.
 function Pacientes() {
-  const { sessao } = useSessao();
   const navigate = useNavigate();
-  const ehSecretaria = sessao.usuario.papel === 'SECRETARIA';
   const { dados, carregando, erro, recarregar } = useCarregar(carregarPacientes);
   const [modal, alternar] = useAlternarSituacao('pacientes', recarregar);
   const [busca, setBusca] = React.useState('');
@@ -47,14 +45,14 @@ function Pacientes() {
       (corresponde(busca, p.nome) || (digitos.length >= 3 && soDigitos(p.cpf).includes(digitos)))
   );
 
-  const base = ehSecretaria ? '/secretaria/pacientes' : '/admin/pacientes';
-  const ver = (p) => navigate(`${base}/${p.id}`);
+  const caminhos = useCaminhosDaListagem('pacientes');
+  const ver = (p) => navigate(caminhos.ver(p.id));
 
   return (
     <Pagina
       titulo='Pacientes'
       acoes={
-        <button type='button' className='btn btn-primary' onClick={() => navigate(`${base}/novo`)}>
+        <button type='button' className='btn btn-primary' onClick={() => navigate(caminhos.novo)}>
           + Novo paciente
         </button>
       }
@@ -101,7 +99,7 @@ function Pacientes() {
                   p.situacao === 'ATIVO'
                     ? [
                         { tipo: 'ver', alvo: p.nome, aoClicar: () => ver(p) },
-                        { tipo: 'editar', alvo: p.nome, aoClicar: () => navigate(`${base}/${p.id}/editar`) },
+                        { tipo: 'editar', alvo: p.nome, aoClicar: () => navigate(caminhos.editar(p.id)) },
                         { tipo: 'inativar', alvo: p.nome, aoClicar: () => alternar(p, p.nome, 'INATIVO') },
                       ]
                     : [

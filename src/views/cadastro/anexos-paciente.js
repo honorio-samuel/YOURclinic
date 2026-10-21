@@ -22,8 +22,8 @@ const SITUACAO_ANEXO_RECEPCAO = {
 
 // S-01d · Paciente · anexos, só metadados. Sem conteúdo, sem miniatura e sem Baixar.
 function AnexosRecepcao() {
-  const { id } = useParams();
-  const idPaciente = Number(id);
+  const { idParam } = useParams();
+  const idPaciente = Number(idParam);
   const { dados, carregando, erro, recarregar } = useCarregar(async () => {
     const [pessoa, anexos] = await Promise.all([buscar('pessoas', idPaciente), listar('anexos', { idPaciente, _sort: 'dataEnvio', _order: 'desc' })]);
     return { nome: pessoa.nome, anexos };
