@@ -1,8 +1,10 @@
 import React from 'react';
 
 // Peças dos formulários de cadastro (A-02b e seguintes): campos com rótulo
-// visível, erro ligado ao campo por aria-describedby e duas colunas a partir
-// de 768 px, como no Figma. Campo opcional leva "(opcional)" no rótulo.
+// visível, erro em texto ligado ao campo por aria-describedby e duas colunas
+// a partir de 768 px, como no Figma. Campo obrigatório leva "*" no rótulo e o
+// atributo required, que o leitor de tela anuncia; o formulário explica o
+// asterisco no topo (D10: nada indicado só por cor).
 
 // Estado do formulário. "campo(nome, mascara)" devolve id, valor, erro e o
 // tratador do campo; com "mascara", o valor é formatado enquanto se digita.
@@ -57,7 +59,12 @@ function Rotulo({ id, rotulo, opcional }) {
   return (
     <label htmlFor={id} className='form-label'>
       {rotulo}
-      {opcional && <span className='text-muted fw-normal'> (opcional)</span>}
+      {!opcional && (
+        <span className='text-danger' aria-hidden='true'>
+          {' '}
+          *
+        </span>
+      )}
     </label>
   );
 }
@@ -193,20 +200,22 @@ export function CampoMarcar({ id, rotulo, marcado, aoMudar, ajuda, largura = 'co
   );
 }
 
-// Cartão de uma parte do formulário, com título opcional.
+// Parte do formulário em cartão (o SubCard do projeto de referência). Com
+// título, é um fieldset com legend, que o leitor de tela lê antes de cada
+// campo do grupo.
 export function Secao({ titulo, children }) {
-  const id = React.useId();
-  return (
-    <section className='card' aria-labelledby={titulo ? id : undefined}>
-      <div className='card-body'>
-        {titulo && (
-          <h2 id={id} className='h5 mb-3'>
-            {titulo}
-          </h2>
-        )}
+  if (!titulo) {
+    return (
+      <div className='card card-body'>
         <div className='row g-3'>{children}</div>
       </div>
-    </section>
+    );
+  }
+  return (
+    <fieldset className='card card-body'>
+      <legend className='h5 mb-3'>{titulo}</legend>
+      <div className='row g-3'>{children}</div>
+    </fieldset>
   );
 }
 
@@ -216,7 +225,7 @@ export function Rodape({ esquerda, aoCancelar, salvando, rotuloSalvar = 'Salvar'
     <div className='d-flex flex-wrap justify-content-between align-items-center gap-2'>
       <div className='d-flex flex-wrap gap-2'>{esquerda}</div>
       <div className='d-flex flex-wrap gap-2 ms-auto'>
-        <button type='button' className='btn btn-outline-primary' onClick={aoCancelar} disabled={salvando}>
+        <button type='button' className='btn btn-outline-secondary' onClick={aoCancelar} disabled={salvando}>
           {rotuloCancelar}
         </button>
         {!semSalvar && (
@@ -234,6 +243,11 @@ export function Rodape({ esquerda, aoCancelar, salvando, rotuloSalvar = 'Salvar'
 export function Formulario({ aoEnviar, somenteLeitura = false, children, rodape, rotulo }) {
   return (
     <form noValidate onSubmit={aoEnviar} aria-label={rotulo} className='d-flex flex-column gap-3'>
+      {!somenteLeitura && (
+        <p className='mb-0'>
+          Campos com <span className='text-danger'>*</span> são obrigatórios.
+        </p>
+      )}
       <fieldset disabled={somenteLeitura} className='d-flex flex-column gap-3'>
         {children}
       </fieldset>

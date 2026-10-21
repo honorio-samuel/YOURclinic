@@ -48,7 +48,7 @@ function PedidoTitular({ idPaciente, aoFechar }) {
       aoFechar={aoFechar}
       rodape={
         <>
-          <button type='button' className='btn btn-outline-primary' onClick={aoFechar} disabled={salvando}>
+          <button type='button' className='btn btn-outline-secondary' onClick={aoFechar} disabled={salvando}>
             Cancelar
           </button>
           <button type='button' className='btn btn-primary' onClick={registrar} disabled={salvando}>
