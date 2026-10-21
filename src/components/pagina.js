@@ -1,11 +1,13 @@
 import React from 'react';
 
 // Título da tela e ações principais na mesma linha; o conteúdo vem abaixo.
-function Pagina({ titulo, acoes, children }) {
+// Quando o título leva um nome, tituloAba dá o título da aba sem ele.
+function Pagina({ titulo, tituloAba, acoes, children }) {
+  const aba = tituloAba ?? titulo;
   React.useEffect(() => {
     // Título por rota, sem nome de paciente (RNF04).
-    document.title = `${titulo} · YOURClinic`;
-  }, [titulo]);
+    document.title = `${aba} · YOURClinic`;
+  }, [aba]);
 
   return (
     <section aria-labelledby='titulo-pagina'>

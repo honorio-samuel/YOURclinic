@@ -11,6 +11,12 @@ import Equipe from './views/cadastro/listagem-equipe';
 import Convenios from './views/cadastro/listagem-convenios';
 import Procedimentos from './views/cadastro/listagem-procedimentos';
 import AnexosRecepcao from './views/cadastro/anexos-paciente';
+import CadastroPaciente from './views/cadastro/cadastro-paciente';
+import ObservacoesGerais from './views/cadastro/observacoes-gerais';
+import CadastroMedico from './views/cadastro/cadastro-medico';
+import CadastroEquipe from './views/cadastro/cadastro-equipe';
+import CadastroConvenio from './views/cadastro/cadastro-convenio';
+import CadastroProcedimento from './views/cadastro/cadastro-procedimento';
 import FilaDoDia from './views/agenda/fila-do-dia';
 import AtendimentosDoDia from './views/agenda/atendimentos-do-dia';
 import Bloqueios from './views/agenda/bloqueios';
@@ -64,10 +70,25 @@ const TELAS = [
   // Administrador
   ['/admin/inicio', A, <PainelDoDia />],
   ['/admin/pacientes', A, <Pacientes />],
+  ['/admin/pacientes/novo', A, <CadastroPaciente modo='novo' />],
+  ['/admin/pacientes/:id', A, <CadastroPaciente modo='ver' />],
+  ['/admin/pacientes/:id/editar', A, <CadastroPaciente modo='editar' />],
   ['/admin/medicos', A, <Medicos />],
+  ['/admin/medicos/novo', A, <CadastroMedico modo='novo' />],
+  ['/admin/medicos/:id', A, <CadastroMedico modo='ver' />],
+  ['/admin/medicos/:id/editar', A, <CadastroMedico modo='editar' />],
   ['/admin/equipe', A, <Equipe />],
+  ['/admin/equipe/novo', A, <CadastroEquipe modo='novo' />],
+  ['/admin/equipe/:id', A, <CadastroEquipe modo='ver' />],
+  ['/admin/equipe/:id/editar', A, <CadastroEquipe modo='editar' />],
   ['/admin/convenios', A, <Convenios />],
+  ['/admin/convenios/novo', A, <CadastroConvenio modo='novo' />],
+  ['/admin/convenios/:id', A, <CadastroConvenio modo='ver' />],
+  ['/admin/convenios/:id/editar', A, <CadastroConvenio modo='editar' />],
   ['/admin/procedimentos', A, <Procedimentos />],
+  ['/admin/procedimentos/novo', A, <CadastroProcedimento modo='novo' />],
+  ['/admin/procedimentos/:id', A, <CadastroProcedimento modo='ver' />],
+  ['/admin/procedimentos/:id/editar', A, <CadastroProcedimento modo='editar' />],
   ['/admin/agenda', A, <EmBreve codigo='A-07' titulo='Agenda da clínica' />],
   ['/admin/agendamento', A, <EmBreve codigo='A-08a' titulo='Novo agendamento' />],
   ['/admin/fila', A, <FilaDoDia />],
@@ -107,6 +128,10 @@ const TELAS = [
   ['/medico/pendencias', M, <PendenciasClinicas />],
   // Secretária
   ['/secretaria/pacientes', S, <Pacientes />],
+  ['/secretaria/pacientes/novo', S, <CadastroPaciente modo='novo' />],
+  ['/secretaria/pacientes/:id', S, <CadastroPaciente modo='ver' />],
+  ['/secretaria/pacientes/:id/editar', S, <CadastroPaciente modo='editar' />],
+  ['/secretaria/pacientes/:id/observacoes', S, <ObservacoesGerais />],
   ['/secretaria/pacientes/:id/anexos', S, <AnexosRecepcao />],
   ['/secretaria/agenda', S, <EmBreve codigo='S-02' titulo='Agenda da clínica' />],
   ['/secretaria/agendamento', S, <EmBreve codigo='S-03a' titulo='Novo agendamento' />],
@@ -159,8 +184,18 @@ function Rotas() {
       <Route path='/entrar' element={<Login />} />
       <Route element={<AreaLogada />}>
         <Route index element={<Inicio />} />
+        {/* A chave por caminho remonta a tela ao trocar de rota (de /novo para
+            /:id, de /:id/editar para /:id), com estado e dados novos. */}
         {TELAS.map(([caminho, papeis, elemento]) => (
-          <Route key={caminho} path={caminho} element={<Permitido papeis={papeis}>{elemento}</Permitido>} />
+          <Route
+            key={caminho}
+            path={caminho}
+            element={
+              <Permitido key={caminho} papeis={papeis}>
+                {elemento}
+              </Permitido>
+            }
+          />
         ))}
         {Object.entries(ANTIGAS).map(([de, para]) => (
           <Route key={de} path={de} element={<Navigate to={para} replace />} />

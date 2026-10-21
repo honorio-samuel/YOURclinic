@@ -87,6 +87,7 @@ export async function salvarComAviso(colecao, id, campos, sucesso) {
 // Texto para o usuário a partir da resposta de erro da API: 409 e 422 trazem a
 // regra em { erro }.
 export function mensagemDeErro(e) {
+  if (e.mensagemParaUsuario) return e.mensagemParaUsuario;
   const status = e.response?.status;
   if (status === 403) return 'Seu perfil não pode fazer esta alteração.';
   if (status === 404) return 'Este registro não está mais disponível.';

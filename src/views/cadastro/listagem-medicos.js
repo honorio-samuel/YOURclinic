@@ -1,9 +1,10 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
-import { emBreve, useAlternarSituacao } from '../../components/confirmacao';
+import { useAlternarSituacao } from '../../components/confirmacao';
 import { listar, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
 import { corresponde, nomeMedico } from '../../utils/formatos';
@@ -17,6 +18,7 @@ const CONTA = {
 
 // A-03 · Cadastro › Médicos.
 function Medicos() {
+  const navigate = useNavigate();
   const carregar = async () => {
     const [medicos, pessoas, usuarios] = await Promise.all([
       listar('medicos'),
@@ -41,7 +43,7 @@ function Medicos() {
     <Pagina
       titulo='Médicos'
       acoes={
-        <button type='button' className='btn btn-primary' onClick={() => emBreve('O cadastro de médico')}>
+        <button type='button' className='btn btn-primary' onClick={() => navigate('/admin/medicos/novo')}>
           + Novo médico
         </button>
       }
@@ -61,7 +63,7 @@ function Medicos() {
           { titulo: 'Registro', render: (m) => `CRM ${m.crm}/${m.ufCrm}` },
           { titulo: 'Especialidade', render: (m) => m.especialidade },
           { titulo: 'Conta', render: (m) => m.conta },
-          ...colunasDeSituacao(alternar, (m) => m.nome),
+          ...colunasDeSituacao(alternar, (m) => m.nome, { aoVer: (l) => navigate(`/admin/medicos/${l.id}`), aoEditar: (l) => navigate(`/admin/medicos/${l.id}/editar`) }),
         ]}
       />
       {modal}

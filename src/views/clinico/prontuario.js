@@ -36,7 +36,7 @@ function Prontuario() {
   if (erro || !dados?.valido) return <RegistroIndisponivel />;
 
   return (
-    <Pagina titulo={`Prontuário · ${dados.nome}`}>
+    <Pagina titulo={`Prontuário · ${dados.nome}`} tituloAba='Prontuário'>
       <ul className='nav nav-tabs'>
         {ABAS.map(([chave, rotulo]) => (
           <li key={chave} className='nav-item'>

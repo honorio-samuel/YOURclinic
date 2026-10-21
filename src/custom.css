@@ -172,3 +172,11 @@
   background-color: #eee;
   color: #222;
 }
+
+/* Formulário em modo consulta: listas e campos com o mesmo fundo. */
+fieldset:disabled .form-select,
+fieldset:disabled .form-control {
+  background-color: #eee;
+  color: #222;
+  opacity: 1;
+}

@@ -1,19 +1,19 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
-import { emBreve, useAlternarSituacao } from '../../components/confirmacao';
+import { useAlternarSituacao } from '../../components/confirmacao';
 import { listar } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
 import { corresponde, moeda } from '../../utils/formatos';
-import { colunasDeSituacao } from './comum';
-
-const TIPO_PROCEDIMENTO = { CONSULTA: 'Consulta', PROCEDIMENTO: 'Procedimento', EXAME: 'Exame' };
+import { colunasDeSituacao, TIPO_PROCEDIMENTO } from './comum';
 
 // A-06 · Cadastro › Procedimentos e preços. O preço negociado por operadora
 // fica no contrato (A-20).
 function Procedimentos() {
+  const navigate = useNavigate();
   const { dados, carregando, erro, recarregar } = useCarregar(() => listar('procedimentos', { _sort: 'nome' }));
   const [modal, alternar] = useAlternarSituacao('procedimentos', recarregar);
   const [busca, setBusca] = React.useState('');
@@ -26,7 +26,7 @@ function Procedimentos() {
     <Pagina
       titulo='Procedimentos e preços'
       acoes={
-        <button type='button' className='btn btn-primary' onClick={() => emBreve('O cadastro de procedimento')}>
+        <button type='button' className='btn btn-primary' onClick={() => navigate('/admin/procedimentos/novo')}>
           + Novo procedimento
         </button>
       }
@@ -53,7 +53,7 @@ function Procedimentos() {
           { titulo: 'Descrição', render: (p) => p.nome },
           { titulo: 'Duração', render: (p) => `${p.duracaoPadrao} min` },
           { titulo: 'Preço part.', classe: 'text-end', render: (p) => moeda(p.precoParticular) },
-          ...colunasDeSituacao(alternar, (p) => p.nome),
+          ...colunasDeSituacao(alternar, (p) => p.nome, { aoVer: (l) => navigate(`/admin/procedimentos/${l.id}`), aoEditar: (l) => navigate(`/admin/procedimentos/${l.id}/editar`) }),
         ]}
       />
       {modal}

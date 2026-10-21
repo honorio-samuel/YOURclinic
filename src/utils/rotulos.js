@@ -148,6 +148,38 @@ export const SITUACAO_SOLICITACAO = {
   RECUSADA: { rotulo: 'Recusada', tom: 'neutro' },
 };
 
+// Cadastros (A-02b, S-01b, A-03, A-04).
+export const TIPO_ATENDIMENTO = { PARTICULAR: 'Particular', CONVENIO: 'Convênio' };
+
+export const GRAU_PARENTESCO = {
+  MAE: 'Mãe',
+  PAI: 'Pai',
+  AVO: 'Avó ou avô',
+  TIO: 'Tia ou tio',
+  IRMAO: 'Irmã ou irmão',
+  TUTOR: 'Tutor ou tutora',
+  CURADOR: 'Curador ou curadora',
+  OUTRO: 'Outro',
+};
+
+export const NATUREZA_REPRESENTACAO = {
+  PODER_FAMILIAR: 'Poder familiar',
+  TUTELA: 'Tutela',
+  CURATELA: 'Curatela',
+};
+
+export const CONTA = {
+  ATIVO: { rotulo: 'Ativa', tom: 'sucesso' },
+  INATIVO: { rotulo: 'Inativa', tom: 'neutro' },
+  CONVITE_PENDENTE: { rotulo: 'Convite pendente', tom: 'aviso' },
+};
+
+export const TURNO = { MANHA: 'Manhã', TARDE: 'Tarde', INTEGRAL: 'Integral' };
+
+export const SEXO = { F: 'Feminino', M: 'Masculino' };
+
+export const UFS = 'AC AL AM AP BA CE DF ES GO MA MG MS MT PA PB PE PI PR RJ RN RO RR RS SC SE SP TO'.split(' ');
+
 export function rotuloDe(mapa, valor) {
   const item = mapa[valor];
   if (!item) return { rotulo: valor ?? '—', tom: 'neutro' };

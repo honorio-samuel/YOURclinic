@@ -12,6 +12,11 @@ export async function buscar(colecao, id) {
   return data;
 }
 
+export async function criar(colecao, campos) {
+  const { data } = await api.post(`/${colecao}`, campos);
+  return data;
+}
+
 export async function atualizar(colecao, id, campos) {
   const { data } = await api.patch(`/${colecao}/${id}`, campos);
   return data;

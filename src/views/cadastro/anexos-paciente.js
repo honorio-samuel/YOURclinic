@@ -11,6 +11,7 @@ import { useCarregar } from '../../hooks/use-carregar';
 import { data } from '../../utils/formatos';
 import { rotuloDe } from '../../utils/rotulos';
 import { ENVIADO_POR } from '../clinico/comum';
+import AbasPaciente from './abas-paciente';
 
 const SITUACAO_ANEXO_RECEPCAO = {
   DISPONIVEL: { rotulo: 'Disponível ao médico', tom: 'sucesso' },
@@ -32,12 +33,14 @@ function AnexosRecepcao() {
   return (
     <Pagina
       titulo={`Paciente · ${dados?.nome ?? '…'}`}
+      tituloAba='Anexos do paciente'
       acoes={
         <button type='button' className='btn btn-primary' onClick={() => emBreve('O envio de arquivo')}>
           Enviar arquivo
         </button>
       }
     >
+      <AbasPaciente id={idPaciente} ativa='anexos' />
       <div className='alert alert-info mb-0' role='status'>
         O conteúdo dos anexos é do médico e do paciente. Aqui aparecem só os dados de envio.
       </div>

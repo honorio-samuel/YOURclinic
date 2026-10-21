@@ -1,10 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
-import { emBreve, useAlternarSituacao } from '../../components/confirmacao';
-import { mensagemErro } from '../../components/toastr';
+import { useAlternarSituacao } from '../../components/confirmacao';
+import { mensagemErro, mostrarMensagem } from '../../components/toastr';
 import { listar, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
 import { corresponde } from '../../utils/formatos';
@@ -14,6 +15,7 @@ import { colunasDeSituacao } from './comum';
 // A-04 · Cadastro › Equipe · usuários e papéis. Contas de Médico e de portal
 // são só leitura aqui: o médico nasce em A-03 e o titular, por convite.
 function Equipe() {
+  const navigate = useNavigate();
   const carregar = async () => {
     const [usuarios, pessoas] = await Promise.all([listar('usuarios'), listar('pessoas')]);
     const pessoa = porId(pessoas);
@@ -26,6 +28,13 @@ function Equipe() {
   const [busca, setBusca] = React.useState('');
   const [papel, setPapel] = React.useState('');
   const gerenciavel = (u) => ['ADMINISTRADOR', 'SECRETARIA'].includes(u.papel);
+  // Médico e paciente abrem o próprio cadastro; o responsável aparece no do paciente.
+  const ver = (u) => {
+    if (gerenciavel(u)) navigate(`/admin/equipe/${u.idPessoa}`);
+    else if (u.papel === 'MEDICO') navigate(`/admin/medicos/${u.idPessoa}`);
+    else if (u.papel === 'PACIENTE') navigate(`/admin/pacientes/${u.idPessoa}`);
+    else mostrarMensagem('Responsável legal', 'Os dados do responsável ficam no cadastro do paciente que ele representa.', 'info');
+  };
 
   // Recusa inativar o último Administrador ativo.
   const alternar = (u, nome, nova) => {
@@ -43,7 +52,7 @@ function Equipe() {
     <Pagina
       titulo='Equipe · usuários e papéis'
       acoes={
-        <button type='button' className='btn btn-primary' onClick={() => emBreve('O convite de novo usuário')}>
+        <button type='button' className='btn btn-primary' onClick={() => navigate('/admin/equipe/novo')}>
           + Novo usuário
         </button>
       }
@@ -69,7 +78,11 @@ function Equipe() {
           { titulo: 'Nome', render: (u) => u.nome },
           { titulo: 'E-mail', render: (u) => u.email },
           { titulo: 'Papel', render: (u) => PAPEIS[u.papel] },
-          ...colunasDeSituacao(alternar, (u) => u.nome, gerenciavel),
+          ...colunasDeSituacao(alternar, (u) => u.nome, {
+            podeAlterar: gerenciavel,
+            aoVer: ver,
+            aoEditar: (u) => navigate(`/admin/equipe/${u.idPessoa}/editar`),
+          }),
         ]}
       />
       {modal}

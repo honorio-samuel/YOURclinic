@@ -6,7 +6,7 @@ import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
 import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
-import { emBreve, useAlternarSituacao } from '../../components/confirmacao';
+import { useAlternarSituacao } from '../../components/confirmacao';
 import { listar, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
 import { useSessao } from '../../sessao/sessao';
@@ -47,14 +47,14 @@ function Pacientes() {
       (corresponde(busca, p.nome) || (digitos.length >= 3 && soDigitos(p.cpf).includes(digitos)))
   );
 
-  const ver = (p) =>
-    ehSecretaria ? navigate(`/secretaria/pacientes/${p.id}/anexos`) : emBreve('O cadastro completo do paciente');
+  const base = ehSecretaria ? '/secretaria/pacientes' : '/admin/pacientes';
+  const ver = (p) => navigate(`${base}/${p.id}`);
 
   return (
     <Pagina
       titulo='Pacientes'
       acoes={
-        <button type='button' className='btn btn-primary' onClick={() => emBreve('O cadastro de paciente')}>
+        <button type='button' className='btn btn-primary' onClick={() => navigate(`${base}/novo`)}>
           + Novo paciente
         </button>
       }
@@ -101,7 +101,7 @@ function Pacientes() {
                   p.situacao === 'ATIVO'
                     ? [
                         { tipo: 'ver', alvo: p.nome, aoClicar: () => ver(p) },
-                        { tipo: 'editar', alvo: p.nome, aoClicar: () => emBreve('A edição do cadastro') },
+                        { tipo: 'editar', alvo: p.nome, aoClicar: () => navigate(`${base}/${p.id}/editar`) },
                         { tipo: 'inativar', alvo: p.nome, aoClicar: () => alternar(p, p.nome, 'INATIVO') },
                       ]
                     : [
