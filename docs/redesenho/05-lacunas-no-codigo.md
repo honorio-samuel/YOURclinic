@@ -136,7 +136,7 @@ Este trecho não foi compilado nem testado. Um ponto a conferir na primeira comp
 
 | Item | Situação | Onde |
 |---|---|---|
-| API aberta no Render | **Continua aberta.** O app passa a usar uma API local com sessão, recusa por papel e campos filtrados; o serviço do Render só muda com acesso a ele | `feat/api-protegida` |
+| API aberta no Render | Resolvido em 21/10/2026: o serviço do Render passou a rodar a API com sessão, recusa por papel e campos filtrados; sem login, todas as coleções respondem 401, inclusive `/db` | `fake-api/` no Render |
 | 1. Usuário e papel fixos | Resolvido: login, sessão com papel vindo do servidor e menu por papel | `feat/telas-listagem-redesenho` |
 | 2. Rotas sem guarda | Resolvido no front: rota fora do papel mostra G-08a; registro fora do alcance, G-08b; sessão expirada volta ao login com aviso. A recusa de fato é da API | front e API |
 | 3. GET sem filtro | Em parte: as telas pedem só o recorte que mostram (dia, médico, titular, ids citados). Busca e paginação ainda acontecem no navegador | front |

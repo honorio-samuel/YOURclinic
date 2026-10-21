@@ -124,7 +124,7 @@ O banco tem as 52 coleções da API do Render, com os mesmos nomes de campos, ma
 
 ## O que esta API não resolve
 
-- **A API do Render continua aberta.** Esta pasta não muda nada lá, e o código do serviço publicado não está em nenhum repositório público. Até alguém com acesso ao Render protegê-la ou desligá-la, os dados de lá continuam expostos.
+- **Publicação manual no Render.** Desde 21/10/2026, `yourclinic-api.onrender.com` roda esta API, a partir do branch `feat/telas-listagem-redesenho` deste repositório, no lugar do json-server aberto. Como o repositório entra no Render como público, um push não publica sozinho: cada versão nova precisa de "Manual Deploy" no painel.
 - As sessões ficam em memória: reiniciar o servidor encerra todas.
 - `autorizacoes.senha` (a senha da operadora TISS) nunca é devolvida, porque nenhuma resposta leva campo `senha*`. As telas de TISS vão precisar de um campo com outro nome.
 - Regras ainda não aplicadas: antecedência X08 para o titular cancelar, atraso X10 antes de Não Compareceu, janela X02 na contagem de tentativas de login, sigilo do adolescente (D3, o banco não tem campo que marque o registro), envelope clínico do recurso de glosa e conteúdo real de anexos e exportações.
