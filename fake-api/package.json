@@ -1,0 +1,14 @@
+{
+  "name": "yourclinic-fake-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "API simulada do YOURClinic com sessão obrigatória e acesso por papel (RC03)",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node servidor.js",
+    "seed": "node seed.js",
+    "test": "node --test"
+  }
+}
