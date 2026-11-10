@@ -1,0 +1,38 @@
+// Tema Yeti com os tokens de contraste AA do redesenho
+// (docs/redesenho/05-lacunas-no-codigo.md, "Como aplicar os tokens", e DECISOES.md, D10).
+$primary: #007fa9;
+$success: #348452;
+$danger: #da3b21;
+$warning: #e99002;
+$info: #5bc0de;
+$min-contrast-ratio: 4.5;
+$link-color: #006f94;
+$font-size-base: 0.875rem;
+$btn-font-weight: 400;
+$badge-font-weight: 400;
+$input-border-color: #767676;
+$form-check-input-border: 1px solid #767676;
+$pagination-color: #006f94;
+
+@import 'bootswatch/dist/yeti/variables';
+@import 'bootstrap/scss/bootstrap';
+@import 'bootswatch/dist/yeti/bootswatch';
+
+// Títulos de 24 px ou mais continuam em 300; os menores sobem para 600 (D12).
+h4,
+h5,
+h6,
+.h4,
+.h5,
+.h6 {
+  font-weight: 600;
+}
+
+// Texto de erro e de sucesso com contraste de 4,5:1 sobre fundos claros (D10).
+.text-danger {
+  color: #c0341d !important;
+}
+
+.text-success {
+  color: #2e7548 !important;
+}

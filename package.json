@@ -12,15 +12,18 @@
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.20.0",
+    "bootstrap": "^5.3.8",
     "bootswatch": "^5.3.8",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.4",
     "react-scripts": "5.0.1",
+    "sass": "1.77.6",
     "toastr": "^2.1.4",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
+    "api": "node fake-api/servidor.js",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
