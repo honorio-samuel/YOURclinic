@@ -21,3 +21,7 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# material de consulta (requisitos, diagramas e quadros de terceiros)
+/docs/fontes/
+/docs/referencia-visual/
