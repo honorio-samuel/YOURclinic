@@ -1,15 +1,19 @@
 import toastr from 'toastr';
 
+// O toastr anima em JavaScript, fora do alcance do CSS: para quem pede menos
+// movimento ao sistema, o aviso aparece e some de uma vez, sem a barra de tempo.
+const semMovimento = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+
 toastr.options = {
   closeButton: true,
   debug: false,
   newestOnTop: false,
-  progressBar: true,
+  progressBar: !semMovimento,
   positionClass: 'toast-top-right',
   preventDuplicates: false,
   onclick: null,
-  showDuration: '300',
-  hideDuration: '1000',
+  showDuration: semMovimento ? 0 : 200,
+  hideDuration: semMovimento ? 0 : 200,
   timeOut: '5000',
   extendedTimeOut: '1000',
   showEasing: 'swing',

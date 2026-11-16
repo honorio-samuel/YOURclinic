@@ -4,13 +4,15 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 import { STATUS_CONSULTA } from '../utils/rotulos';
 
+// Fundo suave com texto de 4,5:1 sobre ele. O tom escuro continua preenchido:
+// suavizado, ele vira um cinza que se confunde com o neutro.
 const CLASSE_DO_TOM = {
-  neutro: 'pilula-neutra',
-  info: 'text-bg-info',
+  neutro: 'bg-body-secondary text-body',
+  info: 'bg-info-subtle text-body',
   escuro: 'text-bg-dark',
-  sucesso: 'text-bg-success',
-  perigo: 'text-bg-danger',
-  aviso: 'text-bg-warning',
+  sucesso: 'bg-success-subtle text-success-emphasis',
+  perigo: 'bg-danger-subtle text-danger-emphasis',
+  aviso: 'bg-warning-subtle text-body',
 };
 
 // Pílula de status. Com "transicoes", vira botão que abre só as mudanças de

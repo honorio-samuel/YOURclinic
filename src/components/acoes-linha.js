@@ -1,14 +1,14 @@
 import React from 'react';
 
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import EditIcon from '@mui/icons-material/Edit';
-import EditNoteIcon from '@mui/icons-material/EditNote';
-import ArchiveIcon from '@mui/icons-material/Archive';
-import UnarchiveIcon from '@mui/icons-material/Unarchive';
-import BlockIcon from '@mui/icons-material/Block';
-import UndoIcon from '@mui/icons-material/Undo';
-import DeleteIcon from '@mui/icons-material/Delete';
-import DownloadIcon from '@mui/icons-material/Download';
+import VisibilityIcon from '@mui/icons-material/VisibilityOutlined';
+import EditIcon from '@mui/icons-material/EditOutlined';
+import EditNoteIcon from '@mui/icons-material/EditNoteOutlined';
+import ArchiveIcon from '@mui/icons-material/ArchiveOutlined';
+import UnarchiveIcon from '@mui/icons-material/UnarchiveOutlined';
+import BlockIcon from '@mui/icons-material/BlockOutlined';
+import UndoIcon from '@mui/icons-material/UndoOutlined';
+import DeleteIcon from '@mui/icons-material/DeleteOutlined';
+import DownloadIcon from '@mui/icons-material/DownloadOutlined';
 
 // Ícones de ação das linhas (BotaoIcone do Figma). Excluir só existe nas três
 // hipóteses de A1-R09; nos demais casos a ação é Inativar, Cancelar ou Estornar.

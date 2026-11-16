@@ -223,39 +223,146 @@
   flex: 1 1 12rem;
 }
 
-/* Listagens */
+/* Filtros das listagens */
 
 .filtro {
   min-width: 12rem;
 }
 
-.pilula-status {
-  min-width: 7rem;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8125rem;
-  font-weight: 400;
+.filtro-busca {
+  flex: 0 1 22rem;
+}
+
+/* Espaço para o ícone de busca dentro do campo. */
+.filtro-busca .form-control {
+  padding-left: 2.25rem;
+}
+
+/* Os chips são mais baixos que os campos: o respiro centra os dois na linha. */
+.filtro-chips {
+  padding-bottom: 0.25rem;
+}
+
+/* Chip de filtro escolhido: preenchido em #333, com texto branco. */
+.chip {
+  --bs-btn-active-color: var(--bs-white);
+  --bs-btn-active-bg: var(--bs-dark);
+  --bs-btn-active-border-color: var(--bs-dark);
+}
+
+/* Tabela das listagens: o texto alinha com o respiro do cartão. */
+
+.listagem-tabela > * > tr > :first-child {
+  padding-left: var(--bs-card-spacer-x);
+}
+
+.listagem-tabela > * > tr > :last-child {
+  padding-right: var(--bs-card-spacer-x);
+}
+
+.coluna-acoes {
+  width: 1%;
+  text-align: right;
   white-space: nowrap;
 }
 
-/* Fundo claro precisa de borda para a pílula se destacar (D22). */
-.pilula-neutra {
-  background-color: #f8f9fa;
-  color: #222;
-  border: 1px solid #767676;
+.coluna-acoes .acoes-linha {
+  justify-content: flex-end;
 }
 
-.pilula-interativa {
+/* No portal, abaixo de 992 px, cada linha da tabela vira um cartão: a primeira
+   célula é o título, as demais mostram o nome da coluna (data-rotulo) ao lado
+   do valor, e as ações ficam no pé. */
+@media (max-width: 991.98px) {
+  .casca-portal .listagem > .card {
+    --bs-card-spacer-x: 0;
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  .casca-portal .listagem .table-responsive {
+    overflow: visible;
+  }
+
+  .casca-portal .listagem-tabela {
+    --bs-table-bg: transparent;
+    --bs-table-hover-bg: transparent;
+  }
+
+  .casca-portal .listagem-tabela,
+  .casca-portal .listagem-tabela > tbody,
+  .casca-portal .listagem-tabela > tbody > tr,
+  .casca-portal .listagem-tabela > tbody > tr > td {
+    display: block;
+  }
+
+  /* O cabeçalho sai da vista, mas continua para o leitor de tela. */
+  .casca-portal .listagem-tabela > thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .casca-portal .listagem-tabela > tbody > tr {
+    padding: 0.75rem 1rem;
+    margin-top: 0.75rem;
+    background-color: var(--bs-body-bg);
+    border-radius: var(--bs-border-radius-lg);
+    box-shadow: var(--bs-box-shadow-sm);
+  }
+
+  .casca-portal .listagem-tabela > tbody > tr > td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    width: auto;
+    padding: 0.25rem 0;
+    text-align: right;
+    white-space: normal;
+    border: 0;
+  }
+
+  .casca-portal .listagem-tabela > tbody > tr > td[data-rotulo]::before {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+    content: attr(data-rotulo);
+  }
+
+  .casca-portal .listagem-tabela > tbody > tr > td[data-rotulo]:first-child {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-align: left;
+  }
+
+  .casca-portal .listagem-tabela > tbody > tr > td[data-rotulo]:first-child::before {
+    content: none;
+  }
+
+  .casca-portal .listagem-tabela > tbody > tr > .coluna-acoes {
+    justify-content: flex-end;
+    padding-top: 0.5rem;
+  }
+}
+
+/* Pílula de status: 24 px de altura, com ou sem o botão de mudar status. */
+.pilula-status {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
-  border: 1px solid #767676;
-  cursor: pointer;
+  gap: 0.125rem;
+  min-height: 1.5rem;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
 }
 
-.pilula-interativa:focus-visible {
-  outline: 2px solid var(--bs-primary);
-  outline-offset: 2px;
+/* O contorno de 3:1 e a seta dizem que a pílula é um botão (D22). */
+.pilula-interativa {
+  border: 1px solid var(--cor-contorno);
+  cursor: pointer;
 }
 
 /* Ícones de ação: 3:1 contra o fundo e área de toque de 28 px (PR-22). */
@@ -267,7 +374,7 @@
   min-height: 1.75rem;
   padding: 0.125rem;
   line-height: 1;
-  color: #767676;
+  color: var(--cor-contorno);
   border: 0;
 }
 
@@ -278,21 +385,88 @@
 }
 
 .botao-icone-perigo,
-.botao-icone-perigo:hover {
-  color: #da3b21;
+.botao-icone-perigo:hover,
+.botao-icone-perigo:focus-visible {
+  color: var(--bs-danger);
 }
+
+/* Formulários */
 
 /* Campo só de leitura: contraste pleno, diferente do desabilitado. */
 .campo-leitura,
 .campo-leitura:focus {
-  background-color: #eee;
-  color: #222;
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-body-color);
 }
 
 /* Formulário em modo consulta: listas e campos com o mesmo fundo. */
 fieldset:disabled .form-select,
 fieldset:disabled .form-control {
-  background-color: #eee;
-  color: #222;
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-body-color);
   opacity: 1;
+}
+
+/* Avisos do toastr no visual de cartão: fundo branco, texto #222 e a barra
+   lateral na cor do tipo. O título do aviso diz o tipo em texto. */
+
+/* O ícone do toastr é uma imagem branca, feita para fundo colorido: sai. O
+   seletor com .toast vence o !important da biblioteca. */
+#toast-container > div.toast {
+  background-image: none !important;
+}
+
+#toast-container > div {
+  width: 20rem;
+  max-width: calc(100vw - 1.5rem);
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  color: var(--bs-body-color);
+  background-color: var(--bs-body-bg);
+  border: 0;
+  border-left: 0.25rem solid var(--cor-contorno);
+  border-radius: var(--bs-border-radius-lg);
+  box-shadow: var(--bs-box-shadow);
+  opacity: 1;
+}
+
+#toast-container > div:hover {
+  box-shadow: var(--bs-box-shadow);
+}
+
+#toast-container > .toast-success {
+  border-left-color: var(--bs-success);
+}
+
+#toast-container > .toast-error {
+  border-left-color: var(--bs-danger);
+}
+
+#toast-container > .toast-warning {
+  border-left-color: var(--bs-warning);
+}
+
+#toast-container > .toast-info {
+  border-left-color: var(--bs-info);
+}
+
+.toast-title {
+  font-weight: 600;
+}
+
+/* Fechar com 24 px de área de toque e o × em #222. */
+#toast-container .toast-close-button {
+  top: -0.25rem;
+  right: -0.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-weight: 400;
+  color: var(--bs-body-color);
+  text-shadow: none;
+  opacity: 1;
+}
+
+.toast-progress {
+  background-color: var(--bs-body-color);
+  opacity: 0.2;
 }

@@ -1,21 +1,30 @@
 import React from 'react';
 
-// Campos de filtro das listagens: busca e seleção, sempre com rótulo visível.
+import SearchIcon from '@mui/icons-material/Search';
+
+// Campos de filtro das listagens: busca, seleção e chips, sempre com rótulo visível.
 
 export function CampoBusca({ id, rotulo, valor, aoMudar, dica = 'Buscar…' }) {
   return (
-    <div className='filtro'>
+    <div className='filtro filtro-busca'>
       <label htmlFor={id} className='form-label'>
         {rotulo}
       </label>
-      <input
-        id={id}
-        type='search'
-        className='form-control'
-        placeholder={dica}
-        value={valor}
-        onChange={(e) => aoMudar(e.target.value)}
-      />
+      <div className='position-relative'>
+        <SearchIcon
+          fontSize='small'
+          className='position-absolute top-50 start-0 translate-middle-y ms-2 text-body-secondary pe-none'
+          aria-hidden='true'
+        />
+        <input
+          id={id}
+          type='search'
+          className='form-control'
+          placeholder={dica}
+          value={valor}
+          onChange={(e) => aoMudar(e.target.value)}
+        />
+      </div>
     </div>
   );
 }
@@ -35,6 +44,34 @@ export function CampoSelect({ id, rotulo, valor, aoMudar, opcoes }) {
         ))}
       </select>
     </div>
+  );
+}
+
+// Mesmas props do CampoSelect, para lista fixa de até quatro opções: todas
+// ficam à vista e a escolhida vai preenchida. São botões de rádio, então o
+// teclado e o leitor de tela tratam o grupo como uma escolha só.
+export function CampoChips({ id, rotulo, valor, aoMudar, opcoes }) {
+  return (
+    <fieldset className='filtro-chips'>
+      <legend className='form-label float-none w-auto'>{rotulo}</legend>
+      <div className='d-flex flex-wrap gap-2'>
+        {opcoes.map(([v, r], i) => (
+          <React.Fragment key={v}>
+            <input
+              type='radio'
+              className='btn-check'
+              name={id}
+              id={`${id}-${i}`}
+              checked={valor === v}
+              onChange={() => aoMudar(v)}
+            />
+            <label htmlFor={`${id}-${i}`} className='btn btn-sm btn-outline-secondary rounded-pill chip'>
+              {r}
+            </label>
+          </React.Fragment>
+        ))}
+      </div>
+    </fieldset>
   );
 }
 

@@ -2,7 +2,8 @@ import React from 'react';
 
 // Peças dos formulários de cadastro (A-02b e seguintes): campos com rótulo
 // visível, erro em texto ligado ao campo por aria-describedby e duas colunas
-// a partir de 768 px, como no Figma. Campo obrigatório leva "*" no rótulo e o
+// a partir de 992 px; abaixo disso, com a barra lateral em gaveta, os campos
+// empilham. Campo obrigatório leva "*" no rótulo e o
 // atributo required, que o leitor de tela anuncia; o formulário explica o
 // asterisco no topo (D10: nada indicado só por cor).
 
@@ -90,7 +91,7 @@ export function CampoTexto({
   ajuda,
   opcional = false,
   tipo = 'text',
-  largura = 'col-md-6',
+  largura = 'col-lg-6',
   ...resto
 }) {
   return (
@@ -119,7 +120,7 @@ export function CampoTexto({
 
 // Valor em reais: "R$" à esquerda e o número alinhado à direita. A máscara
 // (mascararMoeda) vem de quem usa, junto com o tratador do campo.
-export function CampoMoeda({ id, rotulo, valor, aoMudar, erro, ajuda, opcional = false, largura = 'col-md-3' }) {
+export function CampoMoeda({ id, rotulo, valor, aoMudar, erro, ajuda, opcional = false, largura = 'col-lg-3' }) {
   return (
     <div className={largura}>
       <Rotulo id={id} rotulo={rotulo} opcional={opcional} />
@@ -147,7 +148,7 @@ export function CampoMoeda({ id, rotulo, valor, aoMudar, erro, ajuda, opcional =
 }
 
 // opcoes: [[valor, rótulo]]. Sem valor escolhido, mostra "Selecione".
-export function CampoSelecao({ id, rotulo, valor, aoMudar, opcoes, erro, ajuda, opcional = false, largura = 'col-md-6', ...resto }) {
+export function CampoSelecao({ id, rotulo, valor, aoMudar, opcoes, erro, ajuda, opcional = false, largura = 'col-lg-6', ...resto }) {
   return (
     <div className={largura}>
       <Rotulo id={id} rotulo={rotulo} opcional={opcional} />
