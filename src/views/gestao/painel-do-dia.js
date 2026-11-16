@@ -1,6 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
+import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
+import MeetingRoomOutlinedIcon from '@mui/icons-material/MeetingRoomOutlined';
+import MedicalServicesOutlinedIcon from '@mui/icons-material/MedicalServicesOutlined';
+import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
+import PendingActionsOutlinedIcon from '@mui/icons-material/PendingActionsOutlined';
+
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import { DATA_DE_HOJE } from '../../config/axios';
@@ -9,6 +15,14 @@ import { useCarregar } from '../../hooks/use-carregar';
 import { data, diasEntre } from '../../utils/formatos';
 import { STATUS_CONSULTA } from '../../utils/rotulos';
 import { PRAZO_TITULAR } from './comum';
+
+// Status que viram indicador, com o ícone do chip.
+const INDICADORES = [
+  ['AGENDADO', EventOutlinedIcon],
+  ['NA_RECEPCAO', MeetingRoomOutlinedIcon],
+  ['EM_ATENDIMENTO', MedicalServicesOutlinedIcon],
+  ['FINALIZADO', TaskAltOutlinedIcon],
+];
 
 // A-01 · Início › Painel do dia. Contagens sem nome de paciente e as pendências
 // que esperam o Administrador; cada uma leva à tela onde é tratada.
@@ -43,31 +57,62 @@ function PainelDoDia() {
   };
   const { dados, carregando, erro, recarregar } = useCarregar(carregar);
 
+  // Enquanto carrega, uma barra ocupa o lugar do número; se a carga falhar,
+  // fica um traço, e não um zero que pareceria dado.
+  const valorDe = (status) => {
+    if (carregando) {
+      return (
+        <span className='placeholder rounded-pill fs-4' aria-hidden='true'>
+          00 de 00
+        </span>
+      );
+    }
+    if (!dados) return '—';
+    return (
+      <>
+        <span className='numero fs-4 fw-semibold'>{dados.porStatus[status] ?? 0}</span>{' '}
+        <span className='small text-body-secondary'>de {dados.total}</span>
+      </>
+    );
+  };
+
   return (
     <Pagina titulo='Painel do dia'>
-      <div className='row g-3'>
-        {['AGENDADO', 'NA_RECEPCAO', 'EM_ATENDIMENTO', 'FINALIZADO'].map((s) => (
-          <div key={s} className='col-6 col-md-3'>
-            <div className='card h-100'>
-              <div className='card-body'>
-                <div className='display-6 fw-light'>{carregando ? '…' : dados?.porStatus[s] ?? 0}</div>
-                <div className='small text-body-secondary'>{STATUS_CONSULTA[s].rotulo} hoje</div>
+      <div className='card card-body'>
+        <dl className={`row row-cols-2 row-cols-md-4 gy-3 mb-0 indicadores${carregando ? ' placeholder-glow' : ''}`}>
+          {INDICADORES.map(([status, Icone]) => (
+            <div key={status} className='col d-flex align-items-center gap-3'>
+              <span className='chip-icone text-bg-dark' aria-hidden='true'>
+                <Icone fontSize='small' />
+              </span>
+              <div>
+                <dt className='small fw-normal text-body-secondary'>{STATUS_CONSULTA[status].rotulo} hoje</dt>
+                <dd className='mb-0 lh-sm'>{valorDe(status)}</dd>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </dl>
       </div>
       <Listagem
         titulo='Pendências'
+        icone={PendingActionsOutlinedIcon}
+        contador={dados?.pendencias.reduce((soma, p) => soma + p.itens, 0)}
         carregando={carregando}
         erro={erro}
         aoTentarDeNovo={recarregar}
         linhas={dados?.pendencias ?? []}
         colunas={[
-          { titulo: 'Pendência', render: (p) => p.pendencia },
+          { titulo: 'Pendência', render: (p) => <span className='fw-semibold'>{p.pendencia}</span> },
           { titulo: 'Itens', classe: 'text-end', render: (p) => p.itens },
           { titulo: 'Prazo', render: (p) => p.prazo },
-          { titulo: '', render: (p) => <Link to={p.rota}>Abrir</Link> },
+          {
+            titulo: '',
+            render: (p) => (
+              <Link to={p.rota} className='btn btn-sm btn-outline-secondary' aria-label={`Abrir: ${p.pendencia}`}>
+                Abrir
+              </Link>
+            ),
+          },
         ]}
       />
       <p className='small text-body-secondary mb-0'>

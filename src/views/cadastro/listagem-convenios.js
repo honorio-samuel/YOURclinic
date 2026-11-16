@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
-import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
+import { NomeComAvatar } from '../../components/avatar';
+import { CampoBusca, CampoChips, Filtros } from '../../components/campos';
 import { useAlternarSituacao } from '../../components/confirmacao';
 import { listar } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -34,7 +35,7 @@ function Convenios() {
     >
       <Filtros>
         <CampoBusca id='buscaConvenio' rotulo='Buscar por nome ou operadora' valor={busca} aoMudar={setBusca} />
-        <CampoSelect id='statusConvenio' rotulo='Status' valor={status} aoMudar={setStatus} opcoes={OPCOES_STATUS} />
+        <CampoChips id='statusConvenio' rotulo='Status' valor={status} aoMudar={setStatus} opcoes={OPCOES_STATUS} />
       </Filtros>
       <Listagem
         carregando={carregando}
@@ -43,7 +44,7 @@ function Convenios() {
         linhas={linhas}
         vazio='Nenhum convênio encontrado.'
         colunas={[
-          { titulo: 'Nome', render: (c) => c.nome ?? c.razaoSocial },
+          { titulo: 'Nome', render: (c) => <NomeComAvatar nome={c.nome ?? c.razaoSocial} /> },
           { titulo: 'Operadora', render: (c) => c.razaoSocial },
           { titulo: 'Registro ANS', render: (c) => c.registroAns },
           ...colunasDeSituacao(alternar, (c) => c.nome ?? c.razaoSocial, { aoVer: (l) => navigate(caminhos.ver(l.id)), aoEditar: (l) => navigate(caminhos.editar(l.id)) }),

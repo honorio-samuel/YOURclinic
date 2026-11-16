@@ -223,6 +223,29 @@
   flex: 1 1 12rem;
 }
 
+/* Indicadores do Painel do dia: um cartão só, com divisória entre eles. */
+
+.numero {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 768px) {
+  .indicadores > * + * {
+    border-left: 1px solid var(--bs-secondary-bg);
+  }
+}
+
+/* Atalhos do Início do portal: o cartão sobe um pouco sob o ponteiro. */
+
+.atalho {
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+
+.atalho:hover {
+  box-shadow: var(--bs-box-shadow);
+  transform: translateY(-0.125rem);
+}
+
 /* Filtros das listagens */
 
 .filtro {
