@@ -1,16 +1,37 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-import PersonIcon from '@mui/icons-material/Person';
-import LogoutIcon from '@mui/icons-material/Logout';
+import MenuIcon from '@mui/icons-material/Menu';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
+import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 
-import avatar from '../assets/avatar.svg';
+import Avatar from './avatar';
 import { INICIO } from '../navegacao/menus';
 import { PAPEIS } from '../utils/rotulos';
 import { useSessao } from '../sessao/sessao';
 
-// Cabeçalho com a marca e o menu do avatar (Meu perfil e Sair).
-function Navbar() {
+// Marca do app. Com "para", é o link para a tela de entrada do papel.
+export function Marca({ para }) {
+  const texto = (
+    <>
+      YOUR<span className='marca-realce'>Clinic</span>
+    </>
+  );
+  const classe = 'marca fs-4 fw-bold text-body text-decoration-none';
+  return para ? (
+    <Link to={para} className={classe}>
+      {texto}
+    </Link>
+  ) : (
+    <span className={classe}>{texto}</span>
+  );
+}
+
+// Quem está logado, com o menu de Meu perfil e Sair. A partir de 992 px fica no
+// topo de cada tela, com nome e papel; abaixo disso, na barra do topo, só o
+// avatar aparece e o nome fica no rótulo do botão.
+export function BlocoUsuario({ className = '' }) {
   const { sessao, sair } = useSessao();
   const navigate = useNavigate();
   const [aberto, setAberto] = React.useState(false);
@@ -33,6 +54,8 @@ function Navbar() {
     };
   }, [aberto]);
 
+  if (!usuario) return null;
+
   const terminar = async () => {
     setAberto(false);
     await sair();
@@ -40,50 +63,59 @@ function Navbar() {
   };
 
   return (
-    <header className='navbar navbar-dark bg-primary py-0 mb-4'>
-      <div className='container'>
-        <div className='row flex-fill'>
-          <div className='col-auto col-lg-3 py-4 cabecalho-divisao'>
-            <Link to={usuario ? INICIO[usuario.papel] : '/entrar'} className='navbar-brand marca'>
-              <span className='text-dark'>YOUR</span>
-              <span className='text-white'>Clinic</span>
+    <div className={`position-relative ${className}`} ref={raiz}>
+      <button
+        type='button'
+        className='btn bloco-usuario d-flex align-items-center gap-2 p-1 pe-lg-3 text-start rounded-pill'
+        aria-label={`${usuario.nome}, ${PAPEIS[usuario.papel]}`}
+        aria-haspopup='menu'
+        aria-expanded={aberto}
+        onClick={() => setAberto((a) => !a)}
+      >
+        <Avatar nome={usuario.nome} usuario />
+        <span className='d-none d-lg-block lh-sm'>
+          <span className='d-block fw-semibold'>{usuario.nome}</span>
+          <span className='d-block small fw-normal text-body-secondary'>{PAPEIS[usuario.papel]}</span>
+        </span>
+        <ExpandMoreIcon fontSize='small' className='d-none d-lg-block text-body-secondary' aria-hidden='true' />
+      </button>
+      {aberto && (
+        <ul className='dropdown-menu dropdown-menu-end show' role='menu'>
+          <li role='none'>
+            <Link role='menuitem' className='dropdown-item d-flex align-items-center gap-2' to='/perfil' onClick={() => setAberto(false)}>
+              <PersonOutlinedIcon fontSize='small' aria-hidden='true' /> Meu perfil
             </Link>
-          </div>
-          {usuario && (
-            <div className='col py-4 d-flex justify-content-end align-items-center'>
-              <div className='position-relative' ref={raiz}>
-                <button
-                  type='button'
-                  className='usuario-ativo bg-white border-0 d-flex align-items-center gap-3 px-3 py-1 text-start'
-                  aria-haspopup='menu'
-                  aria-expanded={aberto}
-                  onClick={() => setAberto((a) => !a)}
-                >
-                  <img src={avatar} alt='' width='40' height='40' />
-                  <span className='d-none d-sm-block'>
-                    <span className='d-block fw-normal text-dark'>{usuario.nome}</span>
-                    <span className='d-block small text-body-secondary'>{PAPEIS[usuario.papel]}</span>
-                  </span>
-                </button>
-                {aberto && (
-                  <ul className='dropdown-menu dropdown-menu-end show' role='menu'>
-                    <li role='none'>
-                      <Link role='menuitem' className='dropdown-item d-flex align-items-center gap-2' to='/perfil' onClick={() => setAberto(false)}>
-                        <PersonIcon fontSize='small' aria-hidden='true' /> Meu perfil
-                      </Link>
-                    </li>
-                    <li role='none'>
-                      <button type='button' role='menuitem' className='dropdown-item d-flex align-items-center gap-2' onClick={terminar}>
-                        <LogoutIcon fontSize='small' aria-hidden='true' /> Sair
-                      </button>
-                    </li>
-                  </ul>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+          </li>
+          <li role='none'>
+            <button type='button' role='menuitem' className='dropdown-item d-flex align-items-center gap-2' onClick={terminar}>
+              <LogoutOutlinedIcon fontSize='small' aria-hidden='true' /> Sair
+            </button>
+          </li>
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// Barra do topo, só abaixo de 992 px: botão que abre a gaveta do menu, marca
+// e avatar. Com a gaveta aberta, a barra fica inerte, como o resto da tela.
+function Navbar({ menuAberto, aoAbrirMenu }) {
+  const { sessao } = useSessao();
+
+  return (
+    <header className='barra-topo d-lg-none' inert={menuAberto}>
+      <button
+        type='button'
+        className='btn botao-menu'
+        aria-label='Abrir menu'
+        aria-expanded={menuAberto}
+        aria-controls='barra-lateral'
+        onClick={aoAbrirMenu}
+      >
+        <MenuIcon aria-hidden='true' />
+      </button>
+      <Marca para={INICIO[sessao.usuario.papel]} />
+      <BlocoUsuario className='ms-auto' />
     </header>
   );
 }

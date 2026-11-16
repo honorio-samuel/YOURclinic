@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-import BlockIcon from '@mui/icons-material/Block';
-import SearchOffIcon from '@mui/icons-material/SearchOff';
-import ConstructionIcon from '@mui/icons-material/Construction';
+import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined';
+import SearchOffOutlinedIcon from '@mui/icons-material/SearchOffOutlined';
+import ConstructionOutlinedIcon from '@mui/icons-material/ConstructionOutlined';
 
 import Pagina from '../../components/pagina';
 import { INICIO } from '../../navegacao/menus';
@@ -11,16 +11,18 @@ import { PAPEIS } from '../../utils/rotulos';
 import { primeiroNome } from '../../utils/formatos';
 import { useSessao } from '../../sessao/sessao';
 
+// Cartão central das telas de aviso. O título da tela vem da Pagina; "titulo"
+// aqui é o do cartão, quando ele diz outra coisa.
 function Aviso({ icone: Icone, titulo, children }) {
   const { sessao } = useSessao();
   return (
     <div className='card'>
       <div className='card-body text-center py-5 d-flex flex-column align-items-center gap-3'>
-        <Icone fontSize='large' className='text-body-secondary' aria-hidden='true' />
-        <h1 className='h3 mb-0'>{titulo}</h1>
-        <div className='mx-auto' style={{ maxWidth: '36rem' }}>
-          {children}
-        </div>
+        <span className='chip-icone text-bg-dark' aria-hidden='true'>
+          <Icone fontSize='small' />
+        </span>
+        {titulo && <h2 className='h4 mb-0'>{titulo}</h2>}
+        <div className='col-md-10 col-xl-7'>{children}</div>
         {sessao && (
           <Link to={INICIO[sessao.usuario.papel]} className='btn btn-primary'>
             Voltar ao início
@@ -36,36 +38,37 @@ export function AcessoNegado() {
   const { sessao } = useSessao();
   const usuario = sessao?.usuario;
   return (
-    <Aviso icone={BlockIcon} titulo='Acesso negado'>
-      <p className='mb-0'>
-        Olá, {primeiroNome(usuario?.nome)}. Como {PAPEIS[usuario?.papel]}, você não tem acesso a
-        esta funcionalidade.
-      </p>
-    </Aviso>
+    <Pagina titulo='Acesso negado'>
+      <Aviso icone={BlockOutlinedIcon}>
+        <p className='mb-0'>
+          Olá, {primeiroNome(usuario?.nome)}. Como {PAPEIS[usuario?.papel]}, você não tem acesso a
+          esta funcionalidade.
+        </p>
+      </Aviso>
+    </Pagina>
   );
 }
 
 // G-08b: mesma mensagem para registro inexistente e registro fora do alcance.
 export function RegistroIndisponivel() {
   return (
-    <Aviso icone={SearchOffIcon} titulo='Registro indisponível'>
-      <p className='mb-0'>
-        Não foi possível abrir este registro. Ele pode não existir ou não estar disponível para o
-        seu perfil.
-      </p>
-    </Aviso>
+    <Pagina titulo='Registro indisponível'>
+      <Aviso icone={SearchOffOutlinedIcon}>
+        <p className='mb-0'>
+          Não foi possível abrir este registro. Ele pode não existir ou não estar disponível para o
+          seu perfil.
+        </p>
+      </Aviso>
+    </Pagina>
   );
 }
 
-// Telas que não são listagem ficam para a próxima etapa; o desenho está no Figma.
+// Telas do protótipo que ainda não foram implementadas no app.
 export function EmBreve({ codigo, titulo }) {
   return (
     <Pagina titulo={titulo}>
-      <Aviso icone={ConstructionIcon} titulo='Em construção'>
-        <p className='mb-0'>
-          Esta tela ({codigo}) está desenhada no protótipo e entra numa próxima etapa. Nesta versão
-          estão implementadas as telas de listagem de cada papel.
-        </p>
+      <Aviso icone={ConstructionOutlinedIcon} titulo='Em construção'>
+        <p className='mb-0'>Esta tela ({codigo}) está desenhada no protótipo e entra numa próxima etapa.</p>
       </Aviso>
     </Pagina>
   );

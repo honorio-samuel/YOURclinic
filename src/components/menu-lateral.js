@@ -29,11 +29,14 @@ function ItemMenu({ rota, caminho, children }) {
   );
 }
 
+// A pílula preenchida fica só no item da tela atual; o grupo que o contém
+// abre e ganha peso, sem preenchimento.
 function GrupoMenu({ grupo, caminho }) {
   const ativo = contemRota(grupo, caminho);
   const [aberto, setAberto] = React.useState(ativo);
   const id = `submenu-${grupo.rotulo.replace(/\W+/g, '-').toLowerCase()}`;
   const Icone = grupo.icone;
+  const Seta = aberto ? ExpandLessIcon : ExpandMoreIcon;
 
   React.useEffect(() => {
     if (ativo) setAberto(true);
@@ -43,18 +46,14 @@ function GrupoMenu({ grupo, caminho }) {
     <li className='nav-item'>
       <button
         type='button'
-        className={`nav-link w-100 ${ativo ? 'active' : ''}`}
+        className={`nav-link${ativo ? ' grupo-ativo' : ''}`}
         aria-expanded={aberto}
         aria-controls={id}
         onClick={() => setAberto((a) => !a)}
       >
-        <span className='nav-link-icone'>
-          <Icone fontSize='small' aria-hidden='true' />
-        </span>
-        <span className='flex-grow-1 text-start'>{grupo.rotulo}</span>
-        <span className='nav-link-seta' aria-hidden='true'>
-          {aberto ? <ExpandLessIcon fontSize='small' /> : <ExpandMoreIcon fontSize='small' />}
-        </span>
+        <Icone fontSize='small' aria-hidden='true' />
+        <span className='flex-grow-1'>{grupo.rotulo}</span>
+        <Seta fontSize='small' className='text-body-secondary' aria-hidden='true' />
       </button>
       {aberto && (
         <ul id={id} className='nav flex-column submenu'>
@@ -77,25 +76,21 @@ function MenuLateral({ papel }) {
   const itens = MENUS[papel] ?? [];
 
   return (
-    <nav className='card' aria-label='Menu principal'>
-      <div className='card-body'>
-        <ul className='nav nav-pills flex-column gap-2 menu-lateral'>
-          {itens.map((item) =>
-            item.itens ? (
-              <GrupoMenu key={item.rotulo} grupo={item} caminho={pathname} />
-            ) : (
-              <li key={item.rota} className='nav-item'>
-                <ItemMenu rota={item.rota} caminho={pathname}>
-                  <span className='nav-link-icone'>
-                    <item.icone fontSize='small' aria-hidden='true' />
-                  </span>
-                  {item.rotulo}
-                </ItemMenu>
-              </li>
-            )
-          )}
-        </ul>
-      </div>
+    <nav aria-label='Menu principal'>
+      <ul className='nav nav-pills flex-column menu-lateral'>
+        {itens.map((item) =>
+          item.itens ? (
+            <GrupoMenu key={item.rotulo} grupo={item} caminho={pathname} />
+          ) : (
+            <li key={item.rota} className='nav-item'>
+              <ItemMenu rota={item.rota} caminho={pathname}>
+                <item.icone fontSize='small' aria-hidden='true' />
+                {item.rotulo}
+              </ItemMenu>
+            </li>
+          )
+        )}
+      </ul>
     </nav>
   );
 }

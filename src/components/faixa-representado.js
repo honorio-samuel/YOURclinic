@@ -1,40 +1,31 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
+import SupervisorAccountOutlinedIcon from '@mui/icons-material/SupervisorAccountOutlined';
 
-import { buscar } from '../servicos/dados';
+import Faixa from './faixa';
 import { useSessao } from '../sessao/sessao';
 
-// Faixa fixa no portal do Responsável Legal: diz de quem são os dados da tela.
+// Faixa do portal do Responsável Legal: diz de quem são os dados da tela.
+// O nome vem na sessão, junto com a escolha do representado.
 function FaixaRepresentado() {
   const { sessao } = useSessao();
-  const [nome, setNome] = React.useState('');
-  const id = sessao?.idRepresentado;
+  const representado = sessao?.representado;
 
-  React.useEffect(() => {
-    let ativo = true;
-    if (id) {
-      buscar('pessoas', id)
-        .then((p) => ativo && setNome(p.nome))
-        .catch(() => ativo && setNome(''));
-    }
-    return () => {
-      ativo = false;
-    };
-  }, [id]);
-
-  if (sessao?.usuario?.papel !== 'RESPONSAVEL_LEGAL' || !id) return null;
+  if (sessao?.usuario?.papel !== 'RESPONSAVEL_LEGAL' || !representado) return null;
 
   return (
-    <div className='faixa-representado d-flex align-items-center gap-2 px-3 py-2 mb-3'>
-      <SupervisorAccountIcon fontSize='small' aria-hidden='true' />
-      <span>
-        Representando: <strong>{nome || '…'}</strong>
-      </span>
-      <span aria-hidden='true'>·</span>
-      <Link to='/portal/representado'>Trocar</Link>
-    </div>
+    <Faixa
+      tom='neutro'
+      icone={SupervisorAccountOutlinedIcon}
+      acoes={
+        <Link to='/portal/representado' className='btn btn-sm btn-outline-secondary'>
+          Trocar
+        </Link>
+      }
+    >
+      Representando: <strong>{representado.nome}</strong>
+    </Faixa>
   );
 }
 

@@ -1,19 +1,19 @@
-import HomeIcon from '@mui/icons-material/Home';
-import HowToRegIcon from '@mui/icons-material/HowToReg';
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import PaymentsIcon from '@mui/icons-material/Payments';
-import FactCheckIcon from '@mui/icons-material/FactCheck';
-import Inventory2Icon from '@mui/icons-material/Inventory2';
-import InsightsIcon from '@mui/icons-material/Insights';
-import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
-import GroupsIcon from '@mui/icons-material/Groups';
-import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
-import PendingActionsIcon from '@mui/icons-material/PendingActions';
-import EventAvailableIcon from '@mui/icons-material/EventAvailable';
-import EventNoteIcon from '@mui/icons-material/EventNote';
-import FolderSharedIcon from '@mui/icons-material/FolderShared';
-import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
-import PrivacyTipIcon from '@mui/icons-material/PrivacyTip';
+import HomeIcon from '@mui/icons-material/HomeOutlined';
+import HowToRegIcon from '@mui/icons-material/HowToRegOutlined';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonthOutlined';
+import PaymentsIcon from '@mui/icons-material/PaymentsOutlined';
+import FactCheckIcon from '@mui/icons-material/FactCheckOutlined';
+import Inventory2Icon from '@mui/icons-material/Inventory2Outlined';
+import InsightsIcon from '@mui/icons-material/InsightsOutlined';
+import FormatListNumberedIcon from '@mui/icons-material/FormatListNumberedOutlined';
+import GroupsIcon from '@mui/icons-material/GroupsOutlined';
+import RequestQuoteIcon from '@mui/icons-material/RequestQuoteOutlined';
+import PendingActionsIcon from '@mui/icons-material/PendingActionsOutlined';
+import EventAvailableIcon from '@mui/icons-material/EventAvailableOutlined';
+import EventNoteIcon from '@mui/icons-material/EventNoteOutlined';
+import FolderSharedIcon from '@mui/icons-material/FolderSharedOutlined';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLongOutlined';
+import PrivacyTipIcon from '@mui/icons-material/PrivacyTipOutlined';
 
 // Árvore de menus por papel (docs/redesenho/03-mapa-de-navegacao.md).
 // Item com "itens" é um grupo em acordeão; item com "rota" é um link direto.
