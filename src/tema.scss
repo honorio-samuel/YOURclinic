@@ -1,38 +1,293 @@
-// Tema Yeti com os tokens de contraste AA do redesenho
-// (docs/redesenho/05-lacunas-no-codigo.md, "Como aplicar os tokens", e DECISOES.md, D10).
+// Tema do YOURClinic sobre o Bootswatch Yeti. Aqui ficam as variáveis do
+// Bootstrap e do Yeti e as correções de regras deles; as classes do próprio
+// app estão em custom.css. Cores e contraste: docs/redesenho/DECISOES.md, D10;
+// fonte e visual de cartões: D34 em diante.
+
+// Cores. Nenhuma cor fora desta lista entra na interface; os tons suaves são
+// misturas dela com branco, e cada par de texto e fundo foi medido.
 $primary: #007fa9;
 $success: #348452;
 $danger: #da3b21;
 $warning: #e99002;
 $info: #5bc0de;
-$min-contrast-ratio: 4.5;
 $link-color: #006f94;
-$font-size-base: 0.875rem;
-$btn-font-weight: 400;
-$badge-font-weight: 400;
-$input-border-color: #767676;
-$form-check-input-border: 1px solid #767676;
-$pagination-color: #006f94;
+$min-contrast-ratio: 4.5;
+// Texto que o Bootstrap escolhe sobre fundo claro: #222, não preto.
+$color-contrast-dark: #222;
+// Bordas de campo, ícones de ação e contorno de controles: 3:1 nos fundos claros.
+$contorno: #767676;
+
+// Tons suaves das pílulas e das faixas de aviso.
+$success-bg-subtle: mix($success, #fff, 12%); // #e7f0ea
+$success-text-emphasis: #2e7548;
+$danger-bg-subtle: mix($danger, #fff, 10%); // #fbebe9
+$danger-text-emphasis: #c0341d;
+$warning-bg-subtle: mix($warning, #fff, 18%); // #fbebd1
+$warning-text-emphasis: #222;
+$info-bg-subtle: mix($info, #fff, 22%); // #dbf1f8
+$info-text-emphasis: #222;
+$secondary-bg-subtle: #eee;
+$secondary-text-emphasis: #222;
+
+// Fonte (D34): Inter pelo Google Fonts; sem rede, vale a pilha do sistema.
+$web-font-path: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
+$font-family-sans-serif: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+$font-size-base: 0.875rem; // 14 px
+$font-size-sm: 0.8125rem; // 13 px: tabelas, rótulos de campo, avisos e botões pequenos
+$h5-font-size: 1rem; // 16 px: títulos de cartão, de seção e de janela
+$headings-font-weight: 600;
+$display-font-weight: 600;
+$btn-font-weight: 500;
+$badge-font-weight: 500;
+$form-label-font-weight: 500;
+
+// Raios: 6 e 8 px em botões e campos, 12 em avisos e menus, 16 em cartões.
+$border-radius: 0.5rem;
+$border-radius-sm: 0.375rem;
+$border-radius-lg: 0.75rem;
+$border-radius-xl: 1rem;
+
+// Sombras, a partir do #222: a suave é a dos cartões; a outra, a do que flutua
+// (menu suspenso, gaveta, janela e aviso).
+$box-shadow-sm: 0 1px 2px rgba(#222, 0.04), 0 4px 16px rgba(#222, 0.06);
+$box-shadow: 0 8px 24px rgba(#222, 0.12);
+
+// Cartão branco, sem borda, sobre a página em #f8f9fa.
+$card-border-width: 0;
+$card-border-radius: $border-radius-xl;
+$card-inner-border-radius: $border-radius-xl;
+$card-spacer-x: 1.25rem;
+$card-spacer-y: 1.25rem;
+
+// Botões e campos com cerca de 40 px de altura.
+$input-btn-padding-y: 0.5rem;
+$input-btn-padding-x: 0.75rem;
+$input-btn-padding-x-sm: 0.625rem;
+$input-border-color: $contorno;
+$input-focus-border-color: $primary;
+$form-check-input-border: 1px solid $contorno;
+$form-invalid-color: #c0341d;
+// O foco é o contorno definido mais abaixo; o brilho do Bootstrap sai.
+$focus-ring-width: 0;
+
+// Tabela: separadores sutis só na horizontal.
+$table-cell-padding-y: 0.75rem;
+$table-cell-padding-x: 1rem;
+$table-border-color: #eee;
+$table-hover-bg: #f8f9fa;
+
+$badge-padding-x: 0.625rem;
+
+$alert-border-width: 0;
+$alert-border-radius: $border-radius-lg;
+$alert-padding-y: 0.75rem;
+
+$dropdown-border-color: #dee2e6;
+$dropdown-border-radius: $border-radius-lg;
+$dropdown-padding-x: 0.375rem;
+$dropdown-padding-y: 0.375rem;
+$dropdown-item-padding-x: 0.75rem;
+$dropdown-link-hover-bg: #eee;
+
+$modal-content-border-width: 0;
+$modal-content-border-radius: $border-radius-xl;
+$modal-header-border-width: 0;
+$modal-footer-border-width: 0;
+$modal-inner-padding: 1.5rem;
+$modal-header-padding: 1.5rem 1.5rem 0;
+$modal-backdrop-bg: #222;
+
+$pagination-color: $link-color;
+$pagination-border-width: 0;
+$pagination-hover-bg: #eee;
+$pagination-focus-bg: #eee;
+$pagination-disabled-color: rgba(#222, 0.5);
+
+// Esqueleto de carregamento: barras em cinza-claro, a partir do #222.
+$placeholder-opacity-max: 0.14;
+$placeholder-opacity-min: 0.07;
 
 @import 'bootswatch/dist/yeti/variables';
 @import 'bootstrap/scss/bootstrap';
 @import 'bootswatch/dist/yeti/bootswatch';
 
-// Títulos de 24 px ou mais continuam em 300; os menores sobem para 600 (D12).
-h4,
-h5,
-h6,
-.h4,
-.h5,
-.h6 {
-  font-weight: 600;
+:root {
+  --cor-contorno: #{$contorno};
 }
 
-// Texto de erro e de sucesso com contraste de 4,5:1 sobre fundos claros (D10).
+// Texto de erro e de sucesso com 4,5:1 sobre fundos claros (D10).
 .text-danger {
   color: #c0341d !important;
 }
 
 .text-success {
   color: #2e7548 !important;
+}
+
+h1,
+h2,
+.h1,
+.h2,
+.h3,
+.display-6 {
+  letter-spacing: -0.01em;
+}
+
+// Foco sempre visível: contorno de 2 px afastado do controle, com 3:1 sobre
+// os fundos claros. Os seletores do Bootstrap entram porque ele zera o outline.
+:focus-visible,
+.btn:focus-visible,
+.btn-check:focus-visible + .btn,
+.form-control:focus-visible,
+.form-select:focus-visible,
+.form-check-input:focus-visible,
+.nav-link:focus-visible,
+.page-link:focus-visible {
+  outline: 2px solid $primary;
+  outline-offset: 2px;
+}
+
+// O Yeti fixa peso 300 nestes componentes; a D34 não usa 300 abaixo de 24 px.
+.alert,
+.dropdown-item {
+  font-weight: $font-weight-normal;
+}
+
+.pagination {
+  font-weight: $font-weight-medium;
+}
+
+// O Yeti escurece a borda dos botões preenchidos; aqui ela acompanha o fundo.
+.btn-primary,
+.btn-success,
+.btn-danger {
+  border-color: var(--bs-btn-border-color);
+}
+
+// Botão secundário: branco, contorno de 3:1 e texto #222. No Yeti, texto e
+// contorno saem em #eee, que não se lê sobre branco.
+.btn-outline-secondary {
+  --bs-btn-color: #{$gray-900};
+  --bs-btn-bg: #{$white};
+  --bs-btn-border-color: #{$contorno};
+  --bs-btn-hover-color: #{$gray-900};
+  --bs-btn-hover-bg: #{$gray-200};
+  --bs-btn-hover-border-color: #{$contorno};
+  --bs-btn-active-color: #{$gray-900};
+  --bs-btn-active-bg: #{$gray-200};
+  --bs-btn-active-border-color: #{$contorno};
+  --bs-btn-disabled-color: #{$gray-900};
+  --bs-btn-disabled-bg: #{$white};
+  --bs-btn-disabled-border-color: #{$contorno};
+  color: var(--bs-btn-color);
+}
+
+// Perigo contornado: o texto usa o vermelho de 4,5:1, sobre branco.
+.btn-outline-danger {
+  --bs-btn-color: #{$danger-text-emphasis};
+  --bs-btn-bg: #{$white};
+  --bs-btn-border-color: #{$danger-text-emphasis};
+  --bs-btn-disabled-color: #{$danger-text-emphasis};
+  --bs-btn-disabled-bg: #{$white};
+  --bs-btn-disabled-border-color: #{$danger-text-emphasis};
+}
+
+.card {
+  box-shadow: $box-shadow-sm;
+}
+
+.dropdown-menu,
+.modal-content {
+  box-shadow: $box-shadow;
+}
+
+.dropdown-menu {
+  --bs-dropdown-item-border-radius: #{$border-radius};
+}
+
+.dropdown-item {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+// Sem as linhas de cabeçalho e rodapé, o espaço entre as partes da janela
+// fica por conta do corpo.
+.modal-footer {
+  padding-top: 0;
+}
+
+// Tabelas: cabeçalho pequeno em texto secundário e números alinhados.
+.table {
+  font-variant-numeric: tabular-nums;
+
+  > thead th {
+    font-size: 0.75rem;
+    font-weight: $font-weight-medium;
+    color: var(--bs-secondary-color);
+    white-space: nowrap;
+  }
+
+  > tbody > tr:last-child > * {
+    border-bottom-width: 0;
+  }
+}
+
+.form-label {
+  font-size: $font-size-sm;
+}
+
+// O Yeti contorna a pílula ativa e fixa 3 px de raio na paginação.
+.nav-pills .active {
+  border: 0;
+}
+
+.pagination .page-link,
+.pagination .page-item:first-child .page-link,
+.pagination .page-item:last-child .page-link {
+  border-radius: $border-radius;
+}
+
+// Abas segmentadas: trilho em #eee e aba ativa branca. Branco sobre #eee não
+// chega a 3:1, então o contorno é que marca a aba atual.
+.nav-tabs {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background-color: $gray-200;
+  border: 0;
+  border-radius: $border-radius-lg;
+
+  .nav-link {
+    margin-bottom: 0;
+    padding: 0.375rem 0.75rem;
+    font-weight: $font-weight-medium;
+    color: $gray-900;
+    border: 1px solid transparent;
+    border-radius: $border-radius;
+  }
+
+  .nav-link:hover,
+  .nav-link:focus {
+    border-color: transparent;
+  }
+
+  .nav-link.active {
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+    background-color: $white;
+    border-color: $contorno;
+    box-shadow: 0 1px 2px rgba($gray-900, 0.08);
+  }
+}
+
+// Quem pede menos movimento ao sistema fica sem animação e sem transição.
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
