@@ -76,6 +76,8 @@ $table-cell-padding-x: 1rem;
 $table-border-color: #eee;
 $table-hover-bg: #f8f9fa;
 
+// Pílulas e contadores em 12 px, sem depender do tamanho do texto em volta.
+$badge-font-size: 0.75rem;
 $badge-padding-x: 0.625rem;
 
 $alert-border-width: 0;
