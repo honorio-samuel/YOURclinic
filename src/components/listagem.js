@@ -1,5 +1,6 @@
 import React from 'react';
 
+import CabecalhoCartao from './cabecalho-cartao';
 import Paginacao from './paginacao';
 import EstadoErro from './estado-erro';
 
@@ -14,7 +15,8 @@ const classeDa = (coluna) => [coluna.classe, ehDeAcoes(coluna) ? 'coluna-acoes' 
 // de carregando, vazio e erro, e paginação quando passa de uma página.
 // colunas: [{ titulo, render(linha), classe }]
 // Com "titulo", o cartão ganha cabeçalho: chip do ícone, título, contador (o
-// número de linhas, ou o valor de "contador") e a legenda como subtítulo.
+// número de linhas, ou o valor de "contador"), a legenda como subtítulo e as
+// ações do cartão.
 function Listagem({
   colunas,
   linhas,
@@ -25,9 +27,10 @@ function Listagem({
   itensPorPagina = 10,
   chave = (linha) => linha.id,
   titulo,
-  icone: Icone,
+  icone,
   contador,
   legenda,
+  acoes,
 }) {
   const [pagina, setPagina] = React.useState(1);
   const total = linhas?.length ?? 0;
@@ -46,19 +49,8 @@ function Listagem({
     <div className='listagem d-flex flex-column gap-3'>
       <div className='card' aria-busy={carregando ? true : undefined}>
         {titulo && (
-          <div className='card-body pb-2 d-flex align-items-center gap-2'>
-            {Icone && (
-              <span className='chip-icone text-bg-dark' aria-hidden='true'>
-                <Icone fontSize='small' />
-              </span>
-            )}
-            <div>
-              <div className='d-flex align-items-center gap-2'>
-                <h2 className='h5 mb-0'>{titulo}</h2>
-                {!carregando && <span className='badge rounded-pill bg-body-secondary text-body'>{contador ?? total}</span>}
-              </div>
-              {legenda && <p className='small text-body-secondary mb-0'>{legenda}</p>}
-            </div>
+          <div className='card-body pb-2'>
+            <CabecalhoCartao icone={icone} titulo={titulo} contador={carregando ? undefined : contador ?? total} legenda={legenda} acoes={acoes} />
           </div>
         )}
         <div className='table-responsive'>
@@ -110,7 +102,12 @@ function Listagem({
             Carregando…
           </p>
         )}
-        {legenda && !titulo && <p className='small text-body-secondary px-4 pt-2 pb-3 mb-0'>{legenda}</p>}
+        {/* Sem título, a legenda vai ao pé do cartão, com o mesmo respiro dele. */}
+        {legenda && !titulo && (
+          <div className='card-body pt-2'>
+            <p className='small text-body-secondary mb-0'>{legenda}</p>
+          </div>
+        )}
       </div>
       {!carregando && totalPaginas > 1 && (
         <Paginacao pagina={pagina} totalPaginas={totalPaginas} onMudarPagina={setPagina} />
