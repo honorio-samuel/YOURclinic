@@ -1,8 +1,11 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+import PendingActionsOutlinedIcon from '@mui/icons-material/PendingActionsOutlined';
+
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
+import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
 import { CampoSelect, Filtros } from '../../components/campos';
 import { emBreve } from '../../components/confirmacao';
@@ -67,7 +70,7 @@ function FilaDoDia() {
   };
 
   const colunas = [
-    { titulo: 'Paciente', render: (c) => c.paciente },
+    { titulo: 'Paciente', render: (c) => <NomeComAvatar nome={c.paciente} /> },
     { titulo: 'Horário', render: (c) => hora(c.dataHora) },
     { titulo: 'Médico', render: (c) => c.medico },
     { titulo: 'Atendimento', render: (c) => c.atendimento },
@@ -78,7 +81,7 @@ function FilaDoDia() {
       titulo: '',
       render: (c) =>
         c.status === 'FINALIZADO' ? (
-          <button type='button' className='btn btn-link btn-sm p-0' onClick={() => navigate('/secretaria/listagem-cobrancas')}>
+          <button type='button' className='btn btn-sm btn-outline-secondary' onClick={() => navigate('/secretaria/listagem-cobrancas')}>
             Cobrar
           </button>
         ) : (
@@ -108,6 +111,7 @@ function FilaDoDia() {
       {ehSecretaria && (
         <Listagem
           titulo='Pendências da recepção'
+          icone={PendingActionsOutlinedIcon}
           carregando={pend.carregando}
           erro={pend.erro}
           linhas={pend.dados ?? []}
@@ -118,9 +122,11 @@ function FilaDoDia() {
               titulo: '',
               render: (p) =>
                 p.rota ? (
-                  <Link to={p.rota}>{p.acao}</Link>
+                  <Link to={p.rota} className='btn btn-sm btn-outline-secondary'>
+                    {p.acao}
+                  </Link>
                 ) : (
-                  <button type='button' className='btn btn-link btn-sm p-0' onClick={() => emBreve('O reenvio de notificações')}>
+                  <button type='button' className='btn btn-sm btn-outline-secondary' onClick={() => emBreve('O reenvio de notificações')}>
                     {p.acao}
                   </button>
                 ),

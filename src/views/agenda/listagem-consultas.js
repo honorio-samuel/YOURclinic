@@ -2,6 +2,7 @@ import React from 'react';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
+import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
 import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
@@ -46,7 +47,7 @@ function ReagendarOuCancelar() {
         linhas={linhas}
         vazio='Nenhuma consulta agendada nesta seleção.'
         colunas={[
-          { titulo: 'Paciente', render: (c) => c.paciente },
+          { titulo: 'Paciente', render: (c) => <NomeComAvatar nome={c.paciente} /> },
           { titulo: 'Data e hora', render: (c) => diaMesHora(c.dataHora) },
           { titulo: 'Médico', render: (c) => c.medico },
           { titulo: 'Status', render: (c) => <PilulaStatus estado={c.status} /> },

@@ -2,10 +2,12 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
+import Faixa from '../../components/faixa';
 import Listagem from '../../components/listagem';
+import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
-import { CampoSelect, Filtros } from '../../components/campos';
+import { CampoChips, CampoSelect, Filtros } from '../../components/campos';
 import { emBreve, useAlternarSituacao, useConfirmacao } from '../../components/confirmacao';
 import { mensagemErro, mensagemSucesso } from '../../components/toastr';
 import { api } from '../../config/axios';
@@ -74,7 +76,7 @@ function Bloqueios() {
     >
       <Filtros>
         <CampoSelect id='bloqueioMedico' rotulo='Médico' valor={medico} aoMudar={setMedico} opcoes={opcoes} />
-        <CampoSelect
+        <CampoChips
           id='bloqueioStatus'
           rotulo='Status'
           valor={status}
@@ -90,7 +92,7 @@ function Bloqueios() {
         vazio='Nenhum bloqueio nesta seleção.'
         legenda='A lixeira só aparece enquanto o bloqueio não atingiu nenhuma consulta. Depois disso, inative.'
         colunas={[
-          { titulo: 'Médico', render: (b) => b.medico },
+          { titulo: 'Médico', render: (b) => <NomeComAvatar nome={b.medico} /> },
           { titulo: 'Início', render: (b) => data(b.dataInicio) },
           { titulo: 'Fim', render: (b) => data(b.dataFim) },
           { titulo: 'Motivo', render: (b) => MOTIVO_BLOQUEIO[b.motivo] ?? b.motivo },
@@ -138,18 +140,22 @@ function Bloqueios() {
         ]}
       />
       {afetando.map((b) => (
-        <div key={b.id} className='alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2 mb-0' role='status'>
-          <span>
-            O bloqueio de {b.medico} atinge {b.consultasAfetadas} consultas já agendadas. Trate cada uma antes de salvar.
-          </span>
-          <button
-            type='button'
-            className='btn btn-sm btn-primary'
-            onClick={() => emBreve(ehAdmin ? 'O reagendamento em lote' : 'O tratamento das consultas afetadas')}
-          >
-            Tratar consultas afetadas
-          </button>
-        </div>
+        <Faixa
+          key={b.id}
+          tom='aviso'
+          papel='status'
+          acoes={
+            <button
+              type='button'
+              className='btn btn-sm btn-primary'
+              onClick={() => emBreve(ehAdmin ? 'O reagendamento em lote' : 'O tratamento das consultas afetadas')}
+            >
+              Tratar consultas afetadas
+            </button>
+          }
+        >
+          O bloqueio de {b.medico} atinge {b.consultasAfetadas} consultas já agendadas. Trate cada uma antes de salvar.
+        </Faixa>
       ))}
       {modalSituacao}
       {modalExcluir}

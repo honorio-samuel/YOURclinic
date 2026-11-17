@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
+import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
 import { DATA_DE_HOJE } from '../../config/axios';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -70,7 +71,7 @@ function AtendimentosDoDia() {
         itensPorPagina={50}
         vazio='Nenhum atendimento marcado para hoje.'
         colunas={[
-          { titulo: 'Paciente', render: (c) => c.paciente },
+          { titulo: 'Paciente', render: (c) => <NomeComAvatar nome={c.paciente} /> },
           { titulo: 'Horário', render: (c) => hora(c.dataHora) },
           { titulo: 'Tipo', render: (c) => c.tipo },
           { titulo: 'Status', render: (c) => <PilulaStatus estado={c.status} transicoes={transicoes(c)} /> },
@@ -78,7 +79,7 @@ function AtendimentosDoDia() {
             titulo: 'Prontuário',
             render: (c) =>
               ['EM_ATENDIMENTO', 'FINALIZADO'].includes(c.status) ? (
-                <button type='button' className='btn btn-link btn-sm p-0' onClick={() => navigate(`/medico/prontuario/${c.idPaciente}`)}>
+                <button type='button' className='btn btn-sm btn-outline-secondary' onClick={() => navigate(`/medico/prontuario/${c.idPaciente}`)}>
                   Abrir
                 </button>
               ) : (

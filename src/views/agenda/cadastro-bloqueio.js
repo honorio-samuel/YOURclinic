@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
+import Esqueleto from '../../components/esqueleto';
 import { CampoSelecao, CampoTexto, Formulario, Rodape, Secao, useFormulario, useSairSemSalvar } from '../../components/formulario';
 import { mensagemDeErro, useConfirmacao } from '../../components/confirmacao';
 import { mensagemErro, mensagemSucesso } from '../../components/toastr';
@@ -131,7 +132,9 @@ function CadastroBloqueio() {
       }
     >
       {carregando && !dados ? (
-        <p className='text-body-secondary'>Carregando…</p>
+        <div className='card card-body'>
+          <Esqueleto />
+        </div>
       ) : (
         <Formulario
           aoEnviar={salvar}
