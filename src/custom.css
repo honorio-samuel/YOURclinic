@@ -299,6 +299,42 @@
   }
 }
 
+/* Quadro da Fila do dia: uma coluna por status, com rolagem lateral própria. */
+
+.quadro {
+  display: grid;
+  grid-auto-columns: minmax(13.5rem, 1fr);
+  grid-auto-flow: column;
+  gap: 0.75rem;
+  padding-bottom: 0.25rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+/* Com rolagem lateral, o que passa da borda de baixo é cortado: enquanto um
+   menu de status está aberto, o quadro ganha espaço para ele. */
+.quadro:has(.dropdown-menu.show) {
+  padding-bottom: 9rem;
+}
+
+.quadro-coluna {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background-color: var(--bs-secondary-bg);
+  border-radius: var(--bs-border-radius-xl);
+}
+
+/* O card-body do Bootstrap cresce dentro da coluna; aqui o cartão fica do tamanho do conteúdo. */
+.quadro-cartao {
+  --bs-card-spacer-x: 0.75rem;
+  --bs-card-spacer-y: 0.75rem;
+  flex: 0 0 auto;
+  gap: 0.5rem;
+  border-radius: var(--bs-border-radius-lg);
+}
+
 /* Atalhos do Início do portal: o cartão sobe um pouco sob o ponteiro. */
 
 .atalho {

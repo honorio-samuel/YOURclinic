@@ -2,9 +2,13 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import PendingActionsOutlinedIcon from '@mui/icons-material/PendingActionsOutlined';
+import ViewListOutlinedIcon from '@mui/icons-material/ViewListOutlined';
+import ViewKanbanOutlinedIcon from '@mui/icons-material/ViewKanbanOutlined';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
+import Esqueleto from '../../components/esqueleto';
+import EstadoErro from '../../components/estado-erro';
 import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
 import { CampoSelect, Filtros } from '../../components/campos';
@@ -15,6 +19,56 @@ import { useCarregar } from '../../hooks/use-carregar';
 import { useSessao } from '../../sessao/sessao';
 import { data, hora } from '../../utils/formatos';
 import { carregarConsultas, doDia, opcoesDeMedico, useMudarStatus } from './comum';
+
+// Colunas do quadro: o caminho da consulta e, no fim, as duas saídas.
+const COLUNAS_DO_QUADRO = ['AGENDADO', 'NA_RECEPCAO', 'EM_ATENDIMENTO', 'FINALIZADO', 'NAO_COMPARECEU', 'CANCELADO'];
+
+const VISOES = [
+  ['lista', 'Lista', ViewListOutlinedIcon],
+  ['quadro', 'Quadro', ViewKanbanOutlinedIcon],
+];
+
+// A fila em quadro: uma coluna por status do RF22, cada uma na ordem do
+// horário. Mostra o mesmo que a lista, com as mesmas ações; o status muda pela
+// pílula, sem arrastar. A rolagem lateral recebe foco para andar pelo teclado.
+function QuadroDaFila({ linhas, transicoes, acaoDa }) {
+  return (
+    <div className='quadro' role='region' aria-label='Quadro da fila' tabIndex={0}>
+      {COLUNAS_DO_QUADRO.map((status) => {
+        const doStatus = linhas.filter((c) => c.status === status);
+        return (
+          <section key={status} className='quadro-coluna' aria-labelledby={`coluna-${status}`}>
+            <h2 id={`coluna-${status}`} className='h6 d-flex align-items-center gap-2 mb-0'>
+              <PilulaStatus estado={status} />{' '}
+              <span className='badge rounded-pill bg-body text-body'>{doStatus.length}</span>
+            </h2>
+            {doStatus.length === 0 && <p className='small text-body-secondary mb-0'>Nenhuma consulta.</p>}
+            {doStatus.map((c) => {
+              const opcoes = transicoes(c);
+              const acao = acaoDa(c);
+              return (
+                <article key={c.id} className='card card-body quadro-cartao'>
+                  <NomeComAvatar nome={c.paciente} />
+                  <p className='small text-body-secondary mb-0'>
+                    {hora(c.dataHora)} · {c.medico}
+                    <br />
+                    {c.atendimento}
+                  </p>
+                  {(opcoes || acao) && (
+                    <div className='d-flex flex-wrap align-items-center gap-2'>
+                      {opcoes && <PilulaStatus estado={c.status} transicoes={opcoes} />}
+                      {acao}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
 
 async function carregarPendenciasRecepcao(consultasDoDia) {
   const [notificacoes, alertas, representacoes] = await Promise.all([
@@ -49,6 +103,7 @@ function FilaDoDia() {
   const pend = useCarregar(() => (ehSecretaria && dados ? carregarPendenciasRecepcao(dados) : Promise.resolve(null)), [dados]);
   const [modal, mudar] = useMudarStatus(recarregar);
   const [medico, setMedico] = React.useState('');
+  const [visao, setVisao] = React.useState('lista');
   const linhas = (dados ?? []).filter((c) => !medico || String(c.idMedico) === medico);
 
   const transicoes = (c) => {
@@ -69,6 +124,14 @@ function FilaDoDia() {
     return null;
   };
 
+  // Depois de finalizada, a consulta vai para a cobrança (só a Secretária cobra).
+  const acaoDa = (c) =>
+    ehSecretaria && c.status === 'FINALIZADO' ? (
+      <button type='button' className='btn btn-sm btn-outline-secondary' onClick={() => navigate('/secretaria/listagem-cobrancas')}>
+        Cobrar
+      </button>
+    ) : null;
+
   const colunas = [
     { titulo: 'Paciente', render: (c) => <NomeComAvatar nome={c.paciente} /> },
     { titulo: 'Horário', render: (c) => hora(c.dataHora) },
@@ -76,29 +139,11 @@ function FilaDoDia() {
     { titulo: 'Atendimento', render: (c) => c.atendimento },
     { titulo: 'Status', render: (c) => <PilulaStatus estado={c.status} transicoes={transicoes(c)} /> },
   ];
-  if (ehSecretaria) {
-    colunas.push({
-      titulo: '',
-      render: (c) =>
-        c.status === 'FINALIZADO' ? (
-          <button type='button' className='btn btn-sm btn-outline-secondary' onClick={() => navigate('/secretaria/listagem-cobrancas')}>
-            Cobrar
-          </button>
-        ) : (
-          '—'
-        ),
-    });
-  }
+  if (ehSecretaria) colunas.push({ titulo: '', render: (c) => acaoDa(c) ?? '—' });
 
-  return (
-    <Pagina titulo={ehSecretaria ? 'Fila do dia' : 'Fila do dia · leitura'}>
-      <Filtros>
-        <CampoSelect id='filaMedico' rotulo='Médico' valor={medico} aoMudar={setMedico} opcoes={opcoesDeMedico(dados)} />
-        <div className='filtro'>
-          <span className='form-label d-block'>Data</span>
-          <span className='form-control-plaintext'>Hoje, {data(DATA_DE_HOJE)}</span>
-        </div>
-      </Filtros>
+  let conteudo;
+  if (visao === 'lista') {
+    conteudo = (
       <Listagem
         carregando={carregando}
         erro={erro}
@@ -108,6 +153,47 @@ function FilaDoDia() {
         vazio='Nenhuma consulta marcada para hoje.'
         colunas={colunas}
       />
+    );
+  } else if (erro) {
+    conteudo = <EstadoErro erro={erro} aoTentarDeNovo={recarregar} />;
+  } else if (carregando) {
+    conteudo = (
+      <div className='card card-body'>
+        <Esqueleto />
+      </div>
+    );
+  } else {
+    conteudo = <QuadroDaFila linhas={linhas} transicoes={transicoes} acaoDa={acaoDa} />;
+  }
+
+  return (
+    <Pagina titulo={ehSecretaria ? 'Fila do dia' : 'Fila do dia · leitura'}>
+      <div className='d-flex flex-wrap align-items-end justify-content-between gap-3'>
+        <Filtros>
+          <CampoSelect id='filaMedico' rotulo='Médico' valor={medico} aoMudar={setMedico} opcoes={opcoesDeMedico(dados)} />
+          <div className='filtro'>
+            <span className='form-label d-block'>Data</span>
+            <span className='form-control-plaintext'>Hoje, {data(DATA_DE_HOJE)}</span>
+          </div>
+        </Filtros>
+        {/* Lista ou quadro: os mesmos dados, em duas arrumações. */}
+        <ul className='nav nav-tabs align-self-end' aria-label='Visão da fila'>
+          {VISOES.map(([chave, rotulo, Icone]) => (
+            <li key={chave} className='nav-item'>
+              <button
+                type='button'
+                className={`nav-link d-flex align-items-center gap-1${visao === chave ? ' active' : ''}`}
+                aria-pressed={visao === chave}
+                onClick={() => setVisao(chave)}
+              >
+                <Icone fontSize='small' aria-hidden='true' />
+                {rotulo}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+      {conteudo}
       {ehSecretaria && (
         <Listagem
           titulo='Pendências da recepção'
