@@ -84,7 +84,7 @@ function Movimentacoes() {
       acoes={
         ehAdmin ? (
           <>
-            <button type='button' className='btn btn-outline-primary' onClick={() => emBreve('O ajuste de inventário')}>
+            <button type='button' className='btn btn-outline-secondary' onClick={() => emBreve('O ajuste de inventário')}>
               Ajuste de inventário
             </button>
             <button type='button' className='btn btn-primary' onClick={() => emBreve('O registro de entrada')}>
@@ -93,10 +93,10 @@ function Movimentacoes() {
           </>
         ) : (
           <>
-            <button type='button' className='btn btn-outline-primary' onClick={() => emBreve('O pedido de ajuste')}>
+            <button type='button' className='btn btn-outline-secondary' onClick={() => emBreve('O pedido de ajuste')}>
               Pedir ajuste
             </button>
-            <button type='button' className='btn btn-outline-primary' onClick={() => emBreve('O registro de entrada')}>
+            <button type='button' className='btn btn-outline-secondary' onClick={() => emBreve('O registro de entrada')}>
               + Entrada
             </button>
             <button type='button' className='btn btn-primary' onClick={() => emBreve('O registro de saída')}>

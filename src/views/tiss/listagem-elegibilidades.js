@@ -2,6 +2,7 @@ import React from 'react';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
+import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
 import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
 import { emBreve } from '../../components/confirmacao';
@@ -86,7 +87,7 @@ function Elegibilidade() {
         linhas={linhas}
         vazio='Nenhuma consulta por convênio nesta seleção.'
         colunas={[
-          { titulo: 'Paciente', render: (l) => l.paciente },
+          { titulo: 'Paciente', render: (l) => <NomeComAvatar nome={l.paciente} /> },
           { titulo: 'Operadora', render: (l) => l.operadora },
           { titulo: 'Procedimento', render: (l) => l.procedimento },
           { titulo: 'CID', render: (l) => l.cid },

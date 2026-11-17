@@ -3,7 +3,7 @@ import React from 'react';
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
-import { CampoSelect, Filtros } from '../../components/campos';
+import { CampoChips, CampoSelect, Filtros } from '../../components/campos';
 import { emBreve, salvarComAviso, useConfirmacao } from '../../components/confirmacao';
 import { DATA_DE_HOJE } from '../../config/axios';
 import { listar, porId } from '../../servicos/dados';
@@ -63,7 +63,7 @@ function Lotes() {
     >
       <Filtros>
         <CampoSelect id='loteOperadora' rotulo='Operadora' valor={operadora} aoMudar={setOperadora} opcoes={opcoesOperadora(dados)} />
-        <CampoSelect id='loteSituacao' rotulo='Situação' valor={situacao} aoMudar={setSituacao} opcoes={[['', 'Todas'], ...Object.entries(SITUACAO).map(([k, v]) => [k, v.rotulo])]} />
+        <CampoChips id='loteSituacao' rotulo='Situação' valor={situacao} aoMudar={setSituacao} opcoes={[['', 'Todas'], ...Object.entries(SITUACAO).map(([k, v]) => [k, v.rotulo])]} />
       </Filtros>
       <Listagem carregando={carregando} erro={erro} aoTentarDeNovo={recarregar} linhas={linhas} vazio='Nenhum lote nesta seleção.' colunas={colunas} />
       {modal}

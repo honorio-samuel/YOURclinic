@@ -38,7 +38,7 @@ function Glosas() {
       titulo={ehAdmin ? 'Demonstrativos e glosas' : 'Demonstrativo e glosas'}
       acoes={
         !ehAdmin && (
-          <button type='button' className='btn btn-outline-primary' onClick={() => emBreve('A importação do demonstrativo')}>
+          <button type='button' className='btn btn-outline-secondary' onClick={() => emBreve('A importação do demonstrativo')}>
             Importar demonstrativo
           </button>
         )

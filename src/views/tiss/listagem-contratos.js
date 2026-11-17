@@ -2,6 +2,7 @@ import React from 'react';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
+import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
 import { emBreve } from '../../components/confirmacao';
@@ -35,7 +36,7 @@ function Contratos() {
         vazio='Nenhum contrato cadastrado.'
         legenda='Prazos na ordem: apresentação do lote, pagamento após o protocolo e recurso de glosa.'
         colunas={[
-          { titulo: 'Operadora', render: (c) => c.operadora },
+          { titulo: 'Operadora', render: (c) => <NomeComAvatar nome={c.operadora} /> },
           { titulo: 'Nº do contrato', render: (c) => c.numero },
           { titulo: 'Vigência', render: (c) => `${mesAno(c.vigenciaInicio)} a ${mesAno(c.vigenciaFim)}` },
           { titulo: 'Versão TISS', render: (c) => c.versaoTiss },

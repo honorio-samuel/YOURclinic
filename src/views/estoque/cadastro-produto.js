@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
+import Esqueleto from '../../components/esqueleto';
 import {
   CampoMarcar,
   CampoMoeda,
@@ -102,7 +103,9 @@ function CadastroProduto() {
       }
     >
       {carregando && id && !atual ? (
-        <p className='text-body-secondary'>Carregando…</p>
+        <div className='card card-body'>
+          <Esqueleto />
+        </div>
       ) : (
         <Formulario
           aoEnviar={salvar}
@@ -117,13 +120,13 @@ function CadastroProduto() {
           )}
           <Secao titulo='Produto'>
             <CampoTexto {...form.campo('descricao')} rotulo='Descrição' largura='col-12' />
-            <CampoSelecao {...form.campo('tipo')} rotulo='Tipo' opcoes={Object.entries(TIPO_PRODUTO)} largura='col-md-4' />
-            <CampoSelecao {...form.campo('unidade')} rotulo='Unidade' opcoes={Object.entries(UNIDADE_PRODUTO)} largura='col-md-4' />
+            <CampoSelecao {...form.campo('tipo')} rotulo='Tipo' opcoes={Object.entries(TIPO_PRODUTO)} largura='col-lg-4' />
+            <CampoSelecao {...form.campo('unidade')} rotulo='Unidade' opcoes={Object.entries(UNIDADE_PRODUTO)} largura='col-lg-4' />
             <CampoTexto
               {...form.campo('estoqueMinimo', mascararDigitos(6))}
               rotulo='Estoque mínimo'
               inputMode='numeric'
-              largura='col-md-4'
+              largura='col-lg-4'
               ajuda='Abaixo disso, o produto entra em Alertas.'
             />
             {ehAdmin && (
@@ -131,7 +134,7 @@ function CadastroProduto() {
                 {...form.campo('custoAquisicao', mascararMoeda)}
                 rotulo='Custo de aquisição'
                 opcional
-                largura='col-md-4'
+                largura='col-lg-4'
                 ajuda='Por unidade. Só o Administrador vê.'
               />
             )}
