@@ -13,10 +13,10 @@ const TONS = {
   neutro: { faixa: 'alert-secondary', chip: 'text-bg-dark', icone: InfoOutlinedIcon },
 };
 
-// Faixa de aviso: chip de ícone, título opcional, texto e ações à direita.
+// Faixa de aviso: chip de ícone, texto e ações à direita.
 // "papel" é o role do leitor de tela: alert para erro, status para aviso que
 // surge depois da tela aberta.
-function Faixa({ tom = 'info', icone, titulo, acoes, papel, children }) {
+function Faixa({ tom = 'info', icone, acoes, papel, children }) {
   const { faixa, chip, icone: IconeDoTom } = TONS[tom];
   const Icone = icone ?? IconeDoTom;
 
@@ -25,10 +25,7 @@ function Faixa({ tom = 'info', icone, titulo, acoes, papel, children }) {
       <span className={`chip-icone ${chip}`} aria-hidden='true'>
         <Icone fontSize='small' />
       </span>
-      <div className='faixa-texto'>
-        {titulo && <div className='fw-semibold'>{titulo}</div>}
-        {children}
-      </div>
+      <div className='faixa-texto'>{children}</div>
       {acoes && <div className='d-flex flex-wrap align-items-center gap-2'>{acoes}</div>}
     </div>
   );
