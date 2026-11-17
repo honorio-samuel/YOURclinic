@@ -1,6 +1,6 @@
 # YOURClinic
 
-App React de gestão de clínica médica, organizado por papel: Administrador, Médico, Secretária, Paciente e Responsável Legal. As telas seguem o redesenho em [docs/redesenho/](docs/redesenho/): menu próprio de cada papel, listagens e cadastros num padrão único e tema Bootswatch Yeti ajustado para contraste AA.
+App React de gestão de clínica médica, organizado por papel: Administrador, Médico, Secretária, Paciente e Responsável Legal. As telas seguem o redesenho em [docs/redesenho/](docs/redesenho/): menu próprio de cada papel, listagens e cadastros num padrão único e um visual de painel (barra lateral clara, cartões brancos e pílulas suaves) sobre o tema Bootswatch Yeti, ajustado para contraste AA.
 
 ## Rodar
 
@@ -68,6 +68,12 @@ Telas que ainda não existem (agenda em grade, novo agendamento, grade de horár
 
 O papel vem do servidor. O front só monta menus e rotas do papel da sessão; quem recusa de fato é a API, que responde 401 (sem sessão), 403 (papel sem acesso) e 404 (registro fora do alcance, igual a inexistente). Nenhuma tela mostra texto de regra (RF, RC) ao usuário, e o título da aba nunca leva nome de paciente.
 
+## Visual
+
+A partir de 992 px, a barra lateral fica fixa à esquerda, com a marca, o menu do papel e o contato da clínica; o título de cada tela divide a linha com as ações e com o bloco do usuário. Abaixo de 992 px, a barra lateral vira gaveta, aberta pelo botão da barra do topo, e os campos dos formulários empilham. No portal, pensado para o celular, cada linha de tabela vira um cartão.
+
+As variáveis do Bootstrap e do Yeti (fonte Inter, raios, sombras, tons suaves e foco) ficam em `src/tema.scss`; as classes próprias, em `src/custom.css`. A fonte vem do Google Fonts; sem rede, vale a fonte do sistema. Quem pede menos movimento ao sistema fica sem animação. As escolhas, com os pares de contraste medidos, estão em [DECISOES.md](docs/redesenho/DECISOES.md#decisões-do-novo-visual), de D34 em diante.
+
 ## Estrutura
 
 | Pasta | Conteúdo |
@@ -75,7 +81,8 @@ O papel vem do servidor. O front só monta menus e rotas do papel da sessão; qu
 | `src/config/` | Cliente axios com o token da sessão |
 | `src/sessao/` | Login, sessão e representado escolhido |
 | `src/navegacao/` | Menus de cada papel e caminhos de listagem e cadastro |
-| `src/components/` | Cabeçalho, menu em acordeão, listagem, pílula de status, ações da linha, confirmação, campos e seções de formulário |
+| `src/components/` | Casca (barra lateral, gaveta e bloco do usuário), menu em acordeão, listagem em cartão, pílula de status, faixa de aviso, esqueleto de carregamento, avatar, ações da linha, confirmação, campos e seções de formulário |
+| `src/tema.scss`, `src/custom.css` | Tema (variáveis do Bootstrap e do Yeti) e classes próprias do app |
 | `src/servicos/` | Leitura e gravação na API; cadastro de pessoas, pacientes e profissionais |
 | `src/views/` | Telas por domínio (cadastro, agenda, financeiro, TISS, estoque, gestão, clínico, portal), uma por arquivo; o que mais de uma tela da pasta usa fica em `comum.js` |
 | `src/utils/` | Formatos de data e moeda, máscaras e validações, rótulos dos valores da API |
