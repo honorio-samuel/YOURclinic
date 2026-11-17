@@ -6,8 +6,8 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 import { MENUS } from '../navegacao/menus';
 
-// O item fica aceso na própria rota e nas telas que se abrem a partir dele:
-// o cadastro acende a listagem da mesma entidade, e o prontuário, Meus pacientes.
+// Telas que se abrem a partir de um item acendem esse item: o cadastro acende a
+// listagem da mesma entidade, e o prontuário, Meus pacientes.
 function rotaDaListagem(caminho) {
   const cadastro = caminho.match(/^(\/[a-z]+)\/cadastro-([a-z-]+)/);
   if (cadastro) return `${cadastro[1]}/listagem-${cadastro[2]}`;
@@ -15,13 +15,20 @@ function rotaDaListagem(caminho) {
   return null;
 }
 
-const itemAtivo = (rota, caminho) =>
-  caminho === rota || caminho.startsWith(rota + '/') || rotaDaListagem(caminho) === rota;
+// Rota do único item aceso. A própria tela vem primeiro; só quando ela não está
+// no menu vale a listagem a que pertence. Sem essa ordem, "Agendar consulta" do
+// portal acendia também "Meus agendamentos".
+function rotaAcesa(itens, caminho) {
+  const rotas = itens.flatMap((item) => (item.itens ? item.itens.map((sub) => sub.rota) : [item.rota]));
+  return (
+    rotas.find((rota) => caminho === rota || caminho.startsWith(rota + '/')) ??
+    rotas.find((rota) => rota === rotaDaListagem(caminho)) ??
+    null
+  );
+}
 
-const contemRota = (grupo, caminho) => grupo.itens.some((item) => itemAtivo(item.rota, caminho));
-
-function ItemMenu({ rota, caminho, children }) {
-  const ativo = itemAtivo(rota, caminho);
+function ItemMenu({ rota, acesa, children }) {
+  const ativo = rota === acesa;
   return (
     <Link to={rota} className={`nav-link${ativo ? ' active' : ''}`} aria-current={ativo ? 'page' : undefined}>
       {children}
@@ -31,8 +38,8 @@ function ItemMenu({ rota, caminho, children }) {
 
 // A pílula preenchida fica só no item da tela atual; o grupo que o contém
 // abre e ganha peso, sem preenchimento.
-function GrupoMenu({ grupo, caminho }) {
-  const ativo = contemRota(grupo, caminho);
+function GrupoMenu({ grupo, acesa }) {
+  const ativo = grupo.itens.some((item) => item.rota === acesa);
   const [aberto, setAberto] = React.useState(ativo);
   const id = `submenu-${grupo.rotulo.replace(/\W+/g, '-').toLowerCase()}`;
   const Icone = grupo.icone;
@@ -59,7 +66,7 @@ function GrupoMenu({ grupo, caminho }) {
         <ul id={id} className='nav flex-column submenu'>
           {grupo.itens.map((item) => (
             <li key={item.rota} className='nav-item'>
-              <ItemMenu rota={item.rota} caminho={caminho}>
+              <ItemMenu rota={item.rota} acesa={acesa}>
                 {item.rotulo}
               </ItemMenu>
             </li>
@@ -74,16 +81,17 @@ function GrupoMenu({ grupo, caminho }) {
 function MenuLateral({ papel }) {
   const { pathname } = useLocation();
   const itens = MENUS[papel] ?? [];
+  const acesa = rotaAcesa(itens, pathname);
 
   return (
     <nav aria-label='Menu principal'>
       <ul className='nav nav-pills flex-column menu-lateral'>
         {itens.map((item) =>
           item.itens ? (
-            <GrupoMenu key={item.rotulo} grupo={item} caminho={pathname} />
+            <GrupoMenu key={item.rotulo} grupo={item} acesa={acesa} />
           ) : (
             <li key={item.rota} className='nav-item'>
-              <ItemMenu rota={item.rota} caminho={pathname}>
+              <ItemMenu rota={item.rota} acesa={acesa}>
                 <item.icone fontSize='small' aria-hidden='true' />
                 {item.rotulo}
               </ItemMenu>
