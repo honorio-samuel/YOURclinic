@@ -2,6 +2,7 @@ import React from 'react';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
+import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
 import { emBreve, salvarComAviso, useConfirmacao } from '../../components/confirmacao';
@@ -43,7 +44,7 @@ function OrcamentosMedico() {
         linhas={dados ?? []}
         vazio='Você ainda não criou orçamentos.'
         colunas={[
-          { titulo: 'Paciente', render: (o) => o.paciente },
+          { titulo: 'Paciente', render: (o) => <NomeComAvatar nome={o.paciente} /> },
           { titulo: 'Criado em', render: (o) => data(o.dataEmissao) },
           { titulo: 'Itens', classe: 'text-end', render: (o) => o.itens.length },
           { titulo: 'Situação', render: (o) => <PilulaStatus {...rotuloDe(ETAPA_ORCAMENTO, o.etapa)} /> },

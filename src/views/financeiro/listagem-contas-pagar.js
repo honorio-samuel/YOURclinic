@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
+import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
 import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
@@ -76,7 +77,7 @@ function ContasPagar() {
         linhas={linhas}
         vazio='Nenhuma conta nesta seleção.'
         colunas={[
-          { titulo: 'Fornecedor', render: (t) => t.fornecedor },
+          { titulo: 'Fornecedor', render: (t) => <NomeComAvatar nome={t.fornecedor} /> },
           { titulo: 'Categoria', render: (t) => CATEGORIA_DESPESA[t.categoria] ?? t.categoria },
           { titulo: 'Vencimento', render: (t) => data(t.vencimento) },
           { titulo: 'Valor', classe: 'text-end', render: (t) => moeda(t.valor) },

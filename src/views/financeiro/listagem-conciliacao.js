@@ -4,7 +4,7 @@ import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
-import { CampoSelect, Filtros } from '../../components/campos';
+import { CampoChips, CampoSelect, Filtros } from '../../components/campos';
 import { emBreve } from '../../components/confirmacao';
 import { listar } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -31,14 +31,14 @@ function Conciliacao() {
     <Pagina
       titulo='Conciliação de recebíveis'
       acoes={
-        <button type='button' className='btn btn-outline-primary' onClick={() => emBreve('A importação do extrato')}>
+        <button type='button' className='btn btn-outline-secondary' onClick={() => emBreve('A importação do extrato')}>
           Importar extrato
         </button>
       }
     >
       <Filtros>
         <CampoSelect id='concAdquirente' rotulo='Adquirente' valor={adquirente} aoMudar={setAdquirente} opcoes={[['', 'Todos'], ...adquirentes.map((a) => [a, a])]} />
-        <CampoSelect
+        <CampoChips
           id='concSituacao'
           rotulo='Situação'
           valor={situacao}

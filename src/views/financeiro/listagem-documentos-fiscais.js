@@ -4,7 +4,7 @@ import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
-import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
+import { CampoBusca, CampoChips, Filtros } from '../../components/campos';
 import { emBreve } from '../../components/confirmacao';
 import { listar, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -63,9 +63,9 @@ function DocumentosFiscais() {
     >
       <Filtros>
         <CampoBusca id='docBusca' rotulo='Buscar por número ou pagador' valor={busca} aoMudar={setBusca} />
-        {ehAdmin && <CampoSelect id='docTipo' rotulo='Tipo' valor={tipo} aoMudar={setTipo} opcoes={[['', 'Todos'], ['RECIBO', 'Recibo'], ['NFSE', 'NFS-e']]} />}
+        {ehAdmin && <CampoChips id='docTipo' rotulo='Tipo' valor={tipo} aoMudar={setTipo} opcoes={[['', 'Todos'], ['RECIBO', 'Recibo'], ['NFSE', 'NFS-e']]} />}
         {ehAdmin && (
-          <CampoSelect
+          <CampoChips
             id='docSituacao'
             rotulo='Situação'
             valor={situacao}

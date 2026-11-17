@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
+import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
-import { CampoSelect, Filtros } from '../../components/campos';
+import { CampoChips, CampoSelect, Filtros } from '../../components/campos';
 import { DATA_DE_HOJE } from '../../config/axios';
 import { listar, pessoasPorId, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -39,7 +40,7 @@ function CobrancasDoDia() {
     <Pagina titulo='Cobranças do dia'>
       <Filtros>
         <CampoSelect id='cobMedico' rotulo='Médico' valor={medico} aoMudar={setMedico} opcoes={opcoesMedico} />
-        <CampoSelect id='cobSituacao' rotulo='Situação' valor={situacao} aoMudar={setSituacao} opcoes={[['', 'Todas'], ['ABERTA', 'Em aberto'], ['PAGA', 'Paga']]} />
+        <CampoChips id='cobSituacao' rotulo='Situação' valor={situacao} aoMudar={setSituacao} opcoes={[['', 'Todas'], ['ABERTA', 'Em aberto'], ['PAGA', 'Paga']]} />
       </Filtros>
       <Listagem
         carregando={carregando}
@@ -48,7 +49,7 @@ function CobrancasDoDia() {
         linhas={linhas}
         vazio='Nenhuma cobrança emitida hoje nesta seleção.'
         colunas={[
-          { titulo: 'Paciente', render: (c) => c.paciente },
+          { titulo: 'Paciente', render: (c) => <NomeComAvatar nome={c.paciente} /> },
           { titulo: 'Procedimento', render: (c) => c.procedimento },
           { titulo: 'Valor de tabela', classe: 'text-end', render: (c) => moeda(c.valorTotal) },
           { titulo: 'Situação', render: (c) => <PilulaStatus {...rotuloDe(SITUACAO_TITULO, c.situacao)} /> },
@@ -56,11 +57,11 @@ function CobrancasDoDia() {
             titulo: '',
             render: (c) =>
               c.situacao === 'PAGA' ? (
-                <button type='button' className='btn btn-link btn-sm p-0' onClick={() => navigate('/secretaria/listagem-recibos')}>
+                <button type='button' className='btn btn-sm btn-outline-secondary' onClick={() => navigate('/secretaria/listagem-recibos')}>
                   Recibo
                 </button>
               ) : (
-                <button type='button' className='btn btn-sm btn-outline-primary' onClick={() => navigate('/secretaria/checkout')}>
+                <button type='button' className='btn btn-sm btn-outline-secondary' onClick={() => navigate('/secretaria/checkout')}>
                   Receber
                 </button>
               ),

@@ -2,6 +2,7 @@ import React from 'react';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
+import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
 import { CampoSelect, Filtros } from '../../components/campos';
 import { salvarComAviso, useConfirmacao } from '../../components/confirmacao';
@@ -66,7 +67,7 @@ function Caixas() {
         linhas={linhas}
         vazio='Nenhum caixa nesta seleção.'
         colunas={[
-          { titulo: 'Operador', render: (c) => c.operador },
+          { titulo: 'Operador', render: (c) => <NomeComAvatar nome={c.operador} /> },
           { titulo: 'Turno', render: (c) => `${diaMes(c.dataAbertura)} · ${TURNO[c.turno] ?? '—'}` },
           { titulo: 'Esperado', classe: 'text-end', render: (c) => moeda(c.saldoApurado) },
           { titulo: 'Contado', classe: 'text-end', render: (c) => moeda(c.saldoContado) },

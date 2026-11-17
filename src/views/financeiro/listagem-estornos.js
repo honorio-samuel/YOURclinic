@@ -2,8 +2,9 @@ import React from 'react';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
+import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
-import { CampoSelect, Filtros } from '../../components/campos';
+import { CampoChips, CampoSelect, Filtros } from '../../components/campos';
 import { emBreve, salvarComAviso, useConfirmacao } from '../../components/confirmacao';
 import { DATA_DE_HOJE } from '../../config/axios';
 import { listar, pessoasPorId, porId } from '../../servicos/dados';
@@ -67,7 +68,7 @@ function Estornos() {
 
   const linhas = (dados ?? []).filter((e) => (!situacao || e.situacao === situacao) && (!meio || e.meio === meio));
   const colunas = [
-    { titulo: 'Paciente', render: (e) => e.paciente },
+    { titulo: 'Paciente', render: (e) => <NomeComAvatar nome={e.paciente} /> },
     { titulo: 'Meio', render: (e) => e.meio },
     { titulo: 'Valor', classe: 'text-end', render: (e) => moeda(e.valor) },
     ehAdmin ? { titulo: 'Pedido por', render: (e) => e.pedidoPor } : { titulo: 'Pedido em', render: (e) => data(e.dataPedido) },
@@ -106,7 +107,7 @@ function Estornos() {
           aoMudar={setSituacao}
           opcoes={[['', 'Todas'], ...Object.entries(SITUACAO_ESTORNO).map(([k, v]) => [k, v.rotulo])]}
         />
-        <CampoSelect id='estornoMeio' rotulo='Meio' valor={meio} aoMudar={setMeio} opcoes={[['', 'Todos'], ...Object.values(MEIO_PAGAMENTO).map((m) => [m, m])]} />
+        <CampoChips id='estornoMeio' rotulo='Meio' valor={meio} aoMudar={setMeio} opcoes={[['', 'Todos'], ...Object.values(MEIO_PAGAMENTO).map((m) => [m, m])]} />
       </Filtros>
       <Listagem carregando={carregando} erro={erro} aoTentarDeNovo={recarregar} linhas={linhas} vazio='Nenhum pedido nesta seleção.' colunas={colunas} />
       {modal}

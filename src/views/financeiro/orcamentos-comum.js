@@ -1,5 +1,7 @@
 import React from 'react';
 
+import RequestQuoteOutlinedIcon from '@mui/icons-material/RequestQuoteOutlined';
+
 import Listagem from '../../components/listagem';
 import { listar, pessoasPorId, porId } from '../../servicos/dados';
 import { moeda, nomeMedico } from '../../utils/formatos';
@@ -41,17 +43,20 @@ export function DetalheItens({ orcamento, comValores, rotuloValor = 'Valor', aoF
     colunas.push({ titulo: 'Subtotal', classe: 'text-end', render: (i) => moeda(subtotal(i)) });
   }
   return (
-    <div className='card'>
-      <div className='card-body d-flex flex-column gap-3'>
-        <div className='d-flex justify-content-between align-items-center'>
-          <h2 className='h5 mb-0'>Orçamento de {orcamento.paciente}</h2>
+    <>
+      <Listagem
+        titulo={`Orçamento de ${orcamento.paciente}`}
+        icone={RequestQuoteOutlinedIcon}
+        acoes={
           <button type='button' className='btn btn-sm btn-outline-secondary' onClick={aoFechar}>
             Fechar
           </button>
-        </div>
-        <Listagem linhas={orcamento.itens} colunas={colunas} vazio='Nenhum item.' />
-        {comValores && <p className='mb-0 text-end'>Total do orçamento: <strong>{moeda(total(orcamento))}</strong></p>}
-      </div>
-    </div>
+        }
+        linhas={orcamento.itens}
+        colunas={colunas}
+        vazio='Nenhum item.'
+      />
+      {comValores && <p className='mb-0 text-end'>Total do orçamento: <strong>{moeda(total(orcamento))}</strong></p>}
+    </>
   );
 }

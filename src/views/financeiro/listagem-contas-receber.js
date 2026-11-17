@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
+import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
-import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
+import { CampoBusca, CampoChips, CampoSelect, Filtros } from '../../components/campos';
 import { emBreve } from '../../components/confirmacao';
 import { listar, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -40,7 +41,7 @@ function ContasReceber() {
     >
       <Filtros>
         <CampoBusca id='receberBusca' rotulo='Buscar por devedor' valor={busca} aoMudar={setBusca} />
-        <CampoSelect
+        <CampoChips
           id='receberSituacao'
           rotulo='Situação'
           valor={situacao}
@@ -62,7 +63,7 @@ function ContasReceber() {
         linhas={linhas}
         vazio='Nenhum título nesta seleção.'
         colunas={[
-          { titulo: 'Devedor', render: (t) => t.devedor },
+          { titulo: 'Devedor', render: (t) => <NomeComAvatar nome={t.devedor} /> },
           { titulo: 'Origem', render: (t) => ORIGEM_TITULO[t.origem] ?? t.origem },
           { titulo: 'Vencimento', render: (t) => data(t.vencimento) },
           { titulo: 'Valor', classe: 'text-end', render: (t) => moeda(t.valor) },

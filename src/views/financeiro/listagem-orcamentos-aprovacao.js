@@ -2,6 +2,7 @@ import React from 'react';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
+import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
 import { salvarComAviso, useConfirmacao } from '../../components/confirmacao';
@@ -40,7 +41,7 @@ function OrcamentosAprovacao() {
         linhas={dados ?? []}
         vazio='Nenhum orçamento aguardando aprovação.'
         colunas={[
-          { titulo: 'Paciente', render: (o) => o.paciente },
+          { titulo: 'Paciente', render: (o) => <NomeComAvatar nome={o.paciente} /> },
           { titulo: 'Médico', render: (o) => o.medico },
           { titulo: 'Itens', classe: 'text-end', render: (o) => o.itens.length },
           { titulo: 'Total', classe: 'text-end', render: (o) => moeda(total(o)) },

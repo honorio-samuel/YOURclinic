@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
+import Esqueleto from '../../components/esqueleto';
 import PilulaStatus from '../../components/pilula-status';
 import { CampoMoeda, CampoSelecao, CampoTexto, Formulario, Rodape, Secao, useFormulario, useSairSemSalvar } from '../../components/formulario';
 import { mensagemDeErro, useConfirmacao } from '../../components/confirmacao';
@@ -85,7 +86,9 @@ function CadastroContaPagar() {
       }
     >
       {carregando && id && !atual ? (
-        <p className='text-body-secondary'>Carregando…</p>
+        <div className='card card-body'>
+          <Esqueleto />
+        </div>
       ) : (
         <Formulario
           aoEnviar={salvar}
@@ -94,7 +97,7 @@ function CadastroContaPagar() {
           rodape={<Rodape aoCancelar={sair} salvando={salvando} semSalvar={leitura} rotuloCancelar={leitura ? 'Voltar' : 'Cancelar'} />}
         >
           {fechada && (
-            <div className='alert alert-secondary mb-0 d-flex flex-wrap align-items-center gap-2' role='status'>
+            <div className='card card-body flex-row flex-wrap align-items-center gap-2' role='status'>
               <PilulaStatus {...rotuloDe(SITUACAO_TITULO, atual.situacao)} />
               <span>Conta {atual.situacao === 'PAGO' ? 'paga' : 'encerrada'}: não se edita. Para corrigir um pagamento, estorne pela listagem.</span>
             </div>
@@ -102,7 +105,7 @@ function CadastroContaPagar() {
           <Secao>
             <CampoTexto {...form.campo('fornecedor')} rotulo='Fornecedor' />
             <CampoSelecao {...form.campo('categoria')} rotulo='Categoria' opcoes={Object.entries(CATEGORIA_DESPESA)} />
-            <CampoTexto {...form.campo('vencimento')} tipo='date' rotulo='Vencimento' largura='col-md-3' />
+            <CampoTexto {...form.campo('vencimento')} tipo='date' rotulo='Vencimento' largura='col-lg-3' />
             <CampoMoeda {...form.campo('valor', mascararMoeda)} rotulo='Valor' />
           </Secao>
         </Formulario>
