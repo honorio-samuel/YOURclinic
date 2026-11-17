@@ -1,8 +1,13 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
+import GavelOutlinedIcon from '@mui/icons-material/GavelOutlined';
+import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
+
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
+import { NomeComAvatar } from '../../components/avatar';
 import { emBreve } from '../../components/confirmacao';
 import { listar, pessoasPorId, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -44,13 +49,13 @@ function PendenciasClinicas() {
   };
   const { dados, carregando, erro, recarregar } = useCarregar(carregar);
   const colunas = (rotuloItem, acao, aoClicar) => [
-    { titulo: 'Paciente', render: (x) => x.paciente },
+    { titulo: 'Paciente', render: (x) => <NomeComAvatar nome={x.paciente} /> },
     { titulo: rotuloItem, render: (x) => x.item },
     { titulo: 'Desde', render: (x) => data(x.desde) },
     {
       titulo: '',
       render: (x) => (
-        <button type='button' className='btn btn-sm btn-outline-primary' onClick={() => aoClicar(x)}>
+        <button type='button' className='btn btn-sm btn-outline-secondary' onClick={() => aoClicar(x)}>
           {acao}
         </button>
       ),
@@ -61,6 +66,7 @@ function PendenciasClinicas() {
     <Pagina titulo='Pendências clínicas'>
       <Listagem
         titulo='Autorizações prévias a justificar'
+        icone={FactCheckOutlinedIcon}
         carregando={carregando}
         erro={erro}
         aoTentarDeNovo={recarregar}
@@ -70,6 +76,7 @@ function PendenciasClinicas() {
       />
       <Listagem
         titulo='Recursos de glosa a fundamentar'
+        icone={GavelOutlinedIcon}
         carregando={carregando}
         linhas={dados?.rec ?? []}
         vazio='Nenhum recurso esperando fundamentação.'
@@ -77,6 +84,7 @@ function PendenciasClinicas() {
       />
       <Listagem
         titulo='Exames enviados pelo titular'
+        icone={UploadFileOutlinedIcon}
         carregando={carregando}
         linhas={dados?.exa ?? []}
         vazio='Nenhum exame esperando avaliação.'

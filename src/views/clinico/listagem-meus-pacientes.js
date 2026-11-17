@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
+import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
 import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
 import { emBreve } from '../../components/confirmacao';
@@ -52,7 +53,7 @@ function MeusPacientes() {
         linhas={linhas}
         vazio='Nenhum paciente nesta seleção.'
         colunas={[
-          { titulo: 'Paciente', render: (p) => p.paciente },
+          { titulo: 'Paciente', render: (p) => <NomeComAvatar nome={p.paciente} /> },
           { titulo: 'Última consulta', render: (p) => data(p.ultima) },
           {
             titulo: 'Vínculo',
@@ -65,11 +66,11 @@ function MeusPacientes() {
             titulo: '',
             render: (p) =>
               ['ATIVO', 'HISTORICO'].includes(p.estado) ? (
-                <button type='button' className='btn btn-link btn-sm p-0' onClick={() => navigate(`/medico/prontuario/${p.idPaciente}`)}>
+                <button type='button' className='btn btn-sm btn-outline-secondary' onClick={() => navigate(`/medico/prontuario/${p.idPaciente}`)}>
                   Abrir prontuário
                 </button>
               ) : (
-                <button type='button' className='btn btn-link btn-sm p-0' onClick={() => emBreve('O pedido de acesso de exceção')}>
+                <button type='button' className='btn btn-sm btn-outline-secondary' onClick={() => emBreve('O pedido de acesso de exceção')}>
                   Pedir acesso de exceção
                 </button>
               ),

@@ -25,7 +25,7 @@ function Exportacoes({ idPaciente }) {
   return (
     <>
       <div className='d-flex flex-wrap justify-content-end gap-2'>
-        <button type='button' className='btn btn-outline-primary' onClick={() => emBreve('A exportação do histórico')}>
+        <button type='button' className='btn btn-outline-secondary' onClick={() => emBreve('A exportação do histórico')}>
           Exportar histórico
         </button>
         <button type='button' className='btn btn-primary' onClick={() => emBreve('A exportação do prontuário completo')}>

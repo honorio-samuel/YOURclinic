@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink, useParams } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
+import Esqueleto from '../../components/esqueleto';
 import { RegistroIndisponivel } from '../geral/avisos';
 import { buscar, listar } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -32,7 +33,16 @@ function Prontuario() {
     return { valido, nome: pessoa.nome };
   }, [idPaciente]);
 
-  if (carregando) return <p className='text-body-secondary'>Carregando…</p>;
+  // Enquanto carrega, a tela já tem a casca e o título; o nome vem depois.
+  if (carregando) {
+    return (
+      <Pagina titulo='Prontuário'>
+        <div className='card card-body'>
+          <Esqueleto />
+        </div>
+      </Pagina>
+    );
+  }
   if (erro || !dados?.valido) return <RegistroIndisponivel />;
 
   return (
