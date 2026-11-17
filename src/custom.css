@@ -452,7 +452,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* No chip escolhido (#333), o número fica branco sobre um véu claro (6,69:1). */
+/* No chip escolhido (#333), o número fica branco sobre um véu claro (#5c5c5c, 6,68:1). */
 .btn-check:checked + .chip .chip-contagem {
   color: var(--bs-white);
   background-color: rgba(255, 255, 255, 0.2);

@@ -62,7 +62,9 @@ Campo obrigatório leva `*` no rótulo; o erro aparece em texto junto do campo, 
 
 Todas as listagens do redesenho, com filtros, pílulas de status com as transições permitidas a cada papel, ícones de ação e estados de carregando, vazio e erro: painel do dia, fila do dia, atendimentos, prontuário (prescrição, anexos, anotações privadas e exportações), financeiro, faturamento TISS, estoque, gestão e o portal do Paciente e do Responsável Legal.
 
-Telas que ainda não existem (agenda em grade, novo agendamento, grade de horários, checkout, meu caixa, painéis financeiro e gerencial, perfil) aparecem no menu como "Em construção", com o código da tela no protótipo. Ações de fluxo como reagendar, estornar, conciliar, ajustar estoque e check-in ficam nas listagens, como antes.
+A Fila do dia tem também o modo Quadro, com uma coluna por status. O Painel do dia mostra as consultas de hoje por horário, e a Agenda mostra o mês com a contagem de consultas por dia: a da clínica para o Administrador e a Secretária, e a própria para o Médico.
+
+Telas que ainda não existem (agenda nas visões de dia e de semana, novo agendamento, grade de horários, checkout, meu caixa, painéis financeiro e gerencial, perfil) aparecem no menu como "Em construção", com o código da tela no protótipo. Ações de fluxo como reagendar, estornar, conciliar, ajustar estoque e check-in ficam nas listagens, como antes.
 
 ## Regras que o front respeita
 

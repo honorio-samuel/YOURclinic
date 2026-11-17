@@ -1,6 +1,6 @@
 # Decisões
 
-D1 a D9 vieram no pedido, já com o padrão definido. D10 a D26 apareceram na leitura das fontes e foram aprovadas no checkpoint de 8 de outubro de 2026. D27 a D29 surgiram depois, com a chegada da Especificação v2.0. D30 a D33 vieram da verificação independente das telas. D34 a D48 vieram do novo visual do app, em novembro de 2026; a D34 substitui a D12 no código. Para trocar qualquer uma, basta dizer o número.
+D1 a D9 vieram no pedido, já com o padrão definido. D10 a D26 apareceram na leitura das fontes e foram aprovadas no checkpoint de 8 de outubro de 2026. D27 a D29 surgiram depois, com a chegada da Especificação v2.0. D30 a D33 vieram da verificação independente das telas. D34 a D52 vieram do novo visual do app, em novembro de 2026; a D34 substitui a D12 no código. Para trocar qualquer uma, basta dizer o número.
 
 Ordem de precedência usada: lei e norma; RC01 a RC10; RF, RN e RNF da v2.1 e da v2.0, que são a mesma versão em duas organizações; v1 onde as duas são omissas; pedidos do prompt; Figma e código atuais.
 
@@ -202,6 +202,8 @@ A-07 desenhava a visão Dia e A-07b, a visão Ano. Semana só existia em S-02 e 
 
 O novo frontend refez só a camada visual do app, a partir de um vídeo de referência: barra lateral clara, cartões brancos arredondados e pílulas suaves. Nenhuma regra, rota, dado ou endpoint mudou, e o Figma continua com o visual anterior. Quando o vídeo e uma regra divergem, vale a regra.
 
+D49 a D52 vieram de um segundo pedido, depois da aprovação do visual: partes do vídeo que o primeiro pedido deixava de fora (contadores, gráfico, quadro e calendário), feitas só com os dados que a API já entrega a cada papel. Lista de espera, chat, busca global, sino e tempo em cada status ficaram fora, porque exigiriam dado ou endpoint novo.
+
 ### D34 · Fonte Inter
 
 O pedido do novo visual troca a Open Sans pela Inter, carregada pelo `$web-font-path` do Yeti, sem pacote novo.
@@ -242,6 +244,9 @@ Tabela final, conferida também com as cores que o navegador calculou nas telas 
 | Ícone no chip de erro | #fff | #da3b21 | 4,53 | 3 |
 | Marca do representado atual | #2e7548 | #fff | 5,59 | 3 |
 | Chip de filtro escolhido contra a página | #333 | #f8f9fa | 11,98 | 3 |
+| Número dentro do chip escolhido (véu branco de 20% sobre #333) | #fff | #5c5c5c | 6,68 | 4,5 |
+| Barra de proporção dos indicadores sobre o trilho | #007fa9 | #eee | 3,92 | 3 |
+| Contorno do dia de hoje na agenda | #007fa9 | #fff | 4,55 | 3 |
 | Anel de foco sobre o cartão | #007fa9 | #fff | 4,55 | 3 |
 | Anel de foco sobre a página | #007fa9 | #f8f9fa | 4,32 | 3 |
 | Anel de foco sobre o trilho das abas | #007fa9 | #eee | 3,92 | 3 |
@@ -303,6 +308,24 @@ Resposta do checkpoint: chips só nas listas fixas de até quatro opções.
 ### D48 · Texto de "Em construção"
 
 **Aplicado:** "Esta tela ({código}) está desenhada no protótipo e entra numa próxima etapa." Saiu "Nesta versão estão implementadas as telas de listagem de cada papel", que deixou de valer com os cadastros. **Alternativa:** listar na mensagem o que já existe, o que envelhece a cada etapa.
+
+### D49 · Contadores nos filtros e nas abas
+
+**Aplicado:** cada chip de filtro mostra quantas linhas tem a opção ("Ativos 29"), contadas sobre o que a tela já carregou, sem a busca e sem os outros filtros; "Todos" conta tudo. A contagem segue a regra de cada filtro: em Bloqueios, Inativos inclui os encerrados; em Contas a receber, vale a situação calculada; em Produtos, o Médico só conta os ativos, que são os que ele vê. No portal, as abas Cobranças e Orçamentos mostram quantos itens têm. Um espaço real separa rótulo e número, para o leitor de tela não juntar os dois. **Alternativa:** contar só o que passa pelos outros filtros, inclusive a busca, o que muda os números a cada letra digitada.
+
+### D50 · Painel do dia: barra de proporção e gráfico por horário
+
+**Aplicado:** cada indicador ganha uma barra fina com a proporção do total do dia; o texto "de {total}" continua dizendo o número, e a barra fica fora da leitura de tela. O cartão "Consultas por horário" mostra as consultas de hoje por hora, das 8h às 16h, porque a grade dos médicos vai até as 17h; consulta fora dessa faixa alarga o gráfico. É só CSS, sem biblioteca de gráficos. O pico vai em primary e também em texto na legenda ("Pico às 8h, com 10 consultas"); as demais barras ficam em #cce5ee, que é 20% de primary, sem texto em cima, e o número de cada barra vai escrito acima dela. O leitor de tela recebe uma tabela oculta com os mesmos números. **Alternativa:** gráfico de linha em SVG desenhado à mão, que pede mais código e não mostra melhor uma contagem por hora.
+
+### D51 · Fila do dia em modo Quadro
+
+**Aplicado:** abas Lista e Quadro ao lado dos filtros. O quadro tem uma coluna por status do RF22, na ordem do caminho da consulta, com Não compareceu e Cancelado no fim; cada coluna mostra quantas consultas tem, e os cartões seguem a ordem do horário. O cartão traz paciente, horário, médico e atendimento, como a lista, e as mesmas ações: a pílula de status para a Secretária e Cobrar depois de finalizada. O Administrador vê o quadro só para leitura. Nada no quadro vem de conteúdo clínico (RN-22.2). A rolagem lateral recebe foco pelo teclado, e o quadro abre espaço embaixo enquanto um menu de status está aberto. **Alternativa:** arrastar cartões entre colunas, o que exige código de arrastar acessível pelo teclado e deixaria à vista transições que o papel não tem.
+
+### D52 · Agenda na visão Mês
+
+A Agenda era "Em construção" para os três papéis. O protótipo desenha a visão Mês com a contagem por dia (A-07d e M-03, D33).
+
+**Aplicado:** Agenda da clínica (Administrador e Secretária) e Minha agenda (Médico) mostram o mês, com quantas consultas cada dia tem, sem nomes. Conta todas as marcadas no dia, como o Painel do dia, para o número de hoje ser o mesmo nas duas telas. O Médico vê só as dele, porque a API só entrega essas a ele. Há mês anterior, Hoje e próximo mês; o mês novo é anunciado ao leitor de tela, e o dia de hoje tem contorno, contagem preenchida e a palavra "hoje" para o leitor de tela. As visões de dia e de semana continuam para uma próxima etapa. **Alternativa:** contar só as consultas não canceladas, o que deixaria o número de hoje diferente do Painel do dia.
 
 ## Estado das telas
 
