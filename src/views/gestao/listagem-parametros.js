@@ -61,7 +61,7 @@ function Parametros() {
             titulo: '',
             render: (p) =>
               p.editavel ? (
-                <button type='button' className='btn btn-sm btn-outline-primary' onClick={() => editar(p)}>
+                <button type='button' className='btn btn-sm btn-outline-secondary' onClick={() => editar(p)}>
                   Editar
                 </button>
               ) : (

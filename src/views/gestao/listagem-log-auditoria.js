@@ -1,5 +1,7 @@
 import React from 'react';
 
+import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined';
+
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import { CampoSelect, Filtros } from '../../components/campos';
@@ -91,6 +93,7 @@ function LogAuditoria() {
       />
       <Listagem
         titulo='Acessos de exceção em curso'
+        icone={LockOpenOutlinedIcon}
         carregando={carregando}
         linhas={dados?.emCurso ?? []}
         vazio='Nenhum acesso de exceção em curso.'

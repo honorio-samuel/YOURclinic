@@ -4,7 +4,7 @@ import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
-import { CampoSelect, Filtros } from '../../components/campos';
+import { CampoChips, CampoSelect, Filtros } from '../../components/campos';
 import { emBreve, salvarComAviso } from '../../components/confirmacao';
 import { listar, pessoasPorId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -32,14 +32,14 @@ function Notificacoes() {
     <Pagina
       titulo='Notificações'
       acoes={
-        <button type='button' className='btn btn-outline-primary' onClick={() => emBreve('A edição de modelos e canais')}>
+        <button type='button' className='btn btn-outline-secondary' onClick={() => emBreve('A edição de modelos e canais')}>
           Modelos e canais
         </button>
       }
     >
       <Filtros>
         <CampoSelect id='notEvento' rotulo='Evento' valor={evento} aoMudar={setEvento} opcoes={[['', 'Todos'], ...Object.entries(EVENTO_NOTIFICACAO)]} />
-        <CampoSelect id='notCanal' rotulo='Canal' valor={canal} aoMudar={setCanal} opcoes={[['', 'Todos'], ['SMS', 'Mensagem de texto'], ['EMAIL', 'E-mail']]} />
+        <CampoChips id='notCanal' rotulo='Canal' valor={canal} aoMudar={setCanal} opcoes={[['', 'Todos'], ['SMS', 'Mensagem de texto'], ['EMAIL', 'E-mail']]} />
         <CampoSelect
           id='notSituacao'
           rotulo='Situação'

@@ -2,6 +2,7 @@ import React from 'react';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
+import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
 import { CampoSelect, Filtros } from '../../components/campos';
@@ -63,7 +64,7 @@ function SolicitacoesTitulares() {
         linhas={linhas}
         vazio='Nenhuma solicitação nesta seleção.'
         colunas={[
-          { titulo: 'Titular', render: (s) => s.titular },
+          { titulo: 'Titular', render: (s) => <NomeComAvatar nome={s.titular} /> },
           { titulo: 'Direito', render: (s) => TIPO_SOLICITACAO[s.tipo] ?? s.tipo },
           { titulo: 'Aberta em', render: (s) => data(s.dataSolicitacao) },
           { titulo: 'Prazo', render: (s) => (['ABERTA', 'EM_ANALISE'].includes(s.situacao) ? `${s.restante} dias` : '—') },
