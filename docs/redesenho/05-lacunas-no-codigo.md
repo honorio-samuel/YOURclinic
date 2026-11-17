@@ -150,8 +150,8 @@ Este trecho não foi compilado nem testado. Um ponto a conferir na primeira comp
 | 11. Menu do avatar | Resolvido: Meu perfil (em construção) e Sair | front |
 | 12. Menu lateral | Resolvido: árvore do `03-mapa-de-navegacao.md`, em acordeão | front |
 | 13. Listagens sem ações | Resolvido: pílula com transições, ícones de ação e estado vazio | front |
-| 14. Fonte do Google | Aberto | — |
-| 15. `index.css` | Aberto | — |
+| 14. Fonte do Google | Mantido: desde 17/11/2026 a fonte é a Inter, ainda pelo Google Fonts, como pede o novo visual; sem rede, vale a fonte do sistema. Hospedar a fonte é a alternativa registrada na D34 | front |
+| 15. `index.css` | Resolvido em 17/11/2026: arquivo e import removidos | front |
 | 16. Classe `md-3` | Resolvido: os componentes `card` e `sub-card` saíram | front |
 | 17. Teste "learn react" | Resolvido: testes dos utilitários de formato e rótulo | front |
 | 18. Data fixa | Mantida: os dados simulados representam 28/09/2026 | — |

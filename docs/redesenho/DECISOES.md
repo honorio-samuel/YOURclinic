@@ -1,6 +1,6 @@
 # Decisões
 
-D1 a D9 vieram no pedido, já com o padrão definido. D10 a D26 apareceram na leitura das fontes e foram aprovadas no checkpoint de 8 de outubro de 2026. D27 a D29 surgiram depois, com a chegada da Especificação v2.0. D30 a D33 vieram da verificação independente das telas. Para trocar qualquer uma, basta dizer o número.
+D1 a D9 vieram no pedido, já com o padrão definido. D10 a D26 apareceram na leitura das fontes e foram aprovadas no checkpoint de 8 de outubro de 2026. D27 a D29 surgiram depois, com a chegada da Especificação v2.0. D30 a D33 vieram da verificação independente das telas. D34 a D48 vieram do novo visual do app, em novembro de 2026; a D34 substitui a D12 no código. Para trocar qualquer uma, basta dizer o número.
 
 Ordem de precedência usada: lei e norma; RC01 a RC10; RF, RN e RNF da v2.1 e da v2.0, que são a mesma versão em duas organizações; v1 onde as duas são omissas; pedidos do prompt; Figma e código atuais.
 
@@ -53,6 +53,8 @@ Os números estão truncados em duas casas, por isso diferem em um centésimo do
 Os dois aliases não estão ligados a nenhum nó das páginas 1 a 4. Nenhuma variável é excluída: eles passam a apontar para `danger` e `light`, com a descrição "obsoleto, não usar".
 
 ### D12 · Estilos de texto em Open Sans
+
+> Substituída pela D34 no app. O Figma continua em Open Sans, com o visual anterior.
 
 | Estilo | Hoje | Aplicado |
 |---|---|---|
@@ -195,6 +197,112 @@ A v2.0 dá ao Administrador a dispensação "apenas em forma agregada" e não di
 A-07 desenhava a visão Dia e A-07b, a visão Ano. Semana só existia em S-02 e Mês, em M-03.
 
 **Aplicado:** dois frames novos. A-07c mostra a semana de um médico, com a grade de S-02. A-07d mostra o mês com "Todos os médicos", só com a contagem de consultas por dia, com a grade de M-03. Juntos, cobrem os dois modos do filtro que o pedido descreve. A matriz ganhou duas linhas. **Alternativa:** desenhar também a semana com "Todos" e o mês de um médico, que repetem padrões já desenhados.
+
+## Decisões do novo visual
+
+O novo frontend refez só a camada visual do app, a partir de um vídeo de referência: barra lateral clara, cartões brancos arredondados e pílulas suaves. Nenhuma regra, rota, dado ou endpoint mudou, e o Figma continua com o visual anterior. Quando o vídeo e uma regra divergem, vale a regra.
+
+### D34 · Fonte Inter
+
+O pedido do novo visual troca a Open Sans pela Inter, carregada pelo `$web-font-path` do Yeti, sem pacote novo.
+
+**Aplicado:** Inter 400, 500, 600 e 700 pelo Google Fonts, primeira da pilha em `$font-family-sans-serif`, declaradas em `src/tema.scss` antes de importar o Yeti. Corpo em 14 px. Títulos e números em 600; rótulos de campo, botões, pílulas e itens de menu em 500; nada em 300 abaixo de 24 px, inclusive nas regras do Yeti que fixam 300 em avisos, menu suspenso e paginação. Números de tabela e dos indicadores com `tabular-nums`. Sem rede, vale a fonte do sistema. A requisição a terceiro do item 14 de [05-lacunas-no-codigo.md](05-lacunas-no-codigo.md) continua. **Alternativa:** hospedar os arquivos da Inter em `public/`, sem requisição externa, o que exige versionar as fontes no repositório.
+
+### D35 · Tokens do novo visual
+
+**Aplicado:** em `src/tema.scss`, raios de 6, 8, 12 e 16 px: 8 em botão e campo, 12 em aviso e menu suspenso, 16 em cartão e janela; pílula e chip totalmente arredondados. Cartão branco, sem borda, com sombra suave feita do #222 (4% e 6%), sobre a página em #f8f9fa; o que flutua leva sombra de 12%. Campos e botões com cerca de 40 px de altura. Foco por contorno de 2 px em primary, afastado 2 px, no lugar do brilho do Bootstrap. Tabela com separador #eee e hover #f8f9fa. Os tons suaves são misturas da cor do tema com branco: sucesso #e7f0ea (12%), perigo #fbebe9 (10%), aviso #fbebd1 (18%) e informação #dbf1f8 (22%); o neutro é o #eee. Nenhuma cor fora da tabela do pedido. **Alternativa:** tons suaves com transparência, cuja razão muda conforme o fundo de baixo.
+
+Tabela final, conferida também com as cores que o navegador calculou nas telas dos cinco papéis, em 1280, 768 e 390 px. Nenhum par fica abaixo do mínimo.
+
+| Uso | Frente | Fundo | Razão | Mínimo |
+|---|---|---|---|---|
+| Texto branco no item ativo do menu, no botão principal, na página atual e em "Ir para o conteúdo" | #fff | #007fa9 | 4,55 | 4,5 |
+| Texto branco em chip de ícone, chip de filtro escolhido, avatar do usuário e pílula Em atendimento | #fff | #333 | 12,63 | 4,5 |
+| Pílula de sucesso (Ativo, Finalizado, Pago) | #2e7548 | #e7f0ea | 4,80 | 4,5 |
+| Pílula e faixa de perigo (Cancelado, Vencido, erro de carga) | #c0341d | #fbebe9 | 4,84 | 4,5 |
+| Pílula e faixa de aviso | #222 | #fbebd1 | 13,56 | 4,5 |
+| Pílula e faixa de informação, chip dos atalhos do portal | #222 | #dbf1f8 | 13,59 | 4,5 |
+| Pílula neutra, avatar das tabelas, contador, trilho das abas, faixa do representado | #222 | #eee | 13,71 | 4,5 |
+| Texto secundário sobre #eee | #222 a 75% | #eee | 6,42 | 4,5 |
+| Texto secundário sobre a página | #222 a 75% | #f8f9fa | 6,77 | 4,5 |
+| Texto secundário sobre o cartão | #222 a 75% | #fff | 6,97 | 4,5 |
+| Link e marca sobre a página | #006f94 | #f8f9fa | 5,38 | 4,5 |
+| Link e paginação sobre o cartão | #006f94 | #fff | 5,67 | 4,5 |
+| Asterisco de obrigatório sobre a página | #c0341d | #f8f9fa | 5,31 | 4,5 |
+| Texto do botão de perigo contornado | #c0341d | #fff | 5,59 | 4,5 |
+| Aviso do toastr: texto e botão de fechar | #222 | #fff | 15,90 | 4,5 |
+| Contorno de campo e do botão secundário sobre o cartão | #767676 | #fff | 4,54 | 3 |
+| Contorno do campo de busca sobre a página | #767676 | #f8f9fa | 4,30 | 3 |
+| Contorno da aba ativa sobre o trilho | #767676 | #eee | 3,91 | 3 |
+| Contorno da pílula interativa sobre o tom suave mais escuro | #767676 | #fbebd1 | 3,87 | 3 |
+| Ícones de ação | #767676 | #fff | 4,54 | 3 |
+| Ícone de excluir | #da3b21 | #fff | 4,53 | 3 |
+| Ícone no chip de aviso | #222 | #e99002 | 6,40 | 3 |
+| Ícone no chip de informação | #222 | #5bc0de | 7,60 | 3 |
+| Ícone no chip de erro | #fff | #da3b21 | 4,53 | 3 |
+| Marca do representado atual | #2e7548 | #fff | 5,59 | 3 |
+| Chip de filtro escolhido contra a página | #333 | #f8f9fa | 11,98 | 3 |
+| Anel de foco sobre o cartão | #007fa9 | #fff | 4,55 | 3 |
+| Anel de foco sobre a página | #007fa9 | #f8f9fa | 4,32 | 3 |
+| Anel de foco sobre o trilho das abas | #007fa9 | #eee | 3,92 | 3 |
+
+Ficam fora de uso: texto branco sobre aviso (2,48) e sobre informação (2,09), #007fa9 como texto sobre a página (4,32) e #dee2e6 como contorno (1,30).
+
+### D36 · Casca com barra lateral clara
+
+**Aplicado:** saem a barra azul do topo e o rodapé. A partir de 992 px, a barra lateral fica fixa, com 240 px, em #f8f9fa, e leva a marca, o menu do papel e o contato da clínica no pé. Abaixo de 992 px, uma barra do topo traz o botão de 48 × 48 que abre a barra lateral como gaveta (D29). A gaveta fecha com Esc, no fundo escuro, ao escolher um item e ao trocar de tela; enquanto está aberta, o resto da tela fica inerte, e ao fechar o foco volta ao botão. O login ganha a marca, o cartão centralizado e o contato abaixo, com os mesmos textos (D28). A cor do navegador no celular passa de primary a branco, como a barra do topo. **Alternativa:** manter a barra superior colorida, que o vídeo não tem.
+
+### D37 · Bloco do usuário na linha do título
+
+O pedido quer título, ações e usuário na mesma linha, sem peça nova (contexto, portal) se der para evitar.
+
+**Aplicado:** a `Pagina` desenha o bloco do usuário no canto direito da linha do título, a partir de 992 px: avatar com as iniciais, nome, papel e o menu com Meu perfil e Sair. Abaixo disso, o bloco fica na barra do topo, só com o avatar; o nome e o papel vão no rótulo do botão. **Alternativa:** uma linha própria para o bloco, acima do título, que perde a linha única do vídeo.
+
+### D38 · Menu com um só item aceso
+
+**Aplicado:** o item da tela atual fica em pílula preenchida primary, com texto branco; o cabeçalho do grupo aberto fica em 600, sem preenchimento; os ícones passam à variante de contorno. A lógica do acordeão e as rotas não mudaram. A revisão achou um defeito anterior: no portal, "Agendar consulta" acendia também "Meus agendamentos", com dois `aria-current`. Agora acende uma rota só: a da própria tela, ou, se ela não está no menu, a da listagem a que pertence. **Alternativa:** preencher também o cabeçalho do grupo, o que duplica o destaque.
+
+### D39 · Pílulas suaves
+
+**Aplicado:** cinco dos seis estados do RF22 ficam em fundo suave, com texto de 4,5:1. "Em atendimento" continua preenchida em #333 com texto branco, porque o escuro suavizado vira um cinza igual ao do neutro. A pílula interativa mantém o contorno #767676 e a seta (D22). Pílulas e contadores em 12 px, peso 500. **Alternativa:** tom suave nos seis estados, com um ícone para separar Em atendimento de Agendado.
+
+### D40 · Um só botão secundário
+
+**Aplicado:** o secundário é branco, com contorno #767676 e texto #222, e substitui os 16 botões contornados em azul. No Yeti, o contorno do secundário saía em #eee (1,16:1) e o texto azul do contornado dava 4,32 sobre a página. As ações de linha que eram link de texto viram botões pequenos contornados, com área de toque maior. **Alternativa:** manter o contornado azul nas ações de navegação, com o texto em #006f94.
+
+### D41 · Filtros de lista fixa em chips
+
+Resposta do checkpoint: chips só nas listas fixas de até quatro opções.
+
+**Aplicado:** `CampoChips`, com as mesmas props do `CampoSelect`, em 15 filtros: Status de pacientes, médicos, convênios, bloqueios e produtos; Tipo de procedimentos, produtos e documentos fiscais; Situação de cobranças do dia, contas a receber, documentos fiscais, conciliação e lotes; Canal das notificações; Meio dos estornos. O plano previa 11; os outros quatro também cabem na regra. Os chips são botões de rádio: uma parada no Tab, setas para trocar e o nome do filtro na `legend`. O escolhido fica em #333, com texto branco. As listas com mais opções ou que vêm dos dados continuam em lista, e Relatórios também, porque é campo do pedido de relatório, com rótulos longos. **Alternativa:** chips também nas listas de cinco opções, que quebram em duas linhas no tablet.
+
+### D42 · Abas segmentadas
+
+**Aplicado:** as abas viram um trilho #eee, com a aba ativa branca, contorno #767676 e peso 600. Branco sobre #eee dá 1,16:1; quem marca o estado é o contorno, com 3,91:1. **Alternativa:** aba ativa preenchida em #333, mais pesada que a do vídeo.
+
+### D43 · Listagens em cartão
+
+**Aplicado:** a tabela fica num cartão. Com título, o cartão ganha cabeçalho: chip de ícone escuro, título em 600, contador em pílula cinza, legenda como subtítulo e ações à direita. Esse cabeçalho é o componente `CabecalhoCartao`, usado também nos cartões sem tabela do portal. A coluna de ações vai à direita. O avatar de iniciais entra só na coluna de nome, sem mudar as colunas, em 21 listagens: pessoas e também convênio, operadora, fornecedor e devedor. No portal, abaixo de 992 px, cada linha vira cartão, só com CSS, e o título da coluna aparece ao lado do valor. **Alternativa:** avatar só nas colunas de pessoa.
+
+### D44 · Avisos
+
+**Aplicado:** o componente `Faixa` (fundo suave, chip de ícone no tom e ações à direita) entra no erro de carga, na faixa do representado, nas consultas afetadas por bloqueio e nas observações gerais. Os demais avisos de uma frase continuam como `alert` do tema, que já ficou suave e sem borda. O toastr vira cartão branco, com texto #222 e barra lateral na cor do tipo; o título do aviso diz o tipo em texto. **Alternativa:** `Faixa` em todos os avisos, o que põe chip de ícone em notas curtas de uma linha.
+
+### D45 · Carregamento e movimento
+
+**Aplicado:** esqueleto no lugar de "Carregando…": barras cinzas, `aria-busy` e o texto "Carregando…" só para o leitor de tela, nas tabelas e nos cadastros. A tela entra em 200 ms; atalhos e gaveta têm transição curta, tudo só com CSS. Com `prefers-reduced-motion`, animações e transições saem, e o toastr aparece sem animação e sem barra de tempo. **Alternativa:** manter o texto "Carregando…", que o vídeo não usa.
+
+### D46 · Painel do dia e Início do portal
+
+**Aplicado:** no Painel do dia, um cartão só com os quatro indicadores: chip, rótulo, número em 600 e "de {total}", que é o total de consultas do dia que a tela já mostrava, com divisória vertical entre eles. Se a carga falha, aparece um traço, e não zero. Pendências com contador que soma os itens e "Abrir" como botão. No Início do portal, título grande e centralizado ("Olá, {primeiro nome}" para o Paciente, "Início" para o Responsável), quatro atalhos tirados do menu do papel (sem Início e sem Dados), a consulta de hoje em cartão branco com a pílula e as listagens em cartões no celular. Numa faixa azul, a pílula "Na recepção" sumiria. O título da aba do Início é "Início", sem o nome (RNF04). **Alternativa:** a consulta de hoje como faixa de informação, como estava no plano.
+
+### D47 · Campos em duas colunas só a partir de 992 px
+
+**Aplicado:** larguras `col-lg-*` no lugar de `col-md-*` nos formulários. Abaixo de 992 px, com a barra em gaveta, os campos empilham, o que cobre o tablet clínico de 768 px (RNF17). **Alternativa:** duas colunas desde 768 px, com campos estreitos.
+
+### D48 · Texto de "Em construção"
+
+**Aplicado:** "Esta tela ({código}) está desenhada no protótipo e entra numa próxima etapa." Saiu "Nesta versão estão implementadas as telas de listagem de cada papel", que deixou de valer com os cadastros. **Alternativa:** listar na mensagem o que já existe, o que envelhece a cada etapa.
 
 ## Estado das telas
 
