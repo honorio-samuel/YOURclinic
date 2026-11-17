@@ -2,6 +2,8 @@ import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
+import Faixa from '../../components/faixa';
+import Esqueleto from '../../components/esqueleto';
 import { CampoTextoLongo, Formulario, Rodape, Secao, useFormulario, useSairSemSalvar } from '../../components/formulario';
 import { mensagemDeErro, useConfirmacao } from '../../components/confirmacao';
 import { mensagemErro, mensagemSucesso } from '../../components/toastr';
@@ -24,7 +26,7 @@ const LIMITE = 500;
 
 function Exemplos({ titulo, itens }) {
   return (
-    <div className='col-md-6'>
+    <div className='col-lg-6'>
       <div className='card h-100'>
         <div className='card-body'>
           <h2 className='h6'>{titulo}</h2>
@@ -82,16 +84,17 @@ function ObservacoesGerais() {
   return (
     <Pagina titulo={`Paciente · ${dados?.nome ?? '…'}`} tituloAba='Observações gerais'>
       <AbasPaciente id={idPaciente} ativa='observacoes' />
-      <div className='alert alert-warning mb-0 d-flex gap-2' role='note'>
-        <span aria-hidden='true'>⚠</span>
-        <span>Use este campo só para informações de recepção. Conteúdo clínico pertence ao prontuário e é do médico.</span>
-      </div>
+      <Faixa tom='aviso' papel='note'>
+        Use este campo só para informações de recepção. Conteúdo clínico pertence ao prontuário e é do médico.
+      </Faixa>
       <div className='row g-3'>
         <Exemplos titulo='Pertence aqui' itens={PERTENCE} />
         <Exemplos titulo='Não pertence aqui' itens={NAO_PERTENCE} />
       </div>
       {carregando && !dados ? (
-        <p className='text-body-secondary'>Carregando…</p>
+        <div className='card card-body'>
+          <Esqueleto />
+        </div>
       ) : (
         <Formulario
           aoEnviar={salvar}

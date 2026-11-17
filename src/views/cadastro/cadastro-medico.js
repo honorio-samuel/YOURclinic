@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
+import Esqueleto from '../../components/esqueleto';
 import { CampoSelecao, CampoTexto, Formulario, Rodape, Secao, useFormulario, useSairSemSalvar } from '../../components/formulario';
 import { mensagemDeErro, useConfirmacao } from '../../components/confirmacao';
 import { mensagemErro, mensagemSucesso } from '../../components/toastr';
@@ -106,7 +107,9 @@ function CadastroMedico() {
       }
     >
       {carregando && !dados ? (
-        <p className='text-body-secondary'>Carregando…</p>
+        <div className='card card-body'>
+          <Esqueleto />
+        </div>
       ) : (
         <Formulario
           aoEnviar={salvar}
@@ -121,8 +124,8 @@ function CadastroMedico() {
           )}
           <SecaoDadosPessoais form={form} comTratamento />
           <Secao titulo='Registro profissional'>
-            <CampoTexto {...form.campo('crm', mascararDigitos(7))} rotulo='CRM' inputMode='numeric' largura='col-md-3' />
-            <CampoSelecao {...form.campo('ufCrm')} rotulo='UF do CRM' opcoes={UFS.map((uf) => [uf, uf])} largura='col-md-3' />
+            <CampoTexto {...form.campo('crm', mascararDigitos(7))} rotulo='CRM' inputMode='numeric' largura='col-lg-3' />
+            <CampoSelecao {...form.campo('ufCrm')} rotulo='UF do CRM' opcoes={UFS.map((uf) => [uf, uf])} largura='col-lg-3' />
             <CampoTexto {...form.campo('especialidade')} rotulo='Especialidade' list='lista-especialidades' autoComplete='off' />
             <datalist id='lista-especialidades'>
               {especialidades.map((e) => (

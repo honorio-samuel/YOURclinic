@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
+import { NomeComAvatar } from '../../components/avatar';
 import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
 import { useAlternarSituacao } from '../../components/confirmacao';
 import { mensagemErro, mostrarMensagem } from '../../components/toastr';
@@ -77,7 +78,7 @@ function Equipe() {
         vazio='Nenhum usuário encontrado.'
         legenda='Contas de Médico são criadas em Médicos; contas de Paciente e de Responsável Legal, por convite.'
         colunas={[
-          { titulo: 'Nome', render: (u) => u.nome },
+          { titulo: 'Nome', render: (u) => <NomeComAvatar nome={u.nome} /> },
           { titulo: 'E-mail', render: (u) => u.email },
           { titulo: 'Papel', render: (u) => PAPEIS[u.papel] },
           ...colunasDeSituacao(alternar, (u) => u.nome, {

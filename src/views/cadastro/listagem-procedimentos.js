@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
-import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
+import { CampoBusca, CampoChips, Filtros } from '../../components/campos';
 import { useAlternarSituacao } from '../../components/confirmacao';
 import { listar } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -35,7 +35,7 @@ function Procedimentos() {
     >
       <Filtros>
         <CampoBusca id='buscaProcedimento' rotulo='Buscar por código, TUSS ou descrição' valor={busca} aoMudar={setBusca} />
-        <CampoSelect
+        <CampoChips
           id='tipoProcedimento'
           rotulo='Tipo'
           valor={tipo}

@@ -37,7 +37,7 @@ function SecaoResponsavel({ form, existente, podeEncerrar, aoEncerrar }) {
         ajuda='Usado no convite do portal.'
       />
       {podeEncerrar && (
-        <div className='col-md-6 d-flex align-items-end'>
+        <div className='col-lg-6 d-flex align-items-end'>
           <button type='button' className='btn btn-outline-danger' onClick={aoEncerrar}>
             Encerrar representação
           </button>

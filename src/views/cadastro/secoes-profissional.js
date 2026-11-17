@@ -115,7 +115,7 @@ export function SecaoConta({ form, conta, novo, aoTocarLogin }) {
         }
       />
       {conta && (
-        <div className='col-md-6'>
+        <div className='col-lg-6'>
           <span className='form-label d-block'>Situação da conta</span>
           <PilulaStatus {...rotuloDe(CONTA, conta.situacao)} />
         </div>

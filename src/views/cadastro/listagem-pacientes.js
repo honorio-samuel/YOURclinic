@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
+import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
-import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
+import { CampoBusca, CampoChips, Filtros } from '../../components/campos';
 import { useAlternarSituacao } from '../../components/confirmacao';
 import { listar, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -59,7 +60,7 @@ function Pacientes() {
     >
       <Filtros>
         <CampoBusca id='buscaPaciente' rotulo='Buscar por nome ou CPF' valor={busca} aoMudar={setBusca} />
-        <CampoSelect
+        <CampoChips
           id='statusPaciente'
           rotulo='Status'
           valor={status}
@@ -74,7 +75,7 @@ function Pacientes() {
         linhas={linhas}
         vazio='Nenhum paciente encontrado.'
         colunas={[
-          { titulo: 'Nome', render: (p) => p.nome },
+          { titulo: 'Nome', render: (p) => <NomeComAvatar nome={p.nome} /> },
           { titulo: 'CPF', render: (p) => p.cpf },
           { titulo: 'Nascimento', render: (p) => data(p.nascimento) },
           { titulo: 'Telefone', render: (p) => p.telefone },

@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
+import Esqueleto from '../../components/esqueleto';
 import PilulaStatus from '../../components/pilula-status';
 import {
   CampoMarcar,
@@ -205,7 +206,9 @@ function CadastroPaciente() {
     >
       {ehSecretaria && <AbasPaciente id={id} ativa='dados' />}
       {carregando && !dados ? (
-        <p className='text-body-secondary'>Carregando…</p>
+        <div className='card card-body'>
+          <Esqueleto />
+        </div>
       ) : (
         <Formulario
           aoEnviar={salvar}
@@ -222,10 +225,10 @@ function CadastroPaciente() {
                   id &&
                   !inativo && (
                     <>
-                      <button type='button' className='btn btn-outline-primary' onClick={convidarPortal} disabled={salvando}>
+                      <button type='button' className='btn btn-outline-secondary' onClick={convidarPortal} disabled={salvando}>
                         Convidar para o portal
                       </button>
-                      <button type='button' className='btn btn-outline-primary' onClick={pedirHistorico} disabled={salvando}>
+                      <button type='button' className='btn btn-outline-secondary' onClick={pedirHistorico} disabled={salvando}>
                         Baixar histórico
                       </button>
                     </>
@@ -239,7 +242,7 @@ function CadastroPaciente() {
                 </p>
               )}
               {id && ehSecretaria && !inativo && (
-                <button type='button' className='btn btn-link p-0 align-self-start' onClick={() => setPedidoAberto(true)}>
+                <button type='button' className='btn btn-outline-secondary align-self-start' onClick={() => setPedidoAberto(true)}>
                   Registrar pedido do titular (acesso, correção, portabilidade, revogação)
                 </button>
               )}

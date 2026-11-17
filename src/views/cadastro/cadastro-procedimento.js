@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
+import Esqueleto from '../../components/esqueleto';
 import {
   CampoMarcar,
   CampoMoeda,
@@ -110,7 +111,9 @@ function CadastroProcedimento() {
       }
     >
       {carregando && !dados ? (
-        <p className='text-body-secondary'>Carregando…</p>
+        <div className='card card-body'>
+          <Esqueleto />
+        </div>
       ) : (
         <Formulario
           aoEnviar={salvar}
@@ -124,13 +127,13 @@ function CadastroProcedimento() {
             </div>
           )}
           <Secao titulo='Identificação'>
-            <CampoTexto {...form.campo('codigoInterno')} rotulo='Código interno' opcional largura='col-md-3' placeholder='CON-01' />
+            <CampoTexto {...form.campo('codigoInterno')} rotulo='Código interno' opcional largura='col-lg-3' placeholder='CON-01' />
             <CampoTexto
               {...form.campo('codigo', mascararDigitos(8))}
               rotulo='Código TUSS'
               inputMode='numeric'
               placeholder='00000000'
-              largura='col-md-3'
+              largura='col-lg-3'
             />
             <CampoSelecao {...form.campo('tipo')} rotulo='Tipo' opcoes={Object.entries(TIPO_PROCEDIMENTO)} />
             <CampoTexto {...form.campo('nome')} rotulo='Descrição' largura='col-12' />
@@ -140,7 +143,7 @@ function CadastroProcedimento() {
               {...form.campo('duracaoPadrao', mascararDigitos(3))}
               rotulo='Duração padrão (minutos)'
               inputMode='numeric'
-              largura='col-md-3'
+              largura='col-lg-3'
               ajuda='Ocupa a agenda do médico.'
             />
             <CampoMoeda {...form.campo('precoParticular', mascararMoeda)} rotulo='Preço particular' />
