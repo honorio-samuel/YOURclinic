@@ -17,6 +17,7 @@ import CadastroMedico from './views/cadastro/cadastro-medico';
 import CadastroEquipe from './views/cadastro/cadastro-equipe';
 import CadastroConvenio from './views/cadastro/cadastro-convenio';
 import CadastroProcedimento from './views/cadastro/cadastro-procedimento';
+import Agenda from './views/agenda/agenda';
 import CadastroBloqueio from './views/agenda/cadastro-bloqueio';
 import CadastroContaPagar from './views/financeiro/cadastro-conta-pagar';
 import CadastroProduto from './views/estoque/cadastro-produto';
@@ -82,7 +83,7 @@ const TELAS = [
   ['/admin/cadastro-convenios/:idParam?', A, <CadastroConvenio />],
   ['/admin/listagem-procedimentos', A, <Procedimentos />],
   ['/admin/cadastro-procedimentos/:idParam?', A, <CadastroProcedimento />],
-  ['/admin/agenda', A, <EmBreve codigo='A-07' titulo='Agenda da clínica' />],
+  ['/admin/agenda', A, <Agenda />],
   ['/admin/cadastro-agendamentos', A, <EmBreve codigo='A-08a' titulo='Novo agendamento' />],
   ['/admin/listagem-fila-do-dia', A, <FilaDoDia />],
   ['/admin/grade', A, <EmBreve codigo='A-10' titulo='Grade de horários' />],
@@ -118,7 +119,7 @@ const TELAS = [
   ['/medico/listagem-pacientes', M, <MeusPacientes />],
   ['/medico/prontuario/:id', M, <Prontuario />],
   ['/medico/prontuario/:id/:aba', M, <Prontuario />],
-  ['/medico/agenda', M, <EmBreve codigo='M-03' titulo='Minha agenda' />],
+  ['/medico/agenda', M, <Agenda />],
   ['/medico/listagem-orcamentos', M, <OrcamentosMedico />],
   ['/medico/listagem-produtos', M, <Produtos />],
   ['/medico/listagem-pendencias', M, <PendenciasClinicas />],
@@ -127,7 +128,7 @@ const TELAS = [
   ['/secretaria/cadastro-pacientes/:idParam?', S, <CadastroPaciente />],
   ['/secretaria/cadastro-pacientes/:idParam/observacoes', S, <ObservacoesGerais />],
   ['/secretaria/cadastro-pacientes/:idParam/anexos', S, <AnexosRecepcao />],
-  ['/secretaria/agenda', S, <EmBreve codigo='S-02' titulo='Agenda da clínica' />],
+  ['/secretaria/agenda', S, <Agenda />],
   ['/secretaria/cadastro-agendamentos', S, <EmBreve codigo='S-03a' titulo='Novo agendamento' />],
   ['/secretaria/listagem-consultas', S, <ReagendarOuCancelar />],
   ['/secretaria/listagem-bloqueios', S, <Bloqueios />],

@@ -335,6 +335,69 @@
   border-radius: var(--bs-border-radius-lg);
 }
 
+/* Agenda, visão Mês: sete colunas, cada dia com a sua contagem. */
+
+.calendario {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0.375rem;
+}
+
+.calendario th {
+  padding-bottom: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--bs-secondary-color);
+  text-align: center;
+}
+
+.calendario td {
+  height: 4.5rem;
+  padding: 0.375rem;
+  text-align: center;
+  vertical-align: top;
+  background-color: var(--bs-tertiary-bg);
+  border-radius: var(--bs-border-radius);
+}
+
+/* Os dias de fora do mês ficam em branco. */
+.calendario td:empty {
+  background-color: transparent;
+}
+
+.calendario-dia {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color);
+}
+
+.calendario-contagem {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  margin-top: 0.25rem;
+  padding: 0 0.375rem;
+  font-weight: 600;
+  color: var(--bs-body-color);
+  background-color: var(--bs-secondary-bg);
+  border-radius: 50rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hoje: contorno de 2 px e a contagem preenchida; o leitor de tela ouve "hoje". */
+.calendario .hoje {
+  background-color: var(--bs-body-bg);
+  box-shadow: inset 0 0 0 2px var(--bs-primary);
+}
+
+.calendario .hoje .calendario-contagem {
+  color: var(--bs-white);
+  background-color: var(--bs-primary);
+}
+
 /* Atalhos do Início do portal: o cartão sobe um pouco sob o ponteiro. */
 
 .atalho {
