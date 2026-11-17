@@ -28,6 +28,8 @@ $info-bg-subtle: mix($info, #fff, 22%); // #dbf1f8
 $info-text-emphasis: #222;
 $secondary-bg-subtle: #eee;
 $secondary-text-emphasis: #222;
+// Barras comuns do gráfico do Painel do dia, sem texto em cima; o pico vai em primary.
+$primary-bg-subtle: mix($primary, #fff, 20%); // #cce5ee
 
 // Fonte (D34): Inter pelo Google Fonts; sem rede, vale a pilha do sistema.
 $web-font-path: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
@@ -79,6 +81,11 @@ $table-hover-bg: #f8f9fa;
 // Pílulas e contadores em 12 px, sem depender do tamanho do texto em volta.
 $badge-font-size: 0.75rem;
 $badge-padding-x: 0.625rem;
+
+// Barra de proporção dos indicadores: fina e arredondada, em primary sobre #eee (3,92:1).
+$progress-height: 0.375rem;
+$progress-border-radius: 50rem;
+$progress-bg: #eee;
 
 $alert-border-width: 0;
 $alert-border-radius: $border-radius-lg;
