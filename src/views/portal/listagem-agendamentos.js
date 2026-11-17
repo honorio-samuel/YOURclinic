@@ -52,7 +52,7 @@ function AgendamentosPortal() {
               titulo: '',
               render: (c) =>
                 podeCancelar(c) ? (
-                  <button type='button' className='btn btn-link btn-sm p-0' onClick={() => cancelar(c)}>
+                  <button type='button' className='btn btn-sm btn-outline-secondary' onClick={() => cancelar(c)}>
                     Cancelar
                   </button>
                 ) : c.status === 'AGENDADO' ? (

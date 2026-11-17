@@ -1,6 +1,13 @@
 import React from 'react';
 
+import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
+import PrivacyTipOutlinedIcon from '@mui/icons-material/PrivacyTipOutlined';
+import SmsOutlinedIcon from '@mui/icons-material/SmsOutlined';
+import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
+
 import Pagina from '../../components/pagina';
+import CabecalhoCartao from '../../components/cabecalho-cartao';
+import Esqueleto from '../../components/esqueleto';
 import Listagem from '../../components/listagem';
 import { emBreve, useConfirmacao } from '../../components/confirmacao';
 import { mensagemErro, mensagemSucesso } from '../../components/toastr';
@@ -51,7 +58,7 @@ function DadosPortal() {
     { id: 'andamento', direito: 'Pedidos em andamento', entrega: andamento.length ? `${andamento.length} em análise · resposta em até 15 dias` : 'Nenhum', acao: andamento.length ? 'Ver' : null, aoClicar: () => emBreve('O acompanhamento dos pedidos') },
   ];
   const campo = (rotulo, valor, chave) => (
-    <div className='col-md-6' key={chave}>
+    <div className='col-lg-6' key={chave}>
       <label htmlFor={`dado-${chave}`} className='form-label'>
         {rotulo}
       </label>
@@ -63,26 +70,32 @@ function DadosPortal() {
     <ExigeRepresentado>
       <Pagina titulo={ehResponsavel ? 'Dados do representado' : 'Meus dados e privacidade'}>
         <div className='card'>
-          <div className='card-body'>
-            <h2 className='h5'>{ehResponsavel ? 'Dados cadastrais' : 'Meus dados'}</h2>
-            {carregando && <p className='text-body-secondary mb-0'>Carregando…</p>}
+          <div className='card-body d-flex flex-column gap-3'>
+            <CabecalhoCartao
+              icone={PersonOutlinedIcon}
+              titulo={ehResponsavel ? 'Dados cadastrais' : 'Meus dados'}
+              acoes={
+                dados && (
+                  <button type='button' className='btn btn-sm btn-outline-secondary' onClick={() => solicitar('CORRECAO', 'Correção de dados')}>
+                    Pedir correção de dados
+                  </button>
+                )
+              }
+            />
+            {carregando && !dados && <Esqueleto />}
             {dados && (
               <div className='row g-3'>
                 {campo('Nome', dados.pessoa.nome, 'nome')}
                 {campo('CPF', dados.pessoa.cpf, 'cpf')}
                 {campo('Telefone', dados.pessoa.telefone, 'telefone')}
                 {campo('E-mail', dados.pessoa.email, 'email')}
-                <div className='col-12'>
-                  <button type='button' className='btn btn-link p-0' onClick={() => solicitar('CORRECAO', 'Correção de dados')}>
-                    Pedir correção de dados
-                  </button>
-                </div>
               </div>
             )}
           </div>
         </div>
         <Listagem
           titulo={ehResponsavel ? 'Direitos do titular' : 'Meus direitos'}
+          icone={PrivacyTipOutlinedIcon}
           carregando={carregando}
           erro={erro}
           aoTentarDeNovo={recarregar}
@@ -94,7 +107,7 @@ function DadosPortal() {
               titulo: '',
               render: (d) =>
                 d.acao ? (
-                  <button type='button' className='btn btn-link btn-sm p-0' onClick={d.aoClicar}>
+                  <button type='button' className='btn btn-sm btn-outline-secondary' onClick={d.aoClicar}>
                     {d.acao}
                   </button>
                 ) : (
@@ -105,7 +118,9 @@ function DadosPortal() {
         />
         <div className='card'>
           <div className='card-body'>
-            <h2 className='h5'>Avisos por mensagem</h2>
+            <div className='mb-3'>
+              <CabecalhoCartao icone={SmsOutlinedIcon} titulo='Avisos por mensagem' />
+            </div>
             {[
               ['lembretes', 'Lembretes de consulta'],
               ['cobrancas', 'Avisos de cobrança'],
@@ -131,6 +146,7 @@ function DadosPortal() {
         </div>
         <Listagem
           titulo='Notificações recebidas'
+          icone={NotificationsNoneOutlinedIcon}
           carregando={carregando}
           linhas={dados?.notificacoes ?? []}
           vazio='Nenhuma notificação.'

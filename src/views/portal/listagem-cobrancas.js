@@ -51,18 +51,18 @@ function CobrancasPortal() {
                 titulo: '',
                 render: (c) =>
                   c.situacao === 'ABERTA' ? (
-                    <button type='button' className='btn btn-link btn-sm p-0' onClick={() => emBreve('O pagamento no ambiente do provedor')}>
+                    <button type='button' className='btn btn-sm btn-outline-secondary' onClick={() => emBreve('O pagamento no ambiente do provedor')}>
                       Pagar
                     </button>
                   ) : (
-                    <span className='d-flex gap-3'>
+                    <span className='d-inline-flex gap-2'>
                       {c.recibo && (
-                        <button type='button' className='btn btn-link btn-sm p-0' onClick={() => emBreve('O download do recibo')}>
+                        <button type='button' className='btn btn-sm btn-outline-secondary' onClick={() => emBreve('O download do recibo')}>
                           Recibo
                         </button>
                       )}
                       {c.nfse && (
-                        <button type='button' className='btn btn-link btn-sm p-0' onClick={() => emBreve('O download da NFS-e')}>
+                        <button type='button' className='btn btn-sm btn-outline-secondary' onClick={() => emBreve('O download da NFS-e')}>
                           NFS-e
                         </button>
                       )}
@@ -86,7 +86,7 @@ function CobrancasPortal() {
               {
                 titulo: '',
                 render: (o) => (
-                  <button type='button' className='btn btn-link btn-sm p-0' onClick={() => navigate(`/portal/orcamentos/${o.id}`)}>
+                  <button type='button' className='btn btn-sm btn-outline-secondary' onClick={() => navigate(`/portal/orcamentos/${o.id}`)}>
                     Abrir
                   </button>
                 ),

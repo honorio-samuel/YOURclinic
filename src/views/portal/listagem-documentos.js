@@ -1,6 +1,12 @@
 import React from 'react';
 
+import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
+import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
+
 import Pagina from '../../components/pagina';
+import CabecalhoCartao from '../../components/cabecalho-cartao';
 import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
 import { emBreve } from '../../components/confirmacao';
@@ -39,13 +45,13 @@ function DocumentosPortal() {
       <Pagina titulo={ehResponsavel ? 'Documentos' : 'Meus documentos'}>
         <div className='row g-3'>
           {[
-            ['Histórico de atendimentos', 'Datas, tipo de atendimento e médico responsável.'],
-            ['Prontuário completo', 'Anamnese, exame físico, diagnóstico e prescrições.'],
-          ].map(([titulo, texto]) => (
-            <div key={titulo} className='col-md-6'>
+            ['Histórico de atendimentos', 'Datas, tipo de atendimento e médico responsável.', HistoryOutlinedIcon],
+            ['Prontuário completo', 'Anamnese, exame físico, diagnóstico e prescrições.', DescriptionOutlinedIcon],
+          ].map(([titulo, texto, icone]) => (
+            <div key={titulo} className='col-lg-6'>
               <div className='card h-100'>
                 <div className='card-body d-flex flex-column gap-2'>
-                  <h2 className='h5 mb-0'>{titulo}</h2>
+                  <CabecalhoCartao icone={icone} titulo={titulo} />
                   <p className='mb-0 text-body-secondary'>{texto}</p>
                   <div>
                     <button type='button' className='btn btn-primary' onClick={() => emBreve('A geração do PDF')}>
@@ -57,13 +63,14 @@ function DocumentosPortal() {
             </div>
           ))}
         </div>
-        <div className='d-flex justify-content-between align-items-center'>
-          <h2 className='h5 mb-0'>Exames enviados</h2>
-          <button type='button' className='btn btn-outline-primary' onClick={() => emBreve('O envio de exame')}>
-            Enviar exame
-          </button>
-        </div>
         <Listagem
+          titulo='Exames enviados'
+          icone={UploadFileOutlinedIcon}
+          acoes={
+            <button type='button' className='btn btn-sm btn-outline-secondary' onClick={() => emBreve('O envio de exame')}>
+              Enviar exame
+            </button>
+          }
           carregando={carregando}
           erro={erro}
           aoTentarDeNovo={recarregar}
@@ -77,6 +84,7 @@ function DocumentosPortal() {
         />
         <Listagem
           titulo='Itens recebidos na clínica'
+          icone={Inventory2OutlinedIcon}
           carregando={carregando}
           linhas={dados?.itens ?? []}
           vazio='Nenhum item recebido.'

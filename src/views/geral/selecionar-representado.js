@@ -1,7 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
+
 import Pagina from '../../components/pagina';
+import Avatar from '../../components/avatar';
+import Esqueleto from '../../components/esqueleto';
 import EstadoErro from '../../components/estado-erro';
 import { api } from '../../config/axios';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -30,20 +34,29 @@ function SelecionarRepresentado() {
     <Pagina titulo='Quem você vai acompanhar agora?'>
       {erro && <EstadoErro erro={erro} aoTentarDeNovo={recarregar} />}
       {erroEscolha && <EstadoErro erro={{ status: 404 }} />}
-      {carregando && <p className='text-body-secondary'>Carregando…</p>}
-      <div className='d-flex flex-column gap-2'>
-        {(dados ?? []).map((r) => (
-          <button
-            key={r.idPaciente}
-            type='button'
-            className={`btn btn-outline-primary text-start ${
-              sessao?.idRepresentado === r.idPaciente ? 'active' : ''
-            }`}
-            onClick={() => escolher(r.idPaciente)}
-          >
-            {r.nome}
-          </button>
-        ))}
+      <div className='col-lg-6 d-flex flex-column gap-2'>
+        {carregando && (
+          <div className='card card-body'>
+            <Esqueleto linhas={2} />
+          </div>
+        )}
+        {(dados ?? []).map((r) => {
+          // O representado atual leva a marca de conferido, e não só uma cor.
+          const atual = sessao?.idRepresentado === r.idPaciente;
+          return (
+            <button
+              key={r.idPaciente}
+              type='button'
+              className='card card-body atalho flex-row align-items-center gap-3 p-3 text-start fw-semibold'
+              aria-current={atual ? 'true' : undefined}
+              onClick={() => escolher(r.idPaciente)}
+            >
+              <Avatar nome={r.nome} />
+              <span className='flex-grow-1'>{r.nome}</span>
+              {atual && <CheckCircleOutlinedIcon className='text-success' />}
+            </button>
+          );
+        })}
       </div>
     </Pagina>
   );
