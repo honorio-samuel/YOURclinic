@@ -4,7 +4,7 @@ import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
-import { CampoChips, CampoSelect, Filtros } from '../../components/campos';
+import { CampoChips, CampoSelect, contarPor, Filtros } from '../../components/campos';
 import { emBreve, salvarComAviso, useConfirmacao } from '../../components/confirmacao';
 import { DATA_DE_HOJE } from '../../config/axios';
 import { listar, pessoasPorId, porId } from '../../servicos/dados';
@@ -107,7 +107,7 @@ function Estornos() {
           aoMudar={setSituacao}
           opcoes={[['', 'Todas'], ...Object.entries(SITUACAO_ESTORNO).map(([k, v]) => [k, v.rotulo])]}
         />
-        <CampoChips id='estornoMeio' rotulo='Meio' valor={meio} aoMudar={setMeio} opcoes={[['', 'Todos'], ...Object.values(MEIO_PAGAMENTO).map((m) => [m, m])]} />
+        <CampoChips id='estornoMeio' rotulo='Meio' valor={meio} aoMudar={setMeio} opcoes={[['', 'Todos'], ...Object.values(MEIO_PAGAMENTO).map((m) => [m, m])]} contagem={contarPor(dados, (e) => e.meio)} />
       </Filtros>
       <Listagem carregando={carregando} erro={erro} aoTentarDeNovo={recarregar} linhas={linhas} vazio='Nenhum pedido nesta seleção.' colunas={colunas} />
       {modal}

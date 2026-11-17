@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
-import { CampoBusca, CampoChips, Filtros } from '../../components/campos';
+import { CampoBusca, CampoChips, contarPor, Filtros } from '../../components/campos';
 import { useAlternarSituacao } from '../../components/confirmacao';
 import { listar } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -41,6 +41,7 @@ function Procedimentos() {
           valor={tipo}
           aoMudar={setTipo}
           opcoes={[['', 'Todos'], ...Object.entries(TIPO_PROCEDIMENTO)]}
+          contagem={contarPor(dados, (p) => p.tipo)}
         />
       </Filtros>
       <Listagem

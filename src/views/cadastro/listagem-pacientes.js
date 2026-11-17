@@ -6,7 +6,7 @@ import Listagem from '../../components/listagem';
 import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
-import { CampoBusca, CampoChips, Filtros } from '../../components/campos';
+import { CampoBusca, CampoChips, contarPor, Filtros } from '../../components/campos';
 import { useAlternarSituacao } from '../../components/confirmacao';
 import { listar, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -66,6 +66,7 @@ function Pacientes() {
           valor={status}
           aoMudar={setStatus}
           opcoes={[['', 'Todos'], ['ATIVO', 'Ativos'], ['INATIVO', 'Inativos']]}
+          contagem={contarPor(dados, (p) => p.situacao)}
         />
       </Filtros>
       <Listagem

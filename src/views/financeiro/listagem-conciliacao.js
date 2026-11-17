@@ -4,7 +4,7 @@ import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
-import { CampoChips, CampoSelect, Filtros } from '../../components/campos';
+import { CampoChips, CampoSelect, contarPor, Filtros } from '../../components/campos';
 import { emBreve } from '../../components/confirmacao';
 import { listar } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -44,6 +44,7 @@ function Conciliacao() {
           valor={situacao}
           aoMudar={setSituacao}
           opcoes={[['', 'Todas'], ...Object.entries(CONCILIACAO).map(([k, v]) => [k, v.rotulo])]}
+          contagem={contarPor(dados, (p) => p.situacaoConciliacao)}
         />
       </Filtros>
       <Listagem

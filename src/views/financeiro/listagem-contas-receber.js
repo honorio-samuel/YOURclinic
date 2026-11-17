@@ -6,7 +6,7 @@ import Listagem from '../../components/listagem';
 import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
-import { CampoBusca, CampoChips, CampoSelect, Filtros } from '../../components/campos';
+import { CampoBusca, CampoChips, CampoSelect, contarPor, Filtros } from '../../components/campos';
 import { emBreve } from '../../components/confirmacao';
 import { listar, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -47,6 +47,7 @@ function ContasReceber() {
           valor={situacao}
           aoMudar={setSituacao}
           opcoes={[['', 'Todas'], ['ABERTO', 'Aberto'], ['VENCIDO', 'Vencido'], ['PAGO', 'Pago']]}
+          contagem={contarPor(dados, (t) => t.situacaoEfetiva)}
         />
         <CampoSelect
           id='receberOrigem'

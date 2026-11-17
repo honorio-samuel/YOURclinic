@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import { NomeComAvatar } from '../../components/avatar';
-import { CampoBusca, CampoChips, Filtros } from '../../components/campos';
+import { CampoBusca, CampoChips, contarPor, Filtros } from '../../components/campos';
 import { useAlternarSituacao } from '../../components/confirmacao';
 import { listar } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -35,7 +35,7 @@ function Convenios() {
     >
       <Filtros>
         <CampoBusca id='buscaConvenio' rotulo='Buscar por nome ou operadora' valor={busca} aoMudar={setBusca} />
-        <CampoChips id='statusConvenio' rotulo='Status' valor={status} aoMudar={setStatus} opcoes={OPCOES_STATUS} />
+        <CampoChips id='statusConvenio' rotulo='Status' valor={status} aoMudar={setStatus} opcoes={OPCOES_STATUS} contagem={contarPor(dados, (c) => c.situacao)} />
       </Filtros>
       <Listagem
         carregando={carregando}

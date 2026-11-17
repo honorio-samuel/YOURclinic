@@ -7,7 +7,7 @@ import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
-import { CampoBusca, CampoChips, Filtros } from '../../components/campos';
+import { CampoBusca, CampoChips, contarPor, Filtros } from '../../components/campos';
 import { emBreve, useAlternarSituacao } from '../../components/confirmacao';
 import { DATA_DE_HOJE } from '../../config/axios';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -45,6 +45,8 @@ function Produtos() {
   const linhas = (dados ?? []).filter(
     (p) => corresponde(busca, p.descricao) && (!tipo || p.tipo === tipo) && (ehMedico ? p.situacao === 'ATIVO' : !status || p.situacao === status)
   );
+  // O Médico só vê produtos ativos; a contagem por tipo segue o que ele vê.
+  const doPapel = dados && (ehMedico ? dados.filter((p) => p.situacao === 'ATIVO') : dados);
 
   const colunasMedico = [
     { titulo: 'Produto', render: (p) => p.descricao },
@@ -107,9 +109,9 @@ function Produtos() {
     >
       <Filtros>
         <CampoBusca id='produtoBusca' rotulo='Buscar por produto' valor={busca} aoMudar={setBusca} />
-        <CampoChips id='produtoTipo' rotulo='Tipo' valor={tipo} aoMudar={setTipo} opcoes={[['', 'Todos'], ...Object.entries(TIPO_PRODUTO)]} />
+        <CampoChips id='produtoTipo' rotulo='Tipo' valor={tipo} aoMudar={setTipo} opcoes={[['', 'Todos'], ...Object.entries(TIPO_PRODUTO)]} contagem={contarPor(doPapel, (p) => p.tipo)} />
         {!ehMedico && (
-          <CampoChips id='produtoStatus' rotulo='Status' valor={status} aoMudar={setStatus} opcoes={[['ATIVO', 'Ativos'], ['INATIVO', 'Inativos'], ['', 'Todos']]} />
+          <CampoChips id='produtoStatus' rotulo='Status' valor={status} aoMudar={setStatus} opcoes={[['ATIVO', 'Ativos'], ['INATIVO', 'Inativos'], ['', 'Todos']]} contagem={contarPor(dados, (p) => p.situacao)} />
         )}
       </Filtros>
       <Listagem

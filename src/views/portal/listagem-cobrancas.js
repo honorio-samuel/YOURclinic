@@ -23,14 +23,21 @@ function CobrancasPortal() {
   return (
     <ExigeRepresentado>
       <Pagina titulo='Orçamentos e cobranças'>
+        {/* Cada aba mostra quantos itens tem, assim que a lista chega. */}
         <ul className='nav nav-tabs'>
           {[
-            ['cobrancas', 'Cobranças'],
-            ['orcamentos', 'Orçamentos'],
-          ].map(([chave, rotulo]) => (
+            ['cobrancas', 'Cobranças', cob.dados?.length],
+            ['orcamentos', 'Orçamentos', orc.dados?.length],
+          ].map(([chave, rotulo, quantos]) => (
             <li key={chave} className='nav-item'>
               <button type='button' className={`nav-link ${aba === chave ? 'active' : ''}`} aria-current={aba === chave ? 'page' : undefined} onClick={() => setAba(chave)}>
                 {rotulo}
+                {quantos !== undefined && (
+                  <>
+                    {' '}
+                    <span className='chip-contagem'>{quantos}</span>
+                  </>
+                )}
               </button>
             </li>
           ))}

@@ -4,7 +4,7 @@ import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
-import { CampoChips, CampoSelect, Filtros } from '../../components/campos';
+import { CampoChips, CampoSelect, contarPor, Filtros } from '../../components/campos';
 import { emBreve, salvarComAviso } from '../../components/confirmacao';
 import { listar, pessoasPorId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -39,7 +39,7 @@ function Notificacoes() {
     >
       <Filtros>
         <CampoSelect id='notEvento' rotulo='Evento' valor={evento} aoMudar={setEvento} opcoes={[['', 'Todos'], ...Object.entries(EVENTO_NOTIFICACAO)]} />
-        <CampoChips id='notCanal' rotulo='Canal' valor={canal} aoMudar={setCanal} opcoes={[['', 'Todos'], ['SMS', 'Mensagem de texto'], ['EMAIL', 'E-mail']]} />
+        <CampoChips id='notCanal' rotulo='Canal' valor={canal} aoMudar={setCanal} opcoes={[['', 'Todos'], ['SMS', 'Mensagem de texto'], ['EMAIL', 'E-mail']]} contagem={contarPor(dados, (n) => n.canal)} />
         <CampoSelect
           id='notSituacao'
           rotulo='Situação'

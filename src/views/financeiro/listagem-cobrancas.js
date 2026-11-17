@@ -5,7 +5,7 @@ import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
-import { CampoChips, CampoSelect, Filtros } from '../../components/campos';
+import { CampoChips, CampoSelect, contarPor, Filtros } from '../../components/campos';
 import { DATA_DE_HOJE } from '../../config/axios';
 import { listar, pessoasPorId, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -40,7 +40,7 @@ function CobrancasDoDia() {
     <Pagina titulo='Cobranças do dia'>
       <Filtros>
         <CampoSelect id='cobMedico' rotulo='Médico' valor={medico} aoMudar={setMedico} opcoes={opcoesMedico} />
-        <CampoChips id='cobSituacao' rotulo='Situação' valor={situacao} aoMudar={setSituacao} opcoes={[['', 'Todas'], ['ABERTA', 'Em aberto'], ['PAGA', 'Paga']]} />
+        <CampoChips id='cobSituacao' rotulo='Situação' valor={situacao} aoMudar={setSituacao} opcoes={[['', 'Todas'], ['ABERTA', 'Em aberto'], ['PAGA', 'Paga']]} contagem={contarPor(dados, (c) => c.situacao)} />
       </Filtros>
       <Listagem
         carregando={carregando}

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import { NomeComAvatar } from '../../components/avatar';
-import { CampoBusca, CampoChips, Filtros } from '../../components/campos';
+import { CampoBusca, CampoChips, contarPor, Filtros } from '../../components/campos';
 import { useAlternarSituacao } from '../../components/confirmacao';
 import { listar, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -53,7 +53,7 @@ function Medicos() {
     >
       <Filtros>
         <CampoBusca id='buscaMedico' rotulo='Buscar por nome ou registro' valor={busca} aoMudar={setBusca} />
-        <CampoChips id='statusMedico' rotulo='Status' valor={status} aoMudar={setStatus} opcoes={OPCOES_STATUS} />
+        <CampoChips id='statusMedico' rotulo='Status' valor={status} aoMudar={setStatus} opcoes={OPCOES_STATUS} contagem={contarPor(dados, (m) => m.situacao)} />
       </Filtros>
       <Listagem
         carregando={carregando}

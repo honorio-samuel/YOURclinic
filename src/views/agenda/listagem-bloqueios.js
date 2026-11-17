@@ -7,7 +7,7 @@ import Listagem from '../../components/listagem';
 import { NomeComAvatar } from '../../components/avatar';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
-import { CampoChips, CampoSelect, Filtros } from '../../components/campos';
+import { CampoChips, CampoSelect, contarPor, Filtros } from '../../components/campos';
 import { emBreve, useAlternarSituacao, useConfirmacao } from '../../components/confirmacao';
 import { mensagemErro, mensagemSucesso } from '../../components/toastr';
 import { api } from '../../config/axios';
@@ -82,6 +82,7 @@ function Bloqueios() {
           valor={status}
           aoMudar={setStatus}
           opcoes={[['ATIVO', 'Ativos'], ['INATIVO', 'Inativos'], ['', 'Todos']]}
+          contagem={contarPor(dados, (b) => (b.situacao === 'ATIVO' ? 'ATIVO' : 'INATIVO'))}
         />
       </Filtros>
       <Listagem
