@@ -11,6 +11,8 @@
 // - campo oculto não sai na resposta e não pode ser escrito;
 // - nenhum campo cujo nome comece por "senha" sai em resposta alguma.
 
+const { afetadasPeloBloqueio, conferirHorario, horasEntre } = require('./agenda');
+
 const A = 'ADMINISTRADOR';
 const M = 'MEDICO';
 const S = 'SECRETARIA';
@@ -161,27 +163,74 @@ const RETROATIVAS = new Set(['EM_ATENDIMENTO>NA_RECEPCAO', 'FINALIZADO>EM_ATENDI
 const ehRetroativa = (novo, antigo) => RETROATIVAS.has(`${antigo.status}>${novo.status}`);
 const textoInformado = (valor, minimo = 5) => typeof valor === 'string' && valor.trim().length >= minimo;
 
+// Campos da consulta que a recepção muda depois de criada: status, remarcação
+// (RF20) e convênio (RF17).
+const EDITAVEIS_DA_RECEPCAO = [
+  'status', 'motivoCancelamento', 'dataHora', 'idMedico', 'motivoRemarcacao',
+  'idConvenio', 'numeroCarteirinha', 'convenioConferido',
+];
+
+// O que o servidor calcula ao agendar: a duração vem do procedimento (RF16,
+// passo 3), o preço vigente fica como referência (RN-16.2) e o convênio nasce
+// a conferir pela recepção (RN-17.3).
+function completarConsulta(novo, ctx) {
+  const procedimento = ctx.buscar('procedimentos', novo.idProcedimento);
+  novo.duracao = procedimento?.duracaoPadrao ?? 30;
+  novo.valorReferencia = procedimento?.precoParticular ?? null;
+  novo.idConvenio = novo.idConvenio ?? null;
+  novo.numeroCarteirinha = novo.idConvenio != null ? novo.numeroCarteirinha ?? null : null;
+  novo.convenioConferido = novo.idConvenio != null ? false : null;
+  novo.canalOrigem = novo.canalOrigem ?? 'RECEPCAO';
+  novo.motivoCancelamento = novo.motivoCancelamento ?? null;
+}
+
 function validarConsulta(novo, antigo, ctx, mudancas) {
   if (!antigo && novo.status !== 'AGENDADO') return 'Uma consulta nova começa como Agendada.';
-  // RF18: um médico não tem duas consultas ativas no mesmo horário.
-  if (!antigo || novo.dataHora !== antigo.dataHora || !igual(novo.idMedico, antigo.idMedico)) {
-    const ocupado = ctx.db.consultas.some(
-      (c) =>
-        c !== antigo &&
-        igual(c.idMedico, novo.idMedico) &&
-        c.dataHora === novo.dataHora &&
-        c.status !== 'CANCELADO'
-    );
-    if (ocupado) return 'Horário indisponível.';
+  const papel = ctx.sessao.papel;
+  const trocouMedico = Boolean(antigo) && !igual(novo.idMedico, antigo.idMedico);
+  const remarcacao = Boolean(antigo) && (novo.dataHora !== antigo.dataHora || trocouMedico);
+
+  if (!antigo || remarcacao) {
+    // RF20: só consulta agendada é remarcada, e sempre com motivo.
+    if (remarcacao && antigo.status !== 'AGENDADO') return 'Só se remarca consulta agendada.';
+    if (remarcacao && !textoInformado(mudancas.motivoRemarcacao)) return 'Informe o motivo da remarcação.';
+    if (!antigo && ctx.buscar('pacientes', novo.idPaciente)?.situacao !== 'ATIVO') return 'Escolha um paciente ativo.';
+    const medico = ctx.buscar('medicos', novo.idMedico);
+    if (medico?.situacao !== 'ATIVO') return 'Escolha um médico ativo.';
+    // RF20, passo 3: na falta de horário, outro médico da mesma especialidade.
+    if (trocouMedico && ctx.buscar('medicos', antigo.idMedico)?.especialidade !== medico.especialidade) {
+      return 'Remarque com um médico da mesma especialidade.';
+    }
+    if (!antigo && ctx.buscar('procedimentos', novo.idProcedimento)?.situacao !== 'ATIVO') {
+      return 'Escolha o tipo de atendimento.';
+    }
+    const erro = conferirHorario(ctx.db, novo, { agora: ctx.agoraClinica(), ignorarId: antigo?.id });
+    if (erro) return erro;
   }
+
+  // RF17: convênio da consulta, com a carteirinha do beneficiário.
+  if (!antigo || mudou('idConvenio', novo, antigo) || mudou('numeroCarteirinha', novo, antigo)) {
+    if (novo.idConvenio != null) {
+      if (ctx.buscar('convenios', novo.idConvenio)?.situacao !== 'ATIVO') return 'Escolha um convênio ativo.';
+      if (!textoInformado(novo.numeroCarteirinha, 3)) return 'Informe o número da carteirinha.';
+    }
+  }
+
   if (!antigo) return null;
   if (novo.status !== antigo.status) {
-    const permitidas = TRANSICOES[ctx.sessao.papel][antigo.status] ?? [];
+    const permitidas = TRANSICOES[papel][antigo.status] ?? [];
     if (!permitidas.includes(novo.status)) {
       return 'Mudança de status não permitida.';
     }
-    if (novo.status === 'CANCELADO' && [A, S].includes(ctx.sessao.papel) && !novo.motivoCancelamento) {
+    if (novo.status === 'CANCELADO' && [A, S].includes(papel) && !novo.motivoCancelamento) {
       return 'Informe o motivo do cancelamento.';
+    }
+    // RF19, E1: pelo portal, só até X08 horas antes.
+    if (novo.status === 'CANCELADO' && [P, R].includes(papel)) {
+      const minimo = ctx.parametro('X08', 24);
+      if (horasEntre(ctx.agoraClinica(), antigo.dataHora) < minimo) {
+        return `Cancelamento pelo portal disponível até ${minimo} horas antes. Entre em contato com a recepção.`;
+      }
     }
     if (ehRetroativa(novo, antigo) && !textoInformado(mudancas.motivoTransicao)) {
       return 'Informe o motivo da volta de status.';
@@ -189,6 +238,75 @@ function validarConsulta(novo, antigo, ctx, mudancas) {
   }
   return null;
 }
+
+// RF21: o aviso leva só data, hora, médico e local; o conteúdo não fica aqui.
+// Vai por mensagem ao telefone do paciente ou, sem telefone, por e-mail.
+function notificar(ctx, consulta, evento) {
+  const pessoa = ctx.buscar('pessoas', consulta.idPaciente);
+  const porTelefone = Boolean(pessoa?.telefone);
+  ctx.inserir('notificacoes', {
+    evento,
+    canal: porTelefone ? 'WHATSAPP' : 'EMAIL',
+    destino: porTelefone ? pessoa.telefone : pessoa?.email ?? null,
+    dataEnvio: ctx.agoraClinica(),
+    situacao: 'ENVIADA',
+    tentativas: 1,
+    idPessoa: consulta.idPaciente,
+    idConsulta: consulta.id,
+    idParametro: null,
+  });
+}
+
+// RN-16.1: agendar cria o vínculo pendente com o médico. Vínculo Ativo ou
+// Histórico fica como está, para não tirar do médico o acesso que ele já tem.
+function vincularPendente(ctx, idPaciente, idMedico) {
+  const vinculo = ctx.db.vinculos.find((v) => igual(v.idPaciente, idPaciente) && igual(v.idMedico, idMedico));
+  const pendente = { estado: 'PENDENTE', dataInicio: ctx.hojeClinica(), dataFim: null, motivoEncerramento: null };
+  if (!vinculo) ctx.inserir('vinculos', { ...pendente, idPaciente, idMedico });
+  else if (vinculo.estado === 'ENCERRADO') Object.assign(vinculo, pendente);
+}
+
+// RF19, passo 3: sem consulta agendada com o médico, o vínculo pendente acaba.
+function encerrarPendente(ctx, idPaciente, idMedico) {
+  const vinculo = ctx.db.vinculos.find((v) => igual(v.idPaciente, idPaciente) && igual(v.idMedico, idMedico));
+  if (vinculo?.estado !== 'PENDENTE') return;
+  const resta = ctx.db.consultas.some(
+    (c) => igual(c.idPaciente, idPaciente) && igual(c.idMedico, idMedico) && c.status === 'AGENDADO'
+  );
+  if (!resta) {
+    Object.assign(vinculo, { estado: 'ENCERRADO', dataFim: ctx.hojeClinica(), motivoEncerramento: 'Consulta cancelada antes do atendimento' });
+  }
+}
+
+function aposCriarConsulta(consulta, ctx) {
+  vincularPendente(ctx, consulta.idPaciente, consulta.idMedico);
+  notificar(ctx, consulta, 'CONFIRMACAO_AGENDAMENTO');
+}
+
+// Cancelamento e remarcação avisam o paciente (RF19, RF20); a troca de
+// médico na remarcação passa o vínculo pendente para o novo (RN-20.2).
+function aposEditarConsulta(novo, antigo, ctx) {
+  aposMudarStatus(novo, antigo, ctx);
+  if (novo.status === 'CANCELADO' && antigo.status !== 'CANCELADO') {
+    notificar(ctx, novo, [P, R].includes(ctx.sessao.papel) ? 'CANCELAMENTO_PELO_TITULAR' : 'CANCELAMENTO_CONSULTA');
+    encerrarPendente(ctx, novo.idPaciente, novo.idMedico);
+    return;
+  }
+  const trocouMedico = !igual(novo.idMedico, antigo.idMedico);
+  if (novo.dataHora !== antigo.dataHora || trocouMedico) {
+    if (trocouMedico) {
+      vincularPendente(ctx, novo.idPaciente, novo.idMedico);
+      encerrarPendente(ctx, novo.idPaciente, antigo.idMedico);
+    }
+    notificar(ctx, novo, 'REMARCACAO_CONSULTA');
+  }
+}
+
+// RF14: quantas consultas ainda por acontecer o bloqueio em vigor atinge.
+function contarAtingidas(bloqueio, ctx) {
+  bloqueio.consultasAfetadas = bloqueio.situacao === 'ATIVO' ? afetadasPeloBloqueio(ctx.db, bloqueio).length : 0;
+}
+const recontarAtingidas = (atual, antigo, ctx) => contarAtingidas(atual, ctx);
 
 // Ao chamar o paciente, o vínculo com o médico passa a Ativo e o prontuário
 // passa a existir (RF05). A transição retroativa ganha um registro próprio no
@@ -703,43 +821,75 @@ const politica = {
     [P]: { ler: todos },
     [R]: { ler: todos },
   },
+  // A contagem de consultas atingidas é sempre do servidor (RF14).
   bloqueiosAgenda: {
-    [A]: { ler: todos, criar: true, editar: true, excluir: true, validar: validarBloqueio },
-    [S]: { ler: todos, criar: true, editar: true, excluir: true, validar: validarBloqueio },
+    [A]: { ler: todos, criar: true, editar: true, excluir: true, completar: contarAtingidas, validar: validarBloqueio, aposEditar: recontarAtingidas },
+    [S]: { ler: todos, criar: true, editar: true, excluir: true, completar: contarAtingidas, validar: validarBloqueio, aposEditar: recontarAtingidas },
     // Bloqueio da clínica inteira (feriado) tem idMedico nulo e vale para todos.
-    [M]: { ler: ou(doMedico, comCampo('idMedico', null)), criar: true, fixar: fixarPessoa('idMedico') },
+    // M-03: o Médico registra a própria indisponibilidade; quem trata as
+    // consultas atingidas é a recepção (RF20).
+    [M]: {
+      ler: ou(doMedico, comCampo('idMedico', null)),
+      criar: true,
+      fixar: (ctx) => ({ idMedico: ctx.sessao.idPessoa, situacao: 'ATIVO' }),
+      completar: contarAtingidas,
+      validar: validarBloqueio,
+    },
   },
+  // RF16 a RF20. O preço de referência (RN-16.2) não vai ao Médico nem ao
+  // titular (RC06).
   consultas: {
     [A]: {
       ler: todos,
       criar: true,
       editar: true,
-      editaveis: ['status', 'motivoCancelamento', 'dataHora'],
+      editaveis: EDITAVEIS_DA_RECEPCAO,
+      completar: completarConsulta,
       validar: validarConsulta,
+      aposCriar: aposCriarConsulta,
+      aposEditar: aposEditarConsulta,
     },
-    [S]: { ler: todos, criar: true, editar: true, validar: validarConsulta },
+    [S]: {
+      ler: todos,
+      criar: true,
+      editar: true,
+      editaveis: EDITAVEIS_DA_RECEPCAO,
+      completar: completarConsulta,
+      validar: validarConsulta,
+      aposCriar: aposCriarConsulta,
+      aposEditar: aposEditarConsulta,
+    },
     [M]: {
       ler: doMedico,
       editar: true,
       editaveis: ['status', 'motivoTransicao'],
+      ocultar: ['valorReferencia'],
       validar: validarConsulta,
-      aposEditar: aposMudarStatus,
+      aposEditar: aposEditarConsulta,
     },
     [P]: {
       ler: doPaciente('consultas'),
       criar: true,
       editar: true,
       editaveis: ['status', 'motivoCancelamento'],
+      ocultar: ['valorReferencia'],
       fixar: (ctx) => ({ ...fixarTitular(ctx), status: 'AGENDADO', canalOrigem: 'PORTAL' }),
+      completar: completarConsulta,
       validar: validarConsulta,
+      aposCriar: aposCriarConsulta,
+      aposEditar: aposEditarConsulta,
     },
     [R]: {
       ler: doPaciente('consultas'),
       criar: true,
       editar: true,
       editaveis: ['status', 'motivoCancelamento'],
+      ocultar: ['valorReferencia'],
       fixar: (ctx) => ({ ...fixarTitular(ctx), status: 'AGENDADO', canalOrigem: 'PORTAL' }),
+      completar: completarConsulta,
       validar: validarConsulta,
+      aposCriar: aposCriarConsulta,
+      aposEditar: aposEditarConsulta,
     },
   },
   // Conteúdo clínico: só o Médico com vínculo ou acesso de exceção (RC02, RC05).

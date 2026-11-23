@@ -30,6 +30,7 @@ npm test
 | `ORIGENS` | `http://localhost:3000,http://127.0.0.1:3000` | Origens liberadas no CORS |
 | `SESSAO_MINUTOS` | parâmetro X15 (30) | Inatividade até a sessão expirar |
 | `CAMINHO_DB` | `fake-api/db.json` | Arquivo do banco |
+| `DATA_DE_HOJE` | `2026-09-28` | "Hoje" das regras de agenda (horário passado, antecedência do X08). É o mesmo dia de `DATA_DE_HOJE` do app, porque os dados simulados ficam nele; a hora vem do relógio. A sessão e o log usam o relógio de verdade |
 
 No app, aponte `REACT_APP_API_URL` para `http://127.0.0.1:3001`.
 
@@ -68,9 +69,17 @@ Todas as outras exigem `Authorization: Bearer <token>`. Papéis: `ADMINISTRADOR`
 
 ### Coleções
 
-`GET /colecao`, `GET /colecao/:id`, `POST /colecao`, `PATCH /colecao/:id` e, onde a matriz permite, `DELETE /colecao/:id`. `PUT` não existe. `/db` é recusado para todos.
+`GET /colecao`, `GET /colecao/:id`, `POST /colecao`, `PATCH /colecao/:id` e, onde a matriz permite, `DELETE /colecao/:id`. `PUT` não existe nas coleções. `/db` é recusado para todos.
 
 Consulta no estilo do json-server 0.17: `campo=valor` (repetível), `campo_gte`, `_lte`, `_gt`, `_lt`, `_ne`, `_like` (sem diferenciar acento nem caixa), `_sort` e `_order`, `_page` e `_limit`, com o total em `X-Total-Count`. `_campos=nome,cpf` devolve só essas colunas (o `id` sempre vem). Os filtros rodam sobre o que o papel já pode ver: filtrar por um campo oculto dá o mesmo resultado que filtrar por um campo que não existe.
+
+### Agenda
+
+| Rota | Quem | Faz |
+|---|---|---|
+| `GET /agenda/horarios?idMedico&idProcedimento&de&ate` | Administrador, Secretária, Paciente, Responsável | Horários de início livres, dia a dia (até 62 dias), para a duração do procedimento: dentro da grade, sem bloqueio, sem consulta ativa do médico e não antes de agora. Não diz por que um horário falta nem quem o ocupa. A recepção pode passar `idConsulta`, para remarcar sem que a consulta ocupe o próprio horário |
+| `PUT /agenda/grade/:idMedico` `{granularidade, periodos: [{diaSemana, horaInicio, horaFim}]}` | Administrador, Secretária | Troca a grade inteira do médico (A-10, S-05a). `diaSemana` vai de 0 (domingo) a 6. Recusa períodos sobrepostos e, com 409, a grade que deixaria de fora consulta já agendada (RN-13.2) |
+| `POST /agenda/lote` `{motivo, idBloqueio?, acoes: [{idConsulta, acao: "REAGENDAR" | "CANCELAR", dataHora?, idMedico?}]}` | Administrador, Secretária | Trata várias consultas de uma vez (A-11b). Tudo ou nada (A4-R09): se uma ação falha, nenhuma é gravada, e a mensagem diz de qual paciente. Cada consulta ganha o próprio registro no log e o próprio aviso. Com `idBloqueio`, recalcula as consultas atingidas pelo bloqueio |
 
 ### Respostas de erro
 
@@ -99,7 +108,8 @@ Exemplos da matriz: Observações Gerais nunca vão ao Administrador (A3-R17); c
 |---|---|
 | Status da consulta (RF22, D1, PR-01) | Secretária: Agendado → Na Recepção, Cancelado ou Não Compareceu; Na Recepção → Cancelado ou Não Compareceu. Médico: Na Recepção → Em Atendimento (chamar) → Finalizado. Titular: Agendado → Cancelado. Cancelar pela clínica exige `motivoCancelamento` |
 | Volta de status | Só o Médico: Em Atendimento → Na Recepção e Finalizado → Em Atendimento, com `motivoTransicao` enviado na própria requisição. O log ganha um registro `TRANSICAO_RETROATIVA` só com a referência; o registro clínico continua selado |
-| Agenda (RF18) | Consulta nova começa Agendada; um médico não tem duas consultas ativas no mesmo horário |
+| Agendamento (RF16 a RF18) | Consulta nova começa Agendada, com paciente, médico e procedimento ativos. O servidor grava a duração do procedimento, o preço vigente como referência (`valorReferencia`, que não vai ao Médico nem ao titular) e, com convênio, `convenioConferido: false`. O horário precisa caber na grade, fora de bloqueio e a partir de agora; o médico não tem duas consultas ativas que se sobreponham, e o paciente também não (Cancelado e Não Compareceu não ocupam horário). Convênio exige convênio ativo e `numeroCarteirinha`. Agendar cria o vínculo pendente com o médico e o aviso de confirmação |
+| Cancelamento e remarcação (RF19, RF20) | Pelo portal, só até X08 horas antes. Remarcar (`dataHora` ou `idMedico`) só consulta Agendada, com `motivoRemarcacao`, e só com médico da mesma especialidade. Cancelar e remarcar geram aviso ao paciente; sem outra consulta agendada com o médico, o vínculo pendente acaba |
 | Orçamento (RF31, D32) | Cada papel mexe só na sua etapa. Devolver (Secretária para o Médico, Administrador para a Secretária) exige `observacaoDevolucao`, que o titular não vê |
 | Caixa (RF47, D5) | O servidor calcula o esperado e a divergência no fechamento; diferença sem `justificativa` é recusada |
 | Prontuário (A5-R03) | Registro selado só muda por retificação |
@@ -111,7 +121,7 @@ Exemplos da matriz: Observações Gerais nunca vão ao Administrador (A3-R17); c
 | Representação (RF08) | Paciente e responsável cadastrados, grau de parentesco e natureza (`PODER_FAMILIAR`, `TUTELA` ou `CURATELA`). A Secretária não encerra a representação |
 | Convênio e procedimento (RF11, RF12) | Registro ANS com 6 dígitos e TUSS com 8, sem repetição; duração de 5 a 480 minutos; preço particular informado |
 | Conta a pagar (RF50) | Nasce `ABERTO`, com fornecedor, categoria, vencimento e valor maior que zero. Paga, só o estorno a muda (`situacao` e `motivoEstorno`); estornada, não muda mais |
-| Bloqueio de agenda (RF14) | Motivo da lista fechada (férias, feriado, congresso, capacitação, intervalo, outro), fim depois do início e médico ativo; sem médico, vale para a clínica inteira |
+| Bloqueio de agenda (RF14) | Motivo da lista fechada (férias, feriado, congresso, capacitação, intervalo, outro), fim depois do início e médico ativo; sem médico, vale para a clínica inteira. O servidor conta as consultas atingidas (`consultasAfetadas`). O Médico registra só a própria indisponibilidade (M-03); quem trata as consultas atingidas é a recepção |
 | Produto (RF36) | Descrição, tipo (`MEDICAMENTO`, `MATERIAL` ou `AMOSTRA`), unidade (`UN`, `CX`, `PCT`, `FR` ou `DOSE`) e estoque mínimo inteiro. Custo, se informado, não negativo; a Secretária não grava o custo |
 
 ## Dados sintéticos
@@ -127,5 +137,5 @@ O banco tem as 52 coleções da API do Render, com os mesmos nomes de campos, ma
 - **Publicação manual no Render.** Desde 21/10/2026, `yourclinic-api.onrender.com` roda esta API, a partir do branch `feat/telas-listagem-redesenho` deste repositório, no lugar do json-server aberto. Como o repositório entra no Render como público, um push não publica sozinho: cada versão nova precisa de "Manual Deploy" no painel.
 - As sessões ficam em memória: reiniciar o servidor encerra todas.
 - `autorizacoes.senha` (a senha da operadora TISS) nunca é devolvida, porque nenhuma resposta leva campo `senha*`. As telas de TISS vão precisar de um campo com outro nome.
-- Regras ainda não aplicadas: antecedência X08 para o titular cancelar, atraso X10 antes de Não Compareceu, janela X02 na contagem de tentativas de login, sigilo do adolescente (D3, o banco não tem campo que marque o registro), envelope clínico do recurso de glosa e conteúdo real de anexos e exportações.
+- Regras ainda não aplicadas: atraso X10 antes de Não Compareceu, janela X02 na contagem de tentativas de login, sigilo do adolescente (D3, o banco não tem campo que marque o registro), envelope clínico do recurso de glosa e conteúdo real de anexos e exportações.
 - O bloqueio por tentativas vale por conta, não por endereço de origem: quem souber um login pode bloqueá-lo por X03 minutos. No simulado local isso foi aceito.

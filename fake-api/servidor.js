@@ -13,9 +13,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const {
-  COLECOES, CLINICAS, ESPECIALIZACOES, MEDICO, PACIENTE, RESPONSAVEL_LEGAL,
+  COLECOES, CLINICAS, ESPECIALIZACOES, ADMINISTRADOR, SECRETARIA, MEDICO, PACIENTE, RESPONSAVEL_LEGAL,
   politica, regraPara, projetar, camposGravaveis, igual,
 } = require('./permissoes');
+const { horariosLivres, foraDaGrade, validarGrade, afetadasPeloBloqueio, somarDias } = require('./agenda');
+const { DATA_PADRAO } = require('./seed');
 const { Sessoes, conferirSenha, gerarHash, HASH_DE_ENGANO } = require('./sessao');
 const { filtrar, ordenar, paginar, escolherCampos } = require('./consulta');
 
@@ -91,11 +93,23 @@ function verboDe(metodo, id) {
   return null;
 }
 
-function criarApi({ db, salvar = () => {}, relogio = () => new Date(), minutosSessao, origens = ORIGENS_PADRAO }) {
+// dataDeReferencia é o "hoje" das regras de agenda: os dados simulados ficam
+// nessa data (a mesma DATA_DE_HOJE do app), e a hora vem do relógio. A sessão
+// e o log usam o relógio de verdade.
+function criarApi({
+  db,
+  salvar = () => {},
+  relogio = () => new Date(),
+  minutosSessao,
+  origens = ORIGENS_PADRAO,
+  dataDeReferencia = DATA_PADRAO,
+}) {
   for (const colecao of COLECOES) db[colecao] ??= [];
 
   const agoraTexto = (minutos = 0) => textoLocal(new Date(relogio().getTime() + minutos * 60 * 1000));
   const hoje = () => agoraTexto().slice(0, 10);
+  const hojeClinica = () => dataDeReferencia ?? hoje();
+  const agoraClinica = () => `${hojeClinica()}T${agoraTexto().slice(11)}`;
 
   const parametro = (chave, padrao) => {
     const valor = Number(db.parametros.find((p) => p.chave === chave)?.valor);
@@ -169,6 +183,8 @@ function criarApi({ db, salvar = () => {}, relogio = () => new Date(), minutosSe
       db,
       sessao,
       agoraTexto,
+      agoraClinica,
+      hojeClinica,
       parametro,
       buscar(colecao, id) {
         if (id == null || !db[colecao]) return undefined;
@@ -327,6 +343,136 @@ function criarApi({ db, salvar = () => {}, relogio = () => new Date(), minutosSe
     throw NAO_ENCONTRADO();
   }
 
+  // Rotas da agenda que não são uma coleção: horários livres, a grade inteira
+  // de um médico e o tratamento de várias consultas de uma vez.
+  async function rotaDeAgenda(req, res, { url, partes, sessao, rota }) {
+    const ctx = contexto(sessao, rota);
+    const exigirPapel = (...papeis) => {
+      if (papeis.includes(sessao.papel)) return;
+      auditar({ acao: ACOES[req.method] ?? req.method, sessao, rota, registroAlvo: partes.join('/'), resultado: 'NEGADO', motivo: 'PAPEL' });
+      throw ACESSO_NEGADO();
+    };
+    const dataValida = (valor) => /^\d{4}-\d{2}-\d{2}$/.test(valor ?? '');
+
+    // RF16, passo 2, e RF13, passo 4: horários livres de um médico para um tipo
+    // de atendimento, dia a dia. Não diz por que um horário falta nem quem o
+    // ocupa. Na remarcação, a recepção informa a consulta, que não conta como
+    // ocupando o próprio horário.
+    if (req.method === 'GET' && partes[1] === 'horarios' && partes.length === 2) {
+      exigirPapel(ADMINISTRADOR, SECRETARIA, PACIENTE, RESPONSAVEL_LEGAL);
+      const p = url.searchParams;
+      const medico = ctx.buscar('medicos', p.get('idMedico'));
+      const procedimento = ctx.buscar('procedimentos', p.get('idProcedimento'));
+      if (medico?.situacao !== 'ATIVO' || procedimento?.situacao !== 'ATIVO') {
+        throw new ErroHttp(422, 'Escolha o médico e o tipo de atendimento.');
+      }
+      const hojeRef = hojeClinica();
+      const pedido = p.get('de') ?? hojeRef;
+      const ate = p.get('ate') ?? pedido;
+      if (!dataValida(pedido) || !dataValida(ate) || ate < pedido) throw new ErroHttp(422, 'Período inválido.');
+      const de = pedido < hojeRef ? hojeRef : pedido;
+      const ignorarId = [ADMINISTRADOR, SECRETARIA].includes(sessao.papel) ? p.get('idConsulta') : null;
+      const dias = [];
+      for (let data = de; data <= ate && dias.length < 62; data = somarDias(data, 1)) {
+        dias.push({
+          data,
+          horarios: horariosLivres(db, {
+            idMedico: medico.id,
+            data,
+            duracao: procedimento.duracaoPadrao,
+            aPartirDe: data === hojeRef ? agoraClinica() : null,
+            ignorarId,
+          }),
+        });
+      }
+      return enviar(res, 200, { duracao: procedimento.duracaoPadrao, dias });
+    }
+
+    // A-10 e S-05a: a grade inteira de um médico, trocada de uma vez. Reduzir
+    // a grade sobre consultas já agendadas espera o reagendamento (RN-13.2).
+    if (req.method === 'PUT' && partes[1] === 'grade' && partes.length === 3) {
+      exigirPapel(ADMINISTRADOR, SECRETARIA);
+      const medico = ctx.buscar('medicos', partes[2]);
+      if (!medico) throw NAO_ENCONTRADO();
+      if (medico.situacao !== 'ATIVO') throw new ErroHttp(422, 'Escolha um médico ativo.');
+      const corpo = await lerCorpo(req);
+      const erro = validarGrade(corpo);
+      if (erro) throw new ErroHttp(422, erro);
+      const periodos = corpo.periodos.map((p) => ({ diaSemana: p.diaSemana, horaInicio: p.horaInicio, horaFim: p.horaFim }));
+      const fora = foraDaGrade(db, medico.id, periodos, agoraClinica());
+      if (fora.length > 0) {
+        throw new ErroHttp(
+          409,
+          `${fora.length} ${fora.length === 1 ? 'consulta agendada ficaria' : 'consultas agendadas ficariam'} fora da nova grade. Reagende antes de reduzir a grade.`
+        );
+      }
+      db.gradesHorario = db.gradesHorario.filter((g) => !igual(g.idMedico, medico.id));
+      const novos = periodos.map((p) => inserir('gradesHorario', { ...p, granularidade: corpo.granularidade, idMedico: medico.id }));
+      salvar();
+      auditar({ acao: 'EDITAR', sessao, rota, registroAlvo: `gradesHorario?idMedico=${medico.id}`, resultado: 'PERMITIDO' });
+      return enviar(res, 200, novos);
+    }
+
+    // RF20 e A-11b: reagendar ou cancelar várias consultas, com o mesmo motivo.
+    // O lote é tudo ou nada (A4-R09): as ações são conferidas numa cópia, uma
+    // depois da outra, e só então gravadas. Cada consulta tem o próprio
+    // registro no log e o próprio aviso ao paciente.
+    if (req.method === 'POST' && partes[1] === 'lote' && partes.length === 2) {
+      exigirPapel(ADMINISTRADOR, SECRETARIA);
+      const corpo = await lerCorpo(req);
+      const motivo = typeof corpo.motivo === 'string' ? corpo.motivo.trim() : '';
+      if (motivo.length < 5) throw new ErroHttp(422, 'Informe o motivo.');
+      const acoes = Array.isArray(corpo.acoes) ? corpo.acoes : [];
+      if (acoes.length === 0 || acoes.length > 200) throw new ErroHttp(422, 'Escolha as consultas.');
+      if (new Set(acoes.map((a) => String(a?.idConsulta))).size !== acoes.length) {
+        throw new ErroHttp(422, 'A mesma consulta aparece duas vezes.');
+      }
+      const regra = regraPara('consultas', sessao.papel);
+      const copia = structuredClone(db.consultas);
+      const ctxDaCopia = {
+        ...ctx,
+        db: { ...db, consultas: copia },
+        buscar: (colecao, id) => (colecao === 'consultas' ? copia.find((c) => igual(c.id, id)) : ctx.buscar(colecao, id)),
+      };
+      const planos = [];
+      for (const acao of acoes) {
+        const atual = copia.find((c) => igual(c.id, acao?.idConsulta));
+        if (!atual) throw new ErroHttp(422, 'Uma das consultas não existe mais.');
+        let mudancas = null;
+        if (acao.acao === 'CANCELAR') mudancas = { status: 'CANCELADO', motivoCancelamento: motivo };
+        if (acao.acao === 'REAGENDAR') {
+          mudancas = { dataHora: acao.dataHora, motivoRemarcacao: motivo };
+          if (acao.idMedico != null) mudancas.idMedico = Number(acao.idMedico);
+        }
+        if (!mudancas) throw new ErroHttp(422, 'Escolha reagendar ou cancelar cada consulta.');
+        const erro = regra.validar(
+          { ...atual, ...mudancas },
+          atual,
+          ctxDaCopia,
+          mudancas
+        );
+        if (erro) throw new ErroHttp(422, `${nomeDaPessoa(atual.idPaciente) ?? 'Paciente'}: ${erro}`);
+        Object.assign(atual, mudancas);
+        planos.push({ id: atual.id, mudancas });
+      }
+      for (const { id, mudancas } of planos) {
+        const consulta = ctx.buscar('consultas', id);
+        const antigo = { ...consulta };
+        Object.assign(consulta, mudancas);
+        regra.aposEditar?.(consulta, antigo, ctx);
+        auditar({ acao: 'EDITAR', sessao, rota, registroAlvo: `consultas/${id}`, resultado: 'PERMITIDO', motivo: 'LOTE' });
+      }
+      if (corpo.idBloqueio != null) {
+        const bloqueio = ctx.buscar('bloqueiosAgenda', corpo.idBloqueio);
+        if (bloqueio) bloqueio.consultasAfetadas = bloqueio.situacao === 'ATIVO' ? afetadasPeloBloqueio(db, bloqueio).length : 0;
+      }
+      salvar();
+      return enviar(res, 200, { tratadas: planos.length });
+    }
+
+    throw NAO_ENCONTRADO();
+  }
+
   async function rotaDeColecao(req, res, { url, partes, sessao, rota }) {
     const [colecao, id, ...resto] = partes;
     if (!colecao || resto.length > 0) throw NAO_ENCONTRADO();
@@ -397,6 +543,7 @@ function criarApi({ db, salvar = () => {}, relogio = () => new Date(), minutosSe
         if (ctx.buscar(colecao, pessoa.id)) throw new ErroHttp(409, 'Esta pessoa já tem este cadastro.');
         novo.id = pessoa.id;
       }
+      regra.completar?.(novo, ctx);
       const erro = regra.validar?.(novo, null, ctx, novo);
       if (erro) throw new ErroHttp(422, erro);
       if (!(regra.alcanceDeEscrita ?? regra.ler)(novo, ctx)) {
@@ -404,6 +551,7 @@ function criarApi({ db, salvar = () => {}, relogio = () => new Date(), minutosSe
         throw ACESSO_NEGADO();
       }
       const registro = ctx.inserir(colecao, novo);
+      regra.aposCriar?.(registro, ctx);
       salvar();
       auditar({ acao: 'CRIAR', sessao, rota, registroAlvo: `${colecao}/${registro.id}`, resultado: 'PERMITIDO' });
       return enviar(res, 201, projetar(regra, registro, ctx));
@@ -447,7 +595,7 @@ function criarApi({ db, salvar = () => {}, relogio = () => new Date(), minutosSe
       res.setHeader('Access-Control-Allow-Origin', origem);
       res.setHeader('Vary', 'Origin');
       res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
       res.setHeader('Access-Control-Expose-Headers', 'X-Total-Count');
     }
   }
@@ -491,6 +639,7 @@ function criarApi({ db, salvar = () => {}, relogio = () => new Date(), minutosSe
       if (partes[0] === 'sessao' || url.pathname === '/logout') {
         return await rotaDeSessao(req, res, { partes, sessao, token, rota });
       }
+      if (partes[0] === 'agenda') return await rotaDeAgenda(req, res, { url, partes, sessao, rota });
       return await rotaDeColecao(req, res, { url, partes, sessao, rota });
     } catch (erro) {
       if (erro instanceof ErroHttp) return enviar(res, erro.status, { erro: erro.message });
@@ -523,7 +672,7 @@ function iniciar() {
   const porta = Number(process.env.PORTA || process.env.PORT) || 3001;
   const host = process.env.HOST || (process.env.RENDER ? '0.0.0.0' : '127.0.0.1');
   http
-    .createServer(criarApi({ db, salvar, origens, minutosSessao }))
+    .createServer(criarApi({ db, salvar, origens, minutosSessao, dataDeReferencia: process.env.DATA_DE_HOJE || DATA_PADRAO }))
     .listen(porta, host, () => console.log(`API simulada em http://${host}:${porta}`));
 }
 
