@@ -993,9 +993,22 @@ const politica = {
   // A senha nunca sai: nenhum campo "senha*" é devolvido nem gravado por aqui.
   // O papel e a pessoa de uma conta não mudam depois de criada.
   usuarios: {
-    [A]: { ler: todos, criar: true, editar: true, editaveis: ['login', 'email', 'situacao'], validar: validarUsuario },
+    // RF02: a conta nova nasce com o convite, que sai por e-mail com o token.
+    [A]: {
+      ler: todos,
+      criar: true,
+      editar: true,
+      editaveis: ['login', 'email', 'situacao'],
+      validar: validarUsuario,
+      aposCriar: (usuario, ctx) => ctx.emitirConvite?.(usuario),
+    },
     // S-01b: a Secretária manda o convite do portal, mas não lê as contas.
-    [S]: { criar: true, alcanceDeEscrita: (r) => [P, R].includes(r.papel), validar: validarConvitePortal },
+    [S]: {
+      criar: true,
+      alcanceDeEscrita: (r) => [P, R].includes(r.papel),
+      validar: validarConvitePortal,
+      aposCriar: (usuario, ctx) => ctx.emitirConvite?.(usuario),
+    },
   },
   // RF40: só o Administrador lê; ninguém escreve pela API.
   logsAuditoria: {

@@ -9,6 +9,7 @@
 // A matriz de quem vê o quê está em permissoes.js.
 
 const http = require('node:http');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -110,6 +111,11 @@ function criarApi({
   // Provedores simulados do checkout: segundos até o Pix ser pago e espera
   // do terminal TEF (README, "Checkout simulado").
   simulacao = { pixSegundos: 8, tefEsperaMs: 0, exportacaoSegundos: 3 },
+  // E-mail simulado (convite e redefinição de senha): sai no terminal.
+  enviarEmail = (email) =>
+    console.log(
+      `\n--- E-mail simulado ---\nPara: ${email.para}\nAssunto: ${email.assunto}\nLink: ${email.link}\nVale até: ${email.validade}\n-----------------------\n`
+    ),
 }) {
   for (const colecao of COLECOES) db[colecao] ??= [];
 
@@ -153,7 +159,7 @@ function criarApi({
   // Representações em vigor de um Responsável Legal. A representação acaba na
   // maioridade do representado (RF08, R-07).
   function representacoesVigentes(idResponsavel) {
-    const data = hoje();
+    const data = hojeClinica();
     return db.representacoes.filter((r) => {
       if (!igual(r.idResponsavelLegal, idResponsavel)) return false;
       if (r.inicioVigencia && r.inicioVigencia > data) return false;
@@ -198,6 +204,7 @@ function criarApi({
       agoraClinica,
       hojeClinica,
       parametro,
+      emitirConvite: (usuario) => emitirToken(usuario, 'CONVITE'),
       buscar(colecao, id) {
         if (id == null || !db[colecao]) return undefined;
         if (!indices.has(colecao)) {
@@ -319,6 +326,17 @@ function criarApi({
       sessoes.encerrarDoUsuario(usuario.id, token);
       auditar({ acao: 'ALTERAR_SENHA', sessao, rota, registroAlvo: `usuarios/${usuario.id}`, resultado: 'PERMITIDO' });
       return enviar(res, 204);
+    }
+
+    if (caminho === 'GET /sessao/representacoes-encerradas') {
+      if (sessao.papel !== RESPONSAVEL_LEGAL) throw ACESSO_NEGADO();
+      const vigentes = new Set(representacoesVigentes(sessao.idPessoa).map((r) => String(r.idPaciente)));
+      const maioridade = db.representacoes.filter((r) => {
+        if (!igual(r.idResponsavelLegal, sessao.idPessoa) || vigentes.has(String(r.idPaciente))) return false;
+        const pessoa = db.pessoas.find((p) => igual(p.id, r.idPaciente));
+        return idade(pessoa?.dataNascimento, hojeClinica()) >= 18;
+      }).length;
+      return enviar(res, 200, { maioridade });
     }
 
     // G-09: o Responsável Legal escolhe em nome de quem age.
@@ -912,6 +930,159 @@ function criarApi({
     return enviar(res, 200, montarDocumento(exportacao, idPaciente, sessao));
   }
 
+  // ── Credencial (RF02, RF09) ──────────────────────────────────────────────
+  // Convite e redefinição usam token de uso único, guardado só como hash, com
+  // validade X04 (horas) ou X05 (minutos). Os campos começam com "senha", e
+  // por isso nunca saem da API. O e-mail é simulado (enviarEmail).
+  const hashDoToken = (token) => crypto.createHash('sha256').update(String(token)).digest('hex');
+  const regraDeSenha = (senha) =>
+    typeof senha === 'string' && senha.length >= 8 && /[A-Za-z]/.test(senha) && /\d/.test(senha)
+      ? null
+      : 'A senha precisa de ao menos 8 caracteres, com letras e números.';
+  const MENSAGEM_TOKEN = 'Este link não vale mais. Peça um novo à clínica.';
+  const MENSAGEM_RECUPERACAO = 'Se este e-mail estiver cadastrado, você receberá as instruções em instantes.';
+
+  // RN-02.2: um token novo invalida o anterior, porque o hash é trocado.
+  function emitirToken(usuario, tipo) {
+    const token = crypto.randomBytes(24).toString('base64url');
+    const convite = tipo === 'CONVITE';
+    const minutos = convite ? parametro('X04', 72) * 60 : parametro('X05', 30);
+    usuario.senhaToken = hashDoToken(token);
+    usuario.senhaTokenTipo = tipo;
+    usuario.senhaTokenExpiraEm = relogio().getTime() + minutos * 60 * 1000;
+    usuario.senhaTokenTentativas = 0;
+    const caminho = convite ? 'convite' : 'redefinir-senha';
+    enviarEmail({
+      para: usuario.email,
+      assunto: convite ? 'Convite para acessar a YOURClinic' : 'Redefinição de senha da YOURClinic',
+      link: `${origens[0] ?? 'http://localhost:3000'}/${caminho}/${token}`,
+      validade: textoLocal(new Date(usuario.senhaTokenExpiraEm)),
+      token,
+    });
+    auditar({
+      acao: convite ? 'EMITIR_CONVITE' : 'EMITIR_REDEFINICAO',
+      sessao: null,
+      rota: 'interna',
+      registroAlvo: `usuarios/${usuario.id}`,
+      resultado: 'PERMITIDO',
+    });
+  }
+
+  function usuarioDoToken(token, tipo) {
+    const hash = hashDoToken(token);
+    const usuario = db.usuarios.find((u) => u.senhaToken === hash && u.senhaTokenTipo === tipo);
+    if (!usuario || !(usuario.senhaTokenExpiraEm > relogio().getTime())) return null;
+    if (tipo === 'CONVITE' && usuario.situacao !== 'CONVITE_PENDENTE') return null;
+    if (tipo === 'REDEFINICAO' && usuario.situacao !== 'ATIVO') return null;
+    return usuario;
+  }
+
+  // RN-02.1: o token morre no primeiro uso.
+  function apagarToken(usuario) {
+    delete usuario.senhaToken;
+    delete usuario.senhaTokenTipo;
+    delete usuario.senhaTokenExpiraEm;
+    delete usuario.senhaTokenTentativas;
+  }
+
+  const soDigitos = (texto) => String(texto ?? '').replace(/\D/g, '');
+
+  // RF09, passo 3. O Paciente confere o próprio CPF e o nascimento; o
+  // Responsável, o próprio CPF e o nascimento de um representado (D19, B16).
+  function conferirIdentidade(usuario, { cpf, dataNascimento }) {
+    const pessoa = db.pessoas.find((p) => igual(p.id, usuario.idPessoa));
+    if (!pessoa || soDigitos(pessoa.cpf) !== soDigitos(cpf) || soDigitos(cpf).length !== 11) return false;
+    if (usuario.papel === RESPONSAVEL_LEGAL) {
+      return db.representacoes.some(
+        (r) =>
+          igual(r.idResponsavelLegal, usuario.idPessoa) &&
+          db.pessoas.find((p) => igual(p.id, r.idPaciente))?.dataNascimento === dataNascimento
+      );
+    }
+    return pessoa.dataNascimento === dataNascimento;
+  }
+
+  // Rotas sem sessão: primeiro acesso por convite (G-04a, G-04b) e
+  // recuperação de senha (G-05, G-06). Nada aqui diz se um e-mail existe.
+  async function rotaPublicaDeCredencial(req, res, { partes, rota }) {
+    const caminho = `${req.method} /${partes[0]}${partes[1] ? `/${partes[1]}` : ''}`;
+
+    if (partes[0] === 'convites' && partes.length === 2) {
+      const usuario = usuarioDoToken(partes[1], 'CONVITE');
+      if (!usuario) throw new ErroHttp(410, MENSAGEM_TOKEN);
+      if (req.method === 'GET') return enviar(res, 200, { papel: usuario.papel });
+      if (req.method !== 'POST') throw new ErroHttp(405, 'Método não permitido.');
+      const corpo = await lerCorpo(req);
+      if (!conferirIdentidade(usuario, corpo)) {
+        usuario.senhaTokenTentativas = (usuario.senhaTokenTentativas ?? 0) + 1;
+        auditar({ acao: 'ATIVAR_CONTA', sessao: null, rota, registroAlvo: `usuarios/${usuario.id}`, resultado: 'NEGADO', motivo: 'CONFERENCIA' });
+        // RN-09.2: passou de X01 tentativas, o convite deixa de valer.
+        if (usuario.senhaTokenTentativas >= parametro('X01', 5)) {
+          apagarToken(usuario);
+          salvar();
+          throw new ErroHttp(410, 'Muitas tentativas. Peça um novo convite à clínica.');
+        }
+        salvar();
+        throw new ErroHttp(422, 'Os dados não conferem com o cadastro da clínica.');
+      }
+      const erro = regraDeSenha(corpo.senha);
+      if (erro) throw new ErroHttp(422, erro);
+      usuario.senhaHash = gerarHash(corpo.senha);
+      usuario.situacao = 'ATIVO';
+      usuario.tentativasFalhas = 0;
+      usuario.bloqueadoAte = null;
+      apagarToken(usuario);
+      auditar({ acao: 'ATIVAR_CONTA', sessao: null, rota, registroAlvo: `usuarios/${usuario.id}`, resultado: 'PERMITIDO' });
+      return enviar(res, 204);
+    }
+
+    if (caminho === 'POST /senha/recuperar' && partes.length === 2) {
+      const corpo = await lerCorpo(req);
+      const email = typeof corpo.email === 'string' ? corpo.email.trim().toLowerCase() : '';
+      const usuario = email ? db.usuarios.find((u) => u.email?.toLowerCase() === email && u.situacao === 'ATIVO') : null;
+      if (usuario) emitirToken(usuario, 'REDEFINICAO');
+      salvar();
+      return enviar(res, 202, { mensagem: MENSAGEM_RECUPERACAO });
+    }
+
+    if (partes[0] === 'senha' && partes[1] === 'redefinir' && partes.length === 3) {
+      const usuario = usuarioDoToken(partes[2], 'REDEFINICAO');
+      if (!usuario) throw new ErroHttp(410, MENSAGEM_TOKEN);
+      if (req.method === 'GET') return enviar(res, 200, { valido: true });
+      if (req.method !== 'POST') throw new ErroHttp(405, 'Método não permitido.');
+      const corpo = await lerCorpo(req);
+      const erro = regraDeSenha(corpo.senha);
+      if (erro) throw new ErroHttp(422, erro);
+      usuario.senhaHash = gerarHash(corpo.senha);
+      usuario.tentativasFalhas = 0;
+      usuario.bloqueadoAte = null;
+      apagarToken(usuario);
+      // RF02: redefinir encerra todas as sessões abertas do usuário.
+      sessoes.encerrarDoUsuario(usuario.id);
+      auditar({ acao: 'REDEFINIR_SENHA', sessao: null, rota, registroAlvo: `usuarios/${usuario.id}`, resultado: 'PERMITIDO' });
+      return enviar(res, 204);
+    }
+
+    throw NAO_ENCONTRADO();
+  }
+
+  // RF03: reenviar o convite de uma conta pendente. A Secretária só reenvia
+  // os do portal (S-01b).
+  async function reenviarConvite(req, res, { partes, sessao, rota }) {
+    if (req.method !== 'POST') throw new ErroHttp(405, 'Método não permitido.');
+    const usuario = db.usuarios.find((u) => igual(u.id, partes[1]));
+    const permitido =
+      sessao.papel === ADMINISTRADOR || (sessao.papel === SECRETARIA && [PACIENTE, RESPONSAVEL_LEGAL].includes(usuario?.papel));
+    if (!usuario || !permitido) {
+      auditar({ acao: 'EMITIR_CONVITE', sessao, rota, registroAlvo: `usuarios/${partes[1]}`, resultado: 'NEGADO', motivo: 'PAPEL' });
+      throw usuario ? ACESSO_NEGADO() : NAO_ENCONTRADO();
+    }
+    if (usuario.situacao !== 'CONVITE_PENDENTE') throw new ErroHttp(409, 'Esta conta já está ativa.');
+    emitirToken(usuario, 'CONVITE');
+    salvar();
+    return enviar(res, 202, { mensagem: `Convite reenviado para ${usuario.email}.` });
+  }
+
   async function rotaDeColecao(req, res, { url, partes, sessao, rota }) {
     const [colecao, id, ...resto] = partes;
     if (!colecao || resto.length > 0) throw NAO_ENCONTRADO();
@@ -1059,6 +1230,9 @@ function criarApi({
         if (req.method !== 'POST') throw new ErroHttp(405, 'Método não permitido.');
         return await login(req, res, rota);
       }
+      if (partes[0] === 'convites' || (partes[0] === 'senha' && ['recuperar', 'redefinir'].includes(partes[1]))) {
+        return await rotaPublicaDeCredencial(req, res, { partes, rota });
+      }
 
       // Sessão obrigatória em todo o resto (RF01).
       const token = tokenDe(req);
@@ -1081,6 +1255,9 @@ function criarApi({
       }
       if (partes[0] === 'agenda') return await rotaDeAgenda(req, res, { url, partes, sessao, rota });
       if (partes[0] === 'checkout') return await rotaDeCheckout(req, res, { partes, sessao, rota });
+      if (partes[0] === 'usuarios' && partes[2] === 'convite' && partes.length === 3) {
+        return await reenviarConvite(req, res, { partes, sessao, rota });
+      }
       if (partes[0] === 'exportacoes' && partes[2] === 'documento') return await rotaDeDocumento(req, res, { partes, sessao, rota });
       return await rotaDeColecao(req, res, { url, partes, sessao, rota });
     } catch (erro) {

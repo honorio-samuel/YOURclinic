@@ -33,6 +33,8 @@ npm test
 | `PIX_SEGUNDOS` | `8` | Segundos até o Pix simulado ser pago (ver "Checkout simulado") |
 | `TEF_ESPERA_MS` | `1500` | Espera do terminal TEF simulado, em milissegundos |
 | `EXPORTACAO_SEGUNDOS` | `3` | Segundos até a exportação pedida ficar pronta |
+
+Os e-mails de convite e de redefinição de senha não são enviados: a API escreve no terminal o destinatário, o assunto e o link, que vale como se tivesse chegado por e-mail.
 | `DATA_DE_HOJE` | `2026-09-28` | "Hoje" das regras de agenda (horário passado, antecedência do X08). É o mesmo dia de `DATA_DE_HOJE` do app, porque os dados simulados ficam nele; a hora vem do relógio. A sessão e o log usam o relógio de verdade |
 
 No app, aponte `REACT_APP_API_URL` para `http://127.0.0.1:3001`.
@@ -65,6 +67,11 @@ Estão em [usuarios-de-teste.json](usuarios-de-teste.json): um login por papel, 
 | `POST /logout` | Encerra a sessão |
 | `POST /sessao/senha` `{senhaAtual, novaSenha}` | G-10; encerra as outras sessões do usuário |
 | `GET /sessao/representados` | Responsável Legal: representados em vigor (G-09) |
+| `GET /sessao/representacoes-encerradas` | Responsável Legal: quantas representações acabaram pela maioridade, sem nomes (R-07, D30) |
+| `GET /convites/:token`, `POST /convites/:token` `{cpf, dataNascimento, senha}` | Sem sessão. Primeiro acesso por convite (G-04a, G-04b). O Paciente confere o próprio CPF e nascimento; o Responsável, o próprio CPF e o nascimento de um representado. Errar X01 vezes invalida o convite. Ativa a conta e apaga o token |
+| `POST /senha/recuperar` `{email}` | Sem sessão (G-05). Responde sempre a mesma mensagem; se o e-mail for de conta ativa, manda o link, que vale X05 minutos |
+| `GET /senha/redefinir/:token`, `POST /senha/redefinir/:token` `{senha}` | Sem sessão (G-06). Troca a senha, apaga o token e encerra todas as sessões do usuário |
+| `POST /usuarios/:id/convite` | Administrador; a Secretária, só para Paciente e Responsável. Reenvia o convite de conta pendente, invalidando o anterior |
 | `POST /sessao/representado` `{idPaciente}` | Responsável Legal: escolhe em nome de quem age |
 | `GET /saude` | Única rota sem sessão além do login |
 
@@ -160,6 +167,7 @@ Exemplos da matriz: Observações Gerais nunca vão ao Administrador (A3-R17); c
 | Paciente (RF07) | Convênio exige um convênio ativo e `numeroCarteirinha`; `pendenteDeCpf` exige `justificativaSemCpf` |
 | Médico (A-03) | CRM sem repetição na mesma UF. Inativar passa a conta a Inativa e encerra os vínculos ativos; reativar devolve a conta |
 | Contas (RF03, RF09) | Conta nova nasce `CONVITE_PENDENTE`, de uma pessoa já cadastrada no papel, uma por pessoa, com login e e-mail sem repetição. O papel e a pessoa não mudam depois. Só o aceite do convite ativa a conta. A clínica não fica sem Administrador ativo. A Secretária só convida Paciente e Responsável Legal e não lê as contas |
+| Credencial (RF02) | Token de convite e de redefinição de uso único, guardado só como hash, em campos que começam com `senha` e por isso nunca saem da API. Pedir de novo invalida o anterior. Senha com ao menos 8 caracteres, letras e números |
 | Representação (RF08) | Paciente e responsável cadastrados, grau de parentesco e natureza (`PODER_FAMILIAR`, `TUTELA` ou `CURATELA`). A Secretária não encerra a representação |
 | Convênio e procedimento (RF11, RF12) | Registro ANS com 6 dígitos e TUSS com 8, sem repetição; duração de 5 a 480 minutos; preço particular informado |
 | Conta a pagar (RF50) | Nasce `ABERTO`, com fornecedor, categoria, vencimento e valor maior que zero. Paga, só o estorno a muda (`situacao` e `motivoEstorno`); estornada, não muda mais |

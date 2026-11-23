@@ -14,7 +14,7 @@ const SENHA = contas.senhaDemonstracao;
 
 async function subir({ relogio, minutosSessao } = {}) {
   const db = structuredClone(BANCO);
-  const servidor = http.createServer(criarApi({ db, relogio, minutosSessao }));
+  const servidor = http.createServer(criarApi({ db, relogio, minutosSessao, enviarEmail: () => {} }));
   await new Promise((pronto) => servidor.listen(0, '127.0.0.1', pronto));
   const { port } = servidor.address();
 
