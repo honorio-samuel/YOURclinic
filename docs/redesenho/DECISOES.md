@@ -244,6 +244,22 @@ Finalizar uma consulta particular gera a cobrança e o título na hora (RF32). A
 
 A Secretária abre um turno por vez (RN-47.2), registra sangria e reforço com motivo e fecha às cegas (D5). Ela não muda a situação do caixa: quem decide entre Fechado e A aprovar é o cálculo do servidor. Quando o Administrador devolve para recontagem, ela informa a nova contagem e o servidor recalcula.
 
+### B12 · Rascunho da anamnese só na tela
+
+O RF23 pede rascunho salvo sozinho e, se a gravação falhar, que o texto não se perca. O app salva no servidor um pouco depois da última tecla e, na falha, mantém o texto nos campos. Nada de conteúdo clínico vai para o armazenamento do navegador, que sobreviveria à saída da sessão num computador compartilhado. **Alternativa:** cópia local criptografada.
+
+### B13 · Consulta finalizada durante a digitação
+
+No caso E2 do RF23, o servidor recusa a gravação do texto pendente, o registro fica selado com o que já estava salvo e a tela trava os campos, mostra o texto que não entrou e leva à retificação. A conversão automática em retificação exigiria um motivo que só o médico pode dar.
+
+### B14 · Relógio da clínica no prontuário
+
+O acesso de exceção e as exportações contam no mesmo "agora" da agenda (B1): o dia de referência com a hora do relógio. Assim o prazo da exceção e a data do pedido de exportação conversam com as consultas e com o parâmetro X07.
+
+### B15 · Documentos pelo navegador
+
+A via da prescrição e os documentos exportados abrem numa página do app com o botão de imprimir ou salvar em PDF do navegador, sem biblioteca de PDF. O conteúdo do documento exportado é montado pela API, que confere quem pediu, a validade de X42 horas e registra cada leitura no log.
+
 ## Estado das telas
 
 Das 112 telas, 107 estão `ok`, 2 em `conflito` e 3 em `lacuna`. S-07d saiu da lista com a decisão B8.

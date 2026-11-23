@@ -76,6 +76,17 @@ Caixa e cobrança:
 | Cobrança (A-13b) | Administrador | Cria a cobrança de uma consulta finalizada que ficou sem ela e edita valor e vencimento até o primeiro pagamento |
 | Caixas · supervisão (A-16) | Administrador | Ganhou a lista de lançamentos da maquininha avulsa a conferir |
 
+Prontuário (Médico):
+
+| Tela | Observação |
+|---|---|
+| Anamnese (M-02b) | Registro da consulta em atendimento, com rascunho salvo sozinho enquanto o médico digita |
+| Registro selado e retificação (M-02c) | Finalizar a consulta sela o registro; só o autor retifica, com motivo, e o texto anterior fica no histórico |
+| Prescrição (M-02d) | Itens com classificação obrigatória e aviso de controle especial; via de impressão com médico, CRM, data e validade |
+| Anotações privadas (M-02f) | Criar, editar e excluir, só o autor |
+| Exportações (M-02g) | Histórico e prontuário completo, gerados em segundos; o documento abre numa página própria para imprimir ou salvar em PDF |
+| Acesso de exceção (M-02h) | Em Meus pacientes ou no prontuário sem vínculo, com justificativa; o prontuário mostra até quando vale |
+
 O Pix e a maquininha integrada são simulados pela API local: o Pix é pago sozinho uns segundos depois de gerado, e valores terminados em ,13 simulam cartão negado (detalhes em [fake-api/README.md](fake-api/README.md#checkout-simulado)). Finalizar uma consulta particular gera a cobrança na hora.
 
 Campo obrigatório leva `*` no rótulo; o erro aparece em texto junto do campo, e o foco vai para o primeiro campo com problema. A API repete as validações e responde 409 ou 422 com a mensagem, que o app mostra.
