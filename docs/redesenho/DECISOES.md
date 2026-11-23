@@ -260,13 +260,24 @@ O acesso de exceção e as exportações contam no mesmo "agora" da agenda (B1):
 
 A via da prescrição e os documentos exportados abrem numa página do app com o botão de imprimir ou salvar em PDF do navegador, sem biblioteca de PDF. O conteúdo do documento exportado é montado pela API, que confere quem pediu, a validade de X42 horas e registra cada leitura no log.
 
+### B16 · Primeiro acesso do Responsável Legal
+
+Decidido pela equipe em 23/11/2026, resolvendo a D19: no convite, o Responsável confere o próprio CPF e a data de nascimento de quem ele representa (a proposta PR-08). O Paciente confere o próprio CPF e a própria data de nascimento. Errar X01 vezes invalida o convite. Com isso, G-04b deixa de ser lacuna.
+
+### B17 · E-mail simulado
+
+Escolha da equipe em 23/11/2026: a API local não envia e-mail; o convite e o link de nova senha saem no terminal onde a API roda. O app nunca mostra o link, como aconteceria com e-mail de verdade, e o token fica no banco só como hash.
+
+### B18 · Prazo da sessão no navegador
+
+A API renova a sessão a cada pedido. O app acompanha esse prazo a partir das respostas, sem redesenhar a tela, e mostra o aviso de expiração dois minutos antes do fim (WCAG 2.2.1). Sem resposta, a sessão termina e o login avisa que ela expirou.
+
 ## Estado das telas
 
-Das 112 telas, 107 estão `ok`, 2 em `conflito` e 3 em `lacuna`. S-07d saiu da lista com a decisão B8.
+Das 112 telas, 108 estão `ok`, 2 em `conflito` e 2 em `lacuna`. S-07d saiu da lista com a decisão B8 e G-04b, com a B16.
 
 | Tela | Status | Motivo |
 |---|---|---|
-| G-04b Primeiro acesso por convite · Responsável Legal | lacuna | Quais dados o responsável confere não está escrito (D19). |
 | A-33 Solicitações dos titulares (LGPD) | lacuna | Prazo de 15 dias para a declaração completa; prazo dos demais direitos sem parâmetro (D20). |
 | A-34 Parâmetros do sistema | lacuna | X30 não existe; quatro parâmetros do Administrador não têm faixa; o limite de conferência do POS não tem código (D17, D18). |
 | M-02f Anotações privadas | conflito | Único lugar do papel com a lixeira. O passo 1 do RF28 na v2.0 e o frame 28 dizem "médicos da equipe"; o pedido decide "só o autor" (D2). |

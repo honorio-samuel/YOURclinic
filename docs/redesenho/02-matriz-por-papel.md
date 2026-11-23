@@ -28,7 +28,7 @@ Uma linha por tela do redesenho, na ordem **Geral › Administrador › Médico 
 | Geral | — (sem menu lateral) | **G-02** Login · credencial inválida | 02 | RF01 | RNF19; RN-01.2 (E1 do RF01) | Executar (autenticar) | Se o e-mail existe ou não | ok |
 | Geral | — (sem menu lateral) | **G-03** Login · muitas tentativas | 03 | RF01, RF40 | RN-01.1 (E2 do RF01); RNF19; X01, X02, X03 | Nenhum (aguardar) | Se a conta existe; quantas tentativas restam | ok |
 | Geral | — (sem menu lateral) | **G-04a** Primeiro acesso por convite · Paciente | 04 | RF02, RF09 | A1-R03, A1-R04, A1-R12, A1-R13, A1-R14; X04, X01 | Executar (ativar conta e definir senha) | Qualquer dado do cadastro além do que o titular digita | ok |
-| Geral | — (sem menu lateral) | **G-04b** Primeiro acesso por convite · Responsável Legal | 04 | RF02, RF09, RF08 | A1-R03, A1-R04, A1-R13, A1-R14; X04, X01 | Executar (ativar conta e definir senha) | Dados do representado antes da ativação | lacuna |
+| Geral | — (sem menu lateral) | **G-04b** Primeiro acesso por convite · Responsável Legal | 04 | RF02, RF09, RF08 | A1-R03, A1-R04, A1-R13, A1-R14; X04, X01 | Executar (ativar conta e definir senha) | Dados do representado antes da ativação | ok |
 | Geral | — (sem menu lateral) | **G-05** Recuperar senha · solicitação | 05 | RF02 | RNF19; A1-R04 | Executar (solicitar link) | Se o e-mail está cadastrado | ok |
 | Geral | — (sem menu lateral) | **G-06** Recuperar senha · nova senha | 06 | RF02 | A1-R03, A1-R04, A1-R05; RNF01, RNF03; X05 | Executar (definir nova senha) | — | ok |
 | Geral | — (sem menu lateral) | **G-07** Sessão expirada | 07 | RF01 | RNF03; X15, X16, X17 | Executar (entrar novamente) | Todo o conteúdo da tela anterior | ok |

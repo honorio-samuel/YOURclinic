@@ -87,6 +87,19 @@ Prontuário (Médico):
 | Exportações (M-02g) | Histórico e prontuário completo, gerados em segundos; o documento abre numa página própria para imprimir ou salvar em PDF |
 | Acesso de exceção (M-02h) | Em Meus pacientes ou no prontuário sem vínculo, com justificativa; o prontuário mostra até quando vale |
 
+Acesso e conta:
+
+| Tela | Observação |
+|---|---|
+| Primeiro acesso por convite (G-04a, G-04b) | Pelo link do convite, sem sessão. O Paciente confere o próprio CPF e nascimento; o Responsável, o próprio CPF e o nascimento de quem representa. Depois cria a senha |
+| Recuperar senha e nova senha (G-05, G-06) | "Esqueci minha senha" no login. A resposta não diz se o e-mail existe; o link vale uma vez e encerra as sessões abertas |
+| Meu perfil (G-10) | Dados da conta e troca de senha com a senha atual |
+| Aviso de expiração (G-07b) | Dois minutos antes da sessão terminar por inatividade, com "Continuar conectado" ou "Sair agora" |
+| Acesso encerrado por maioridade (R-07) | O Responsável sem representado em vigor vê o aviso, sem o nome de quem fez 18 anos |
+| Reenviar convite | Na conta pendente do cadastro de médico e de equipe |
+
+Os e-mails de convite e de nova senha saem no terminal da API local, com o link (detalhes em [fake-api/README.md](fake-api/README.md)).
+
 O Pix e a maquininha integrada são simulados pela API local: o Pix é pago sozinho uns segundos depois de gerado, e valores terminados em ,13 simulam cartão negado (detalhes em [fake-api/README.md](fake-api/README.md#checkout-simulado)). Finalizar uma consulta particular gera a cobrança na hora.
 
 Campo obrigatório leva `*` no rótulo; o erro aparece em texto junto do campo, e o foco vai para o primeiro campo com problema. A API repete as validações e responde 409 ou 422 com a mensagem, que o app mostra.
@@ -95,7 +108,7 @@ Campo obrigatório leva `*` no rótulo; o erro aparece em texto junto do campo, 
 
 Todas as listagens do redesenho, com filtros, pílulas de status com as transições permitidas a cada papel, ícones de ação e estados de carregando, vazio e erro: painel do dia, fila do dia, atendimentos, prontuário (prescrição, anexos, anotações privadas e exportações), financeiro, faturamento TISS, estoque, gestão e o portal do Paciente e do Responsável Legal.
 
-Telas que ainda não existem (painéis financeiro e gerencial, perfil) aparecem no menu como "Em construção", com o código da tela no protótipo. Ações de fluxo como estornar, conciliar, ajustar estoque e check-in ficam nas listagens, como antes.
+Telas que ainda não existem (painéis financeiro e gerencial) aparecem no menu como "Em construção", com o código da tela no protótipo. Ações de fluxo como estornar, conciliar, ajustar estoque e check-in ficam nas listagens, como antes.
 
 ## Regras que o front respeita
 
