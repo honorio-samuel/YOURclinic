@@ -67,13 +67,24 @@ Agenda e agendamento:
 | Reagendar ou cancelar (S-04) | Secretária | Mesmo médico ou outro da mesma especialidade; motivo de lista fechada |
 | Consultas afetadas por bloqueio (A-11b) | Administrador, Secretária | Reagendar ou cancelar em lote, com um motivo; tudo ou nada |
 
+Caixa e cobrança:
+
+| Tela | Papéis | Observação |
+|---|---|---|
+| Checkout (S-07a a S-07d) | Secretária | Itens, total e o que falta; pagamento composto em dinheiro (com troco), Pix, maquininha integrada e maquininha avulsa. Nenhum campo de número de cartão. O lançamento da maquininha avulsa acima de R$ 500 (X52) espera outro usuário conferir. "Receber" nas cobranças do dia e "Cobrar" na fila abrem a cobrança |
+| Meu caixa (S-09) | Secretária | Abrir o turno, sangria e reforço com motivo, fechamento cego e recontagem quando o Administrador devolve |
+| Cobrança (A-13b) | Administrador | Cria a cobrança de uma consulta finalizada que ficou sem ela e edita valor e vencimento até o primeiro pagamento |
+| Caixas · supervisão (A-16) | Administrador | Ganhou a lista de lançamentos da maquininha avulsa a conferir |
+
+O Pix e a maquininha integrada são simulados pela API local: o Pix é pago sozinho uns segundos depois de gerado, e valores terminados em ,13 simulam cartão negado (detalhes em [fake-api/README.md](fake-api/README.md#checkout-simulado)). Finalizar uma consulta particular gera a cobrança na hora.
+
 Campo obrigatório leva `*` no rótulo; o erro aparece em texto junto do campo, e o foco vai para o primeiro campo com problema. A API repete as validações e responde 409 ou 422 com a mensagem, que o app mostra.
 
 ## O que mais está implementado
 
 Todas as listagens do redesenho, com filtros, pílulas de status com as transições permitidas a cada papel, ícones de ação e estados de carregando, vazio e erro: painel do dia, fila do dia, atendimentos, prontuário (prescrição, anexos, anotações privadas e exportações), financeiro, faturamento TISS, estoque, gestão e o portal do Paciente e do Responsável Legal.
 
-Telas que ainda não existem (checkout, meu caixa, painéis financeiro e gerencial, perfil) aparecem no menu como "Em construção", com o código da tela no protótipo. Ações de fluxo como estornar, conciliar, ajustar estoque e check-in ficam nas listagens, como antes.
+Telas que ainda não existem (painéis financeiro e gerencial, perfil) aparecem no menu como "Em construção", com o código da tela no protótipo. Ações de fluxo como estornar, conciliar, ajustar estoque e check-in ficam nas listagens, como antes.
 
 ## Regras que o front respeita
 

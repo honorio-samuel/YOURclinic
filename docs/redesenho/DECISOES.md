@@ -228,9 +228,25 @@ O X12 não está entre os parâmetros do banco. A grade oferece a janela padrão
 
 Quando a tela é ela mesma um item do menu, só esse item acende. Antes, "Agendar consulta" acendia também "Meus agendamentos", porque o cadastro acende a listagem da mesma entidade.
 
+### B8 · Limite de conferência da maquininha avulsa
+
+Decidido pela equipe em 22/11/2026: o parâmetro novo X52 (proposta PR-10, D18) começa em R$ 500,00, editável pelo Administrador. Acima dele, o lançamento da maquininha avulsa espera a conferência de outro usuário, Secretária ou Administrador, que não pode ser quem lançou. O banco ganhou uma segunda Secretária de teste para a demonstração. Com isso, S-07d deixa de ser lacuna.
+
+### B9 · Provedores simulados no checkout
+
+Escolha da equipe em 22/11/2026: a API local simula o PSP do Pix e o gerenciador TEF com resultado automático. O Pix é pago sozinho alguns segundos depois de gerado; o TEF aprova, e os centavos ,13, ,48 e ,49 simulam negação e falta de resposta. A tela mostra um QR ilustrativo e avisa que o código não vale em banco. **Alternativa:** botão "Simular pagamento" na tela.
+
+### B10 · Quem cria a cobrança
+
+Finalizar uma consulta particular gera a cobrança e o título na hora (RF32). A de convênio só nasce se a coparticipação já foi apurada. O Administrador cria a cobrança que faltou, só de consulta finalizada: pela RC09 ele não vê o orçamento aceito, e a cobrança do orçamento segue gerada no aceite. Pagamento nunca nasce pela coleção, só pelo checkout.
+
+### B11 · Caixa da Secretária
+
+A Secretária abre um turno por vez (RN-47.2), registra sangria e reforço com motivo e fecha às cegas (D5). Ela não muda a situação do caixa: quem decide entre Fechado e A aprovar é o cálculo do servidor. Quando o Administrador devolve para recontagem, ela informa a nova contagem e o servidor recalcula.
+
 ## Estado das telas
 
-Das 112 telas, 106 estão `ok`, 2 em `conflito` e 4 em `lacuna`.
+Das 112 telas, 107 estão `ok`, 2 em `conflito` e 3 em `lacuna`. S-07d saiu da lista com a decisão B8.
 
 | Tela | Status | Motivo |
 |---|---|---|
@@ -238,5 +254,4 @@ Das 112 telas, 106 estão `ok`, 2 em `conflito` e 4 em `lacuna`.
 | A-33 Solicitações dos titulares (LGPD) | lacuna | Prazo de 15 dias para a declaração completa; prazo dos demais direitos sem parâmetro (D20). |
 | A-34 Parâmetros do sistema | lacuna | X30 não existe; quatro parâmetros do Administrador não têm faixa; o limite de conferência do POS não tem código (D17, D18). |
 | M-02f Anotações privadas | conflito | Único lugar do papel com a lixeira. O passo 1 do RF28 na v2.0 e o frame 28 dizem "médicos da equipe"; o pedido decide "só o autor" (D2). |
-| S-07d Checkout · cartão POS avulso | lacuna | Acima de um valor configurável exige confirmação de segundo usuário; o valor não tem código X (D18). |
 | R-04 Documentos | conflito | Sigilo do adolescente (D3) não está na v2.1. Variante de celular de 390 px no frame de mesmo nome terminado em " · celular" (D29). |
