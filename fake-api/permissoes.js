@@ -683,7 +683,7 @@ const TIPOS_DE_EXPORTACAO = ['HISTORICO', 'PRONTUARIO'];
 const pedidoDeExportacao = (ctx) => ({
   situacao: 'SOLICITADA',
   dataConclusao: null,
-  dataSolicitacao: ctx.agoraTexto(),
+  dataSolicitacao: ctx.agoraClinica(),
   idSolicitante: ctx.sessao.idUsuario,
 });
 const validarExportacao = (novo) => (TIPOS_DE_EXPORTACAO.includes(novo.tipo) ? null : 'Escolha o documento.');
@@ -1040,9 +1040,9 @@ const politica = {
         const duracao = ctx.parametro('X07', 60);
         return {
           idMedico: ctx.sessao.idPessoa,
-          dataHora: ctx.agoraTexto(),
+          dataHora: ctx.agoraClinica(),
           duracao,
-          expiraEm: ctx.agoraTexto(duracao),
+          expiraEm: ctx.agoraClinica(duracao),
           revisado: false,
         };
       },

@@ -116,7 +116,11 @@ function criarApi({
   const agoraTexto = (minutos = 0) => textoLocal(new Date(relogio().getTime() + minutos * 60 * 1000));
   const hoje = () => agoraTexto().slice(0, 10);
   const hojeClinica = () => dataDeReferencia ?? hoje();
-  const agoraClinica = () => `${hojeClinica()}T${agoraTexto().slice(11)}`;
+  // Com minutos, soma ao horário da clínica e vira o dia se for o caso.
+  const agoraClinica = (minutos = 0) => {
+    const base = `${hojeClinica()}T${agoraTexto().slice(11)}`;
+    return minutos ? textoLocal(new Date(Date.parse(base) + minutos * 60 * 1000)) : base;
+  };
 
   const parametro = (chave, padrao) => {
     const valor = Number(db.parametros.find((p) => p.chave === chave)?.valor);
@@ -167,7 +171,8 @@ function criarApi({
           ids.add(String(v.idPaciente));
         }
       }
-      const agora = agoraTexto();
+      // O acesso de exceção conta no relógio da clínica, como a agenda.
+      const agora = agoraClinica();
       for (const a of db.acessosExcecao) {
         if (igual(a.idMedico, sessao.idPessoa) && a.expiraEm && a.expiraEm > agora) {
           ids.add(String(a.idPaciente));
@@ -795,7 +800,7 @@ function criarApi({
   function concluirExportacoes() {
     const segundos = simulacao.exportacaoSegundos;
     if (!(segundos >= 0)) return;
-    const agora = agoraTexto();
+    const agora = agoraClinica();
     let mudou = false;
     for (const e of db.exportacoes) {
       if (e.situacao !== 'SOLICITADA' || !e.dataSolicitacao) continue;
@@ -899,7 +904,7 @@ function criarApi({
     }
     if (exportacao.situacao !== 'CONCLUIDA') throw new ErroHttp(409, 'O documento ainda está sendo gerado.');
     const horas = parametro('X42', 24);
-    if (exportacao.dataConclusao && Date.parse(`${agoraTexto()}Z`) - Date.parse(`${exportacao.dataConclusao}Z`) > horas * 3600 * 1000) {
+    if (exportacao.dataConclusao && Date.parse(`${agoraClinica()}Z`) - Date.parse(`${exportacao.dataConclusao}Z`) > horas * 3600 * 1000) {
       throw new ErroHttp(410, 'O link expirou. Peça a exportação de novo.');
     }
     const idPaciente = pacienteDe('exportacoes', exportacao, ctx);
