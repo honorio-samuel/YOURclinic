@@ -196,6 +196,38 @@ A-07 desenhava a visão Dia e A-07b, a visão Ano. Semana só existia em S-02 e 
 
 **Aplicado:** dois frames novos. A-07c mostra a semana de um médico, com a grade de S-02. A-07d mostra o mês com "Todos os médicos", só com a contagem de consultas por dia, com a grade de M-03. Juntos, cobrem os dois modos do filtro que o pedido descreve. A matriz ganhou duas linhas. **Alternativa:** desenhar também a semana com "Todos" e o mês de um médico, que repetem padrões já desenhados.
 
+## Decisões da implementação das telas pendentes
+
+Valem para a versão base do app, sem o novo visual. A numeração começa em B1 para não colidir com as decisões do novo visual.
+
+### B1 · O "agora" da agenda
+
+Os dados simulados ficam em 28/09/2026. As regras de agenda usam essa data com a hora do relógio, no app (`DATA_DE_HOJE`) e na API (variável `DATA_DE_HOJE`): horário que já passou hoje não aparece como livre. Sessão e log seguem o relógio de verdade.
+
+### B2 · Portal na ordem do RF16
+
+O RF16 pede o horário antes do tipo de atendimento, e o tipo define a duração. A tela mostra um dia e um horário se ao menos um tipo couber neles e, depois da escolha, só oferece os tipos que cabem (E2). **Alternativa:** pedir o tipo antes do horário, invertendo a ordem do requisito.
+
+### B3 · Motivo de lista fechada
+
+Cancelar e reagendar pela clínica pedem motivo de uma lista: Pedido do paciente, Indisponibilidade do médico, Bloqueio de agenda, Ajuste da agenda da clínica e Outro. Em "Outro", a tela pede o detalhe e grava "Outro: detalhe". Nenhum item leva conteúdo clínico (RF20).
+
+### B4 · Agenda sem conteúdo clínico
+
+Na agenda, a consulta aparece como "Consulta" ou "Procedimento", particular ou convênio, como na fila (RN-22.2); o nome do procedimento fica de fora. Mês e Ano só têm contagens (A-07b, A-07d). Só a Secretária reagenda e cancela pela agenda (S-02); o Administrador consulta (A-07) e trata as consultas afetadas por bloqueio em lote (A-11b).
+
+### B5 · Lote tudo ou nada
+
+O tratamento das consultas afetadas por um bloqueio vai num pedido só. Se uma consulta não puder ser tratada, nenhuma muda, e a tela diz qual falhou (A4-R09). Depois do lote, o servidor reconta as consultas que o bloqueio ainda atinge.
+
+### B6 · Janela padrão da grade
+
+O X12 não está entre os parâmetros do banco. A grade oferece a janela padrão fixa de segunda a sexta, das 8h às 18h, e a duração de cada horário começa no X11.
+
+### B7 · Um item aceso no menu
+
+Quando a tela é ela mesma um item do menu, só esse item acende. Antes, "Agendar consulta" acendia também "Meus agendamentos", porque o cadastro acende a listagem da mesma entidade.
+
 ## Estado das telas
 
 Das 112 telas, 106 estão `ok`, 2 em `conflito` e 4 em `lacuna`.

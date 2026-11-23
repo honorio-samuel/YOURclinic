@@ -56,13 +56,24 @@ Cadastros prontos:
 | Contas a pagar (A-14) | Administrador | Conta paga abre só em consulta |
 | Bloqueios (A-11a, S-05b) | Administrador, Secretária | Mostra quantas consultas o bloqueio atinge |
 
+Agenda e agendamento:
+
+| Tela | Papéis | Observação |
+|---|---|---|
+| Agenda da clínica (A-07, A-07b, A-07c, A-07d, S-02) e Minha agenda (M-03) | Administrador, Secretária, Médico | Visões Dia (uma coluna por médico), Semana, Mês e, só para o Administrador, Ano. Mês e Ano mostram só contagens. A Secretária reagenda e cancela pela agenda; o Médico registra a própria indisponibilidade |
+| Novo agendamento (A-08a, S-03a) | Administrador, Secretária | Busca por nome ou CPF, ou cadastro na hora; médico primeiro; só horários livres; particular ou convênio com carteirinha. Se o horário for ocupado antes de confirmar, avisa sem dizer por quem e relê a lista (A-08b, S-03b) |
+| Agendar consulta (P-02, R-02) | Paciente, Responsável Legal | Especialidade, médico, dia e horário livres, tipo de atendimento que cabe no horário e convênio |
+| Grade de horários (A-10, S-05a) | Administrador, Secretária | Até dois períodos por dia; janela padrão de segunda a sexta, 8h às 18h; reduzir a grade com consulta marcada é recusado |
+| Reagendar ou cancelar (S-04) | Secretária | Mesmo médico ou outro da mesma especialidade; motivo de lista fechada |
+| Consultas afetadas por bloqueio (A-11b) | Administrador, Secretária | Reagendar ou cancelar em lote, com um motivo; tudo ou nada |
+
 Campo obrigatório leva `*` no rótulo; o erro aparece em texto junto do campo, e o foco vai para o primeiro campo com problema. A API repete as validações e responde 409 ou 422 com a mensagem, que o app mostra.
 
 ## O que mais está implementado
 
 Todas as listagens do redesenho, com filtros, pílulas de status com as transições permitidas a cada papel, ícones de ação e estados de carregando, vazio e erro: painel do dia, fila do dia, atendimentos, prontuário (prescrição, anexos, anotações privadas e exportações), financeiro, faturamento TISS, estoque, gestão e o portal do Paciente e do Responsável Legal.
 
-Telas que ainda não existem (agenda em grade, novo agendamento, grade de horários, checkout, meu caixa, painéis financeiro e gerencial, perfil) aparecem no menu como "Em construção", com o código da tela no protótipo. Ações de fluxo como reagendar, estornar, conciliar, ajustar estoque e check-in ficam nas listagens, como antes.
+Telas que ainda não existem (checkout, meu caixa, painéis financeiro e gerencial, perfil) aparecem no menu como "Em construção", com o código da tela no protótipo. Ações de fluxo como estornar, conciliar, ajustar estoque e check-in ficam nas listagens, como antes.
 
 ## Regras que o front respeita
 
