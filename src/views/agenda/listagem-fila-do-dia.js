@@ -80,7 +80,7 @@ function FilaDoDia() {
       titulo: '',
       render: (c) =>
         c.status === 'FINALIZADO' ? (
-          <button type='button' className='btn btn-link btn-sm p-0' onClick={() => navigate('/secretaria/listagem-cobrancas')}>
+          <button type='button' className='btn btn-link btn-sm p-0' onClick={() => navigate(`/secretaria/checkout?consulta=${c.id}`)}>
             Cobrar
           </button>
         ) : (

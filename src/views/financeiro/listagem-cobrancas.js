@@ -60,7 +60,7 @@ function CobrancasDoDia() {
                   Recibo
                 </button>
               ) : (
-                <button type='button' className='btn btn-sm btn-outline-primary' onClick={() => navigate('/secretaria/checkout')}>
+                <button type='button' className='btn btn-sm btn-outline-primary' onClick={() => navigate(`/secretaria/checkout?cobranca=${c.id}`)}>
                   Receber
                 </button>
               ),

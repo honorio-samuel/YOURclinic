@@ -325,3 +325,28 @@ fieldset:disabled .form-control {
   padding: 0 0.5rem;
   border: 1px solid var(--bs-border-color);
 }
+
+/* Checkout (S-07a a S-07d) */
+
+.meio-pagamento {
+  min-height: 4rem;
+}
+
+.qr-simulado {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 10rem;
+  height: 10rem;
+  border: 1px solid var(--bs-border-color);
+}
+
+.qr-simulado svg {
+  font-size: 8rem;
+}
+
+.valor-maquininha {
+  padding: 0.75rem 1rem;
+  font-size: 1.25rem;
+  background-color: var(--bs-secondary-bg);
+}

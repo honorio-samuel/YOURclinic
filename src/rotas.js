@@ -23,6 +23,7 @@ import CadastroAgendamento from './views/agenda/cadastro-agendamento';
 import GradeHorarios from './views/agenda/grade-horarios';
 import ConsultasAfetadas from './views/agenda/consultas-afetadas';
 import CadastroContaPagar from './views/financeiro/cadastro-conta-pagar';
+import Checkout from './views/financeiro/checkout';
 import CadastroProduto from './views/estoque/cadastro-produto';
 import FilaDoDia from './views/agenda/listagem-fila-do-dia';
 import AtendimentosDoDia from './views/agenda/listagem-atendimentos';
@@ -141,7 +142,7 @@ const TELAS = [
   ['/secretaria/cadastro-bloqueios/:idParam/consultas-afetadas', S, <ConsultasAfetadas />],
   ['/secretaria/grade', S, <GradeHorarios />],
   ['/secretaria/listagem-fila-do-dia', S, <FilaDoDia />],
-  ['/secretaria/checkout', S, <EmBreve codigo='S-07a' titulo='Checkout' />],
+  ['/secretaria/checkout', S, <Checkout />],
   ['/secretaria/listagem-cobrancas', S, <CobrancasDoDia />],
   ['/secretaria/caixa', S, <EmBreve codigo='S-09' titulo='Meu caixa' />],
   ['/secretaria/listagem-orcamentos', S, <OrcamentosValores />],

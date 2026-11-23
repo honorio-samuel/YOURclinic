@@ -71,6 +71,28 @@ export const MEIO_PAGAMENTO = {
   DINHEIRO: 'Dinheiro',
 };
 
+// Checkout (RF43 a RF46).
+export const SITUACAO_PAGAMENTO = {
+  CONFIRMADO: { rotulo: 'Aprovado', tom: 'sucesso' },
+  PENDENTE: { rotulo: 'Aguardando pagamento', tom: 'info' },
+  AGUARDANDO_CONFERENCIA: { rotulo: 'Aguardando conferência', tom: 'aviso' },
+  INDEFINIDO: { rotulo: 'Sem resposta', tom: 'aviso' },
+  NEGADO: { rotulo: 'Negado', tom: 'perigo' },
+  RECUSADO: { rotulo: 'Recusado na conferência', tom: 'perigo' },
+  EXPIRADO: { rotulo: 'Expirado', tom: 'neutro' },
+  CANCELADO: { rotulo: 'Cancelado', tom: 'neutro' },
+  NAO_REALIZADO: { rotulo: 'Não realizado', tom: 'neutro' },
+};
+
+export const MODALIDADE_CARTAO = {
+  DEBITO: 'Débito',
+  CREDITO: 'Crédito à vista',
+  CREDITO_PARCELADO_LOJISTA: 'Crédito parcelado pela clínica',
+  CREDITO_PARCELADO_EMISSOR: 'Crédito parcelado pelo banco do paciente',
+};
+
+export const BANDEIRA = { VISA: 'Visa', MASTERCARD: 'Mastercard', ELO: 'Elo', AMEX: 'American Express', HIPERCARD: 'Hipercard' };
+
 export const ETAPA_ORCAMENTO = {
   ESCOPO: { rotulo: '1. Escopo', tom: 'neutro' },
   VALORES: { rotulo: '2. Valores', tom: 'info' },
@@ -125,6 +147,7 @@ export const EVENTO_NOTIFICACAO = {
   CANCELAMENTO_PELO_TITULAR: 'Cancelamento confirmado',
   REMARCACAO_CONSULTA: 'Consulta remarcada pela clínica',
   COBRANCA_DISPONIVEL: 'Cobrança disponível',
+  PAGAMENTO_CONFIRMADO: 'Pagamento confirmado',
   ORCAMENTO_DISPONIVEL: 'Orçamento disponível',
 };
 
