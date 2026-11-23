@@ -6,23 +6,24 @@ import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
 import { CampoSelect, Filtros } from '../../components/campos';
-import { emBreve, useAlternarSituacao, useConfirmacao } from '../../components/confirmacao';
+import { useAlternarSituacao, useConfirmacao } from '../../components/confirmacao';
 import { mensagemErro, mensagemSucesso } from '../../components/toastr';
 import { api } from '../../config/axios';
 import { listar, pessoasPorId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
-import { useCaminhosDaListagem } from '../../navegacao/caminhos';
+import { prefixoDoPapel, useCaminhosDaListagem } from '../../navegacao/caminhos';
 import { useSessao } from '../../sessao/sessao';
 import { data, nomeMedico } from '../../utils/formatos';
 import { MOTIVO_BLOQUEIO, rotuloDe, SITUACAO_CADASTRO } from '../../utils/rotulos';
 
 // A-11a e S-05b · Bloqueios de agenda. A lixeira só aparece no bloqueio que
-// ainda não atingiu nenhuma consulta (A1-R09, hipótese 1).
+// ainda não atingiu nenhuma consulta (A1-R09, hipótese 1). As consultas
+// atingidas são tratadas em lote (A-11b), a partir do aviso abaixo da lista.
 function Bloqueios() {
   const navigate = useNavigate();
   const caminhos = useCaminhosDaListagem('bloqueios');
   const { sessao } = useSessao();
-  const ehAdmin = sessao.usuario.papel === 'ADMINISTRADOR';
+  const prefixo = prefixoDoPapel(sessao.usuario.papel);
   const carregar = async () => {
     const bloqueios = await listar('bloqueiosAgenda', { _sort: 'dataInicio' });
     const pessoas = await pessoasPorId(bloqueios.map((b) => b.idMedico));
@@ -67,9 +68,14 @@ function Bloqueios() {
     <Pagina
       titulo='Bloqueios de agenda'
       acoes={
-        <button type='button' className='btn btn-primary' onClick={() => navigate(caminhos.novo)}>
-          + Novo bloqueio
-        </button>
+        <>
+          <button type='button' className='btn btn-outline-primary' onClick={() => navigate(`${prefixo}/grade`)}>
+            Grade de horários
+          </button>
+          <button type='button' className='btn btn-primary' onClick={() => navigate(caminhos.novo)}>
+            + Novo bloqueio
+          </button>
+        </>
       }
     >
       <Filtros>
@@ -140,12 +146,13 @@ function Bloqueios() {
       {afetando.map((b) => (
         <div key={b.id} className='alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2 mb-0' role='status'>
           <span>
-            O bloqueio de {b.medico} atinge {b.consultasAfetadas} consultas já agendadas. Trate cada uma antes de salvar.
+            O bloqueio de {b.medico} atinge {b.consultasAfetadas} {b.consultasAfetadas === 1 ? 'consulta já agendada' : 'consultas já agendadas'}.
+            Reagende ou cancele cada uma, com motivo.
           </span>
           <button
             type='button'
             className='btn btn-sm btn-primary'
-            onClick={() => emBreve(ehAdmin ? 'O reagendamento em lote' : 'O tratamento das consultas afetadas')}
+            onClick={() => navigate(`${prefixo}/cadastro-bloqueios/${b.id}/consultas-afetadas`)}
           >
             Tratar consultas afetadas
           </button>
