@@ -5,13 +5,13 @@ import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
 import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
-import { emBreve } from '../../components/confirmacao';
 import { DATA_DE_HOJE } from '../../config/axios';
 import { listar, pessoasPorId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
 import { useSessao } from '../../sessao/sessao';
 import { corresponde, data, diasEntre } from '../../utils/formatos';
 import { rotuloDe, VINCULO } from '../../utils/rotulos';
+import JanelaExcecao from './acesso-excecao';
 
 const JANELA_HISTORICO = 90; // dias (X06)
 
@@ -37,10 +37,19 @@ function MeusPacientes() {
   const { dados, carregando, erro, recarregar } = useCarregar(() => carregarMeusPacientes(sessao.usuario.idPessoa));
   const [busca, setBusca] = React.useState('');
   const [vinculo, setVinculo] = React.useState('');
+  // Pedido de acesso de exceção (M-02h): null, {} para procurar o paciente ou { paciente }.
+  const [excecao, setExcecao] = React.useState(null);
   const linhas = (dados ?? []).filter((p) => corresponde(busca, p.paciente) && (!vinculo || p.estado === vinculo));
 
   return (
-    <Pagina titulo='Meus pacientes'>
+    <Pagina
+      titulo='Meus pacientes'
+      acoes={
+        <button type='button' className='btn btn-outline-primary' onClick={() => setExcecao({})}>
+          Pedir acesso de exceção
+        </button>
+      }
+    >
       <Filtros>
         <CampoBusca id='mpBusca' rotulo='Buscar paciente' valor={busca} aoMudar={setBusca} />
         <CampoSelect id='mpVinculo' rotulo='Vínculo' valor={vinculo} aoMudar={setVinculo} opcoes={[['', 'Todos'], ...Object.entries(VINCULO).map(([k, v]) => [k, v.rotulo])]} />
@@ -69,13 +78,20 @@ function MeusPacientes() {
                   Abrir prontuário
                 </button>
               ) : (
-                <button type='button' className='btn btn-link btn-sm p-0' onClick={() => emBreve('O pedido de acesso de exceção')}>
+                <button type='button' className='btn btn-link btn-sm p-0' onClick={() => setExcecao({ paciente: { id: p.idPaciente, nome: p.paciente } })}>
                   Pedir acesso de exceção
                 </button>
               ),
           },
         ]}
       />
+      {excecao && (
+        <JanelaExcecao
+          paciente={excecao.paciente ?? null}
+          aoFechar={() => setExcecao(null)}
+          aoConcluir={(idPaciente) => navigate(`/medico/prontuario/${idPaciente}`)}
+        />
+      )}
     </Pagina>
   );
 }

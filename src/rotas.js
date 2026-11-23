@@ -58,6 +58,7 @@ import SolicitacoesTitulares from './views/gestao/listagem-solicitacoes';
 import Parametros from './views/gestao/listagem-parametros';
 import MeusPacientes from './views/clinico/listagem-meus-pacientes';
 import Prontuario from './views/clinico/prontuario';
+import { DocumentoExportado, ViaDaPrescricao } from './views/clinico/impressao';
 import PendenciasClinicas from './views/clinico/listagem-pendencias';
 import InicioPortal from './views/portal/inicio';
 import AgendamentosPortal from './views/portal/listagem-agendamentos';
@@ -128,6 +129,8 @@ const TELAS = [
   ['/medico/listagem-pacientes', M, <MeusPacientes />],
   ['/medico/prontuario/:id', M, <Prontuario />],
   ['/medico/prontuario/:id/:aba', M, <Prontuario />],
+  ['/medico/prontuario/:id/prescricoes/:idPrescricao', M, <ViaDaPrescricao />],
+  ['/medico/prontuario/:id/exportacoes/:idExportacao', M, <DocumentoExportado />],
   ['/medico/agenda', M, <Agenda />],
   ['/medico/listagem-orcamentos', M, <OrcamentosMedico />],
   ['/medico/listagem-produtos', M, <Produtos />],

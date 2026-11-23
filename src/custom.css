@@ -350,3 +350,26 @@ fieldset:disabled .form-control {
   font-size: 1.25rem;
   background-color: var(--bs-secondary-bg);
 }
+
+/* Impressão (via da prescrição e documentos exportados): só o documento. */
+
+@media print {
+  header.navbar,
+  footer,
+  .coluna-menu,
+  .faixa-representado,
+  .no-print,
+  #toast-container {
+    display: none !important;
+  }
+
+  main#conteudo {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  .documento-impresso {
+    border: 0;
+    padding: 0;
+  }
+}

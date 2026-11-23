@@ -1,10 +1,12 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
-import { emBreve } from '../../components/confirmacao';
-import { listar } from '../../servicos/dados';
+import { mensagemDeErro, useConfirmacao } from '../../components/confirmacao';
+import { mensagemErro, mostrarMensagem } from '../../components/toastr';
+import { criar, listar } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
 import { diaMesHora } from '../../utils/formatos';
 
@@ -14,26 +16,57 @@ const TIPO_EXPORTACAO = {
   HISTORICO_ATENDIMENTOS: 'Histórico de atendimentos',
   HISTORICO: 'Histórico de atendimentos',
 };
+const pronto = (e) => ['CONCLUIDA', 'PRONTO'].includes(e.situacao);
 
-// M-02g · Exportações (RF29, RF30). Anotações privadas nunca entram (RC04).
+// M-02g · Exportações (RF29, RF30). O pedido gera o documento em segundo
+// plano; a lista se atualiza sozinha até ficar pronto. Anotações privadas
+// nunca entram (RC04).
 function Exportacoes({ idPaciente }) {
+  const navigate = useNavigate();
   const { dados, carregando, erro, recarregar } = useCarregar(
     () => listar('exportacoes', { idPaciente, _sort: 'dataSolicitacao', _order: 'desc' }),
     [idPaciente]
   );
-  const pronto = (e) => ['CONCLUIDA', 'PRONTO'].includes(e.situacao);
+  const [modal, confirmar] = useConfirmacao();
+  const gerando = (dados ?? []).some((e) => !pronto(e));
+
+  React.useEffect(() => {
+    if (!gerando) return undefined;
+    const espera = setTimeout(recarregar, 3000);
+    return () => clearTimeout(espera);
+  }, [gerando, dados, recarregar]);
+
+  const pedir = async (tipo) => {
+    const completo = tipo === 'PRONTUARIO';
+    const ok = await confirmar({
+      titulo: completo ? 'Exportar o prontuário completo?' : 'Exportar o histórico de atendimentos?',
+      texto: completo
+        ? 'O documento traz os registros selados, com retificações e prescrições, sem as anotações privadas. O link vale por 24 horas e só para você.'
+        : 'O documento traz só datas, tipo de atendimento, médico, especialidade e situação, sem conteúdo clínico.',
+      rotuloConfirmar: 'Exportar',
+    });
+    if (!ok) return;
+    try {
+      await criar('exportacoes', { tipo, formato: 'PDF', idPaciente });
+      mostrarMensagem('Exportação pedida', 'O documento fica pronto em alguns segundos.', 'info');
+      recarregar();
+    } catch (e) {
+      mensagemErro(mensagemDeErro(e));
+    }
+  };
+
   return (
     <>
       <div className='d-flex flex-wrap justify-content-end gap-2'>
-        <button type='button' className='btn btn-outline-primary' onClick={() => emBreve('A exportação do histórico')}>
+        <button type='button' className='btn btn-outline-primary' onClick={() => pedir('HISTORICO')}>
           Exportar histórico
         </button>
-        <button type='button' className='btn btn-primary' onClick={() => emBreve('A exportação do prontuário completo')}>
+        <button type='button' className='btn btn-primary' onClick={() => pedir('PRONTUARIO')}>
           Exportar prontuário completo
         </button>
       </div>
       <Listagem
-        carregando={carregando}
+        carregando={carregando && !dados}
         erro={erro}
         aoTentarDeNovo={recarregar}
         linhas={dados ?? []}
@@ -45,10 +78,21 @@ function Exportacoes({ idPaciente }) {
           {
             titulo: 'Ações',
             render: (e) =>
-              !pronto(e) ? null : <AcoesLinha acoes={[{ tipo: 'baixar', alvo: TIPO_EXPORTACAO[e.tipo], aoClicar: () => emBreve('O download pelo link que expira') }]} />,
+              !pronto(e) ? null : (
+                <AcoesLinha
+                  acoes={[
+                    {
+                      tipo: 'baixar',
+                      alvo: TIPO_EXPORTACAO[e.tipo],
+                      aoClicar: () => navigate(`/medico/prontuario/${idPaciente}/exportacoes/${e.id}`),
+                    },
+                  ]}
+                />
+              ),
           },
         ]}
       />
+      {modal}
     </>
   );
 }

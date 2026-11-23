@@ -15,7 +15,7 @@ export function AreaLogada() {
 
   return (
     <div className='row'>
-      <div className='col-lg-3 mb-4'>
+      <div className='col-lg-3 mb-4 coluna-menu'>
         <MenuLateral papel={sessao.usuario.papel} />
       </div>
       <main className='col-lg-9 mb-4' id='conteudo'>
