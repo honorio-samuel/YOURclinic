@@ -9,6 +9,7 @@ import BlockIcon from '@mui/icons-material/Block';
 import UndoIcon from '@mui/icons-material/Undo';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
+import EventRepeatIcon from '@mui/icons-material/EventRepeat';
 
 // Ícones de ação das linhas (BotaoIcone do Figma). Excluir só existe nas três
 // hipóteses de A1-R09; nos demais casos a ação é Inativar, Cancelar ou Estornar.
@@ -22,6 +23,7 @@ const ICONES = {
   estornar: { icone: UndoIcon, verbo: 'Estornar' },
   excluir: { icone: DeleteIcon, verbo: 'Excluir', perigo: true },
   baixar: { icone: DownloadIcon, verbo: 'Baixar' },
+  reagendar: { icone: EventRepeatIcon, verbo: 'Reagendar' },
 };
 
 // acoes: [{ tipo: 'ver', alvo: 'Ana Souza', aoClicar }]

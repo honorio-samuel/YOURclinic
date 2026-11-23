@@ -11,7 +11,7 @@ import { listar, pessoasPorId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
 import { useSessao } from '../../sessao/sessao';
 import { data, hora } from '../../utils/formatos';
-import { carregarConsultas, doDia, opcoesDeMedico, useMudarStatus } from './comum';
+import { carregarConsultas, doDia, MOTIVOS_DA_CLINICA, opcoesDeMedico, useMudarStatus } from './comum';
 
 async function carregarPendenciasRecepcao(consultasDoDia) {
   const [notificacoes, alertas, representacoes] = await Promise.all([
@@ -56,6 +56,8 @@ function FilaDoDia() {
         mudar(c, 'CANCELADO', {
           titulo: `Cancelar a consulta de ${c.paciente}?`,
           texto: 'O paciente recebe o aviso de cancelamento. A consulta fica no histórico como cancelada pela clínica.',
+          motivos: MOTIVOS_DA_CLINICA,
+          rotuloMotivo: 'Motivo do cancelamento',
           rotuloConfirmar: 'Cancelar consulta',
           perigo: true,
         }),

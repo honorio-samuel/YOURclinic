@@ -14,6 +14,9 @@ const PREFIXO = {
   RESPONSAVEL_LEGAL: '/portal',
 };
 
+// Início dos caminhos do papel: "/admin", "/secretaria", "/medico" ou "/portal".
+export const prefixoDoPapel = (papel) => PREFIXO[papel];
+
 export function caminhoListagem(papel, entidade) {
   return `${PREFIXO[papel]}/listagem-${entidade}`;
 }

@@ -122,9 +122,14 @@ export const EVENTO_NOTIFICACAO = {
   CONFIRMACAO_CONSULTA: 'Confirmação de consulta',
   CONFIRMACAO_AGENDAMENTO: 'Confirmação de agendamento',
   CANCELAMENTO: 'Consulta cancelada pela clínica',
+  CANCELAMENTO_PELO_TITULAR: 'Cancelamento confirmado',
+  REMARCACAO_CONSULTA: 'Consulta remarcada pela clínica',
   COBRANCA_DISPONIVEL: 'Cobrança disponível',
   ORCAMENTO_DISPONIVEL: 'Orçamento disponível',
 };
+
+// Por onde a consulta foi marcada.
+export const CANAL_ORIGEM = { RECEPCAO: 'Recepção', TELEFONE: 'Telefone', PORTAL: 'Portal' };
 
 export const CANAL = {
   SMS: 'Mensagem de texto',

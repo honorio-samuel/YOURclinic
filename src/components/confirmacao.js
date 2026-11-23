@@ -7,19 +7,34 @@ import { mensagemErro, mensagemSucesso, mostrarMensagem } from './toastr';
 // que muda dado pede confirmação (PR-22).
 // Uso: const [modal, confirmar] = useConfirmacao(); ... if (await confirmar({...}))
 // Com "campo" (rótulo do motivo), devolve o texto digitado em vez de true.
+// Com "motivos" (lista fechada, RF20), devolve o motivo escolhido; em "Outro",
+// pede o detalhe e devolve "Outro: detalhe".
+const OUTRO = 'Outro';
+
 export function useConfirmacao() {
   const [pedido, setPedido] = React.useState(null);
   const [texto, setTexto] = React.useState('');
+  const [escolha, setEscolha] = React.useState('');
 
   const confirmar = React.useCallback((opcoes) => {
     setTexto('');
+    setEscolha('');
     return new Promise((resolver) => setPedido({ ...opcoes, resolver }));
   }, []);
 
+  const respostaDoMotivo = () => {
+    if (pedido.motivos) return escolha === OUTRO ? `${OUTRO}: ${texto.trim()}` : escolha;
+    return texto.trim();
+  };
+
   const fechar = (resposta) => {
-    pedido?.resolver(resposta && pedido.campo ? texto.trim() : resposta);
+    pedido?.resolver(resposta && (pedido.campo || pedido.motivos) ? respostaDoMotivo() : resposta);
     setPedido(null);
   };
+
+  const pedeDetalhe = Boolean(pedido?.campo) || (Boolean(pedido?.motivos) && escolha === OUTRO);
+  // O detalhe do "Outro" precisa dizer alguma coisa: ao menos 5 letras, como na API.
+  const incompleto = pedido?.motivos ? !escolha || (escolha === OUTRO && texto.trim().length < 5) : pedido?.campo && !texto.trim();
 
   const modal = pedido && (
     <>
@@ -32,11 +47,32 @@ export function useConfirmacao() {
               </h2>
             </div>
             <div className='modal-body'>
-              <p className={pedido.campo ? '' : 'mb-0'}>{pedido.texto}</p>
-              {pedido.campo && (
+              <p className={pedido.campo || pedido.motivos ? '' : 'mb-0'}>{pedido.texto}</p>
+              {pedido.motivos && (
+                <div className={pedeDetalhe ? 'mb-3' : ''}>
+                  <label htmlFor='campoMotivoLista' className='form-label'>
+                    {pedido.rotuloMotivo ?? 'Motivo'}
+                  </label>
+                  <select
+                    id='campoMotivoLista'
+                    className='form-select'
+                    value={escolha}
+                    onChange={(e) => setEscolha(e.target.value)}
+                    autoFocus
+                  >
+                    <option value=''>Selecione</option>
+                    {pedido.motivos.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {pedeDetalhe && (
                 <>
                   <label htmlFor='campoMotivo' className='form-label'>
-                    {pedido.campo}
+                    {pedido.campo ?? 'Descreva o motivo'}
                   </label>
                   <textarea
                     id='campoMotivo'
@@ -56,8 +92,8 @@ export function useConfirmacao() {
                 type='button'
                 className={`btn ${pedido.perigo ? 'btn-danger' : 'btn-primary'}`}
                 onClick={() => fechar(true)}
-                disabled={pedido.campo && !texto.trim()}
-                autoFocus={!pedido.campo}
+                disabled={incompleto}
+                autoFocus={!pedido.campo && !pedido.motivos}
               >
                 {pedido.rotuloConfirmar ?? 'Confirmar'}
               </button>

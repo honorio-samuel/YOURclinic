@@ -5,18 +5,20 @@ import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
 import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
-import { emBreve } from '../../components/confirmacao';
 import { DATA_DE_HOJE } from '../../config/axios';
 import { useCarregar } from '../../hooks/use-carregar';
 import { corresponde, diaMesHora } from '../../utils/formatos';
-import { carregarConsultas, opcoesDeMedico, useMudarStatus } from './comum';
+import { carregarConsultas, MOTIVOS_DA_CLINICA, opcoesDeMedico, useMudarStatus } from './comum';
+import { useReagendar } from './reagendar';
 
-// S-04 · Reagendar ou cancelar. Lista as consultas agendadas a partir de hoje.
+// S-04 · Reagendar ou cancelar (RF20). Lista as consultas agendadas a partir de
+// hoje; as duas ações pedem motivo de lista fechada e avisam o paciente (RF21).
 function ReagendarOuCancelar() {
   const { dados, carregando, erro, recarregar } = useCarregar(() =>
     carregarConsultas({ status: 'AGENDADO', dataHora_gte: `${DATA_DE_HOJE}T00:00:00`, _sort: 'dataHora' })
   );
   const [modal, mudar] = useMudarStatus(recarregar);
+  const [modalReagendar, reagendar] = useReagendar(recarregar);
   const [busca, setBusca] = React.useState('');
   const [medico, setMedico] = React.useState('');
   const [dia, setDia] = React.useState('');
@@ -55,7 +57,7 @@ function ReagendarOuCancelar() {
             render: (c) => (
               <AcoesLinha
                 acoes={[
-                  { tipo: 'ver', alvo: `consulta de ${c.paciente}`, aoClicar: () => emBreve('O reagendamento') },
+                  { tipo: 'reagendar', alvo: `consulta de ${c.paciente}`, aoClicar: () => reagendar(c) },
                   {
                     tipo: 'cancelar',
                     alvo: `consulta de ${c.paciente}`,
@@ -63,6 +65,8 @@ function ReagendarOuCancelar() {
                       mudar(c, 'CANCELADO', {
                         titulo: `Cancelar a consulta de ${c.paciente}?`,
                         texto: 'O paciente recebe o aviso de cancelamento. A consulta fica no histórico como cancelada pela clínica.',
+                        motivos: MOTIVOS_DA_CLINICA,
+                        rotuloMotivo: 'Motivo do cancelamento',
                         rotuloConfirmar: 'Cancelar consulta',
                         perigo: true,
                       }),
@@ -74,6 +78,7 @@ function ReagendarOuCancelar() {
         ]}
       />
       {modal}
+      {modalReagendar}
     </Pagina>
   );
 }
