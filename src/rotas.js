@@ -18,6 +18,10 @@ import CadastroEquipe from './views/cadastro/cadastro-equipe';
 import CadastroConvenio from './views/cadastro/cadastro-convenio';
 import CadastroProcedimento from './views/cadastro/cadastro-procedimento';
 import CadastroBloqueio from './views/agenda/cadastro-bloqueio';
+import Agenda from './views/agenda/agenda';
+import CadastroAgendamento from './views/agenda/cadastro-agendamento';
+import GradeHorarios from './views/agenda/grade-horarios';
+import ConsultasAfetadas from './views/agenda/consultas-afetadas';
 import CadastroContaPagar from './views/financeiro/cadastro-conta-pagar';
 import CadastroProduto from './views/estoque/cadastro-produto';
 import FilaDoDia from './views/agenda/listagem-fila-do-dia';
@@ -54,6 +58,7 @@ import Prontuario from './views/clinico/prontuario';
 import PendenciasClinicas from './views/clinico/listagem-pendencias';
 import InicioPortal from './views/portal/inicio';
 import AgendamentosPortal from './views/portal/listagem-agendamentos';
+import AgendarPortal from './views/portal/cadastro-agendamento';
 import DocumentosPortal from './views/portal/listagem-documentos';
 import CobrancasPortal from './views/portal/listagem-cobrancas';
 import OrcamentoPortal from './views/portal/orcamento';
@@ -82,12 +87,13 @@ const TELAS = [
   ['/admin/cadastro-convenios/:idParam?', A, <CadastroConvenio />],
   ['/admin/listagem-procedimentos', A, <Procedimentos />],
   ['/admin/cadastro-procedimentos/:idParam?', A, <CadastroProcedimento />],
-  ['/admin/agenda', A, <EmBreve codigo='A-07' titulo='Agenda da clínica' />],
-  ['/admin/cadastro-agendamentos', A, <EmBreve codigo='A-08a' titulo='Novo agendamento' />],
+  ['/admin/agenda', A, <Agenda />],
+  ['/admin/cadastro-agendamentos', A, <CadastroAgendamento />],
   ['/admin/listagem-fila-do-dia', A, <FilaDoDia />],
-  ['/admin/grade', A, <EmBreve codigo='A-10' titulo='Grade de horários' />],
+  ['/admin/grade', A, <GradeHorarios />],
   ['/admin/listagem-bloqueios', A, <Bloqueios />],
   ['/admin/cadastro-bloqueios/:idParam?', A, <CadastroBloqueio />],
+  ['/admin/cadastro-bloqueios/:idParam/consultas-afetadas', A, <ConsultasAfetadas />],
   ['/admin/painel-financeiro', A, <EmBreve codigo='A-12' titulo='Painel financeiro' />],
   ['/admin/listagem-contas-receber', A, <ContasReceber />],
   ['/admin/listagem-contas-pagar', A, <ContasPagar />],
@@ -118,7 +124,7 @@ const TELAS = [
   ['/medico/listagem-pacientes', M, <MeusPacientes />],
   ['/medico/prontuario/:id', M, <Prontuario />],
   ['/medico/prontuario/:id/:aba', M, <Prontuario />],
-  ['/medico/agenda', M, <EmBreve codigo='M-03' titulo='Minha agenda' />],
+  ['/medico/agenda', M, <Agenda />],
   ['/medico/listagem-orcamentos', M, <OrcamentosMedico />],
   ['/medico/listagem-produtos', M, <Produtos />],
   ['/medico/listagem-pendencias', M, <PendenciasClinicas />],
@@ -127,11 +133,13 @@ const TELAS = [
   ['/secretaria/cadastro-pacientes/:idParam?', S, <CadastroPaciente />],
   ['/secretaria/cadastro-pacientes/:idParam/observacoes', S, <ObservacoesGerais />],
   ['/secretaria/cadastro-pacientes/:idParam/anexos', S, <AnexosRecepcao />],
-  ['/secretaria/agenda', S, <EmBreve codigo='S-02' titulo='Agenda da clínica' />],
-  ['/secretaria/cadastro-agendamentos', S, <EmBreve codigo='S-03a' titulo='Novo agendamento' />],
+  ['/secretaria/agenda', S, <Agenda />],
+  ['/secretaria/cadastro-agendamentos', S, <CadastroAgendamento />],
   ['/secretaria/listagem-consultas', S, <ReagendarOuCancelar />],
   ['/secretaria/listagem-bloqueios', S, <Bloqueios />],
   ['/secretaria/cadastro-bloqueios/:idParam?', S, <CadastroBloqueio />],
+  ['/secretaria/cadastro-bloqueios/:idParam/consultas-afetadas', S, <ConsultasAfetadas />],
+  ['/secretaria/grade', S, <GradeHorarios />],
   ['/secretaria/listagem-fila-do-dia', S, <FilaDoDia />],
   ['/secretaria/checkout', S, <EmBreve codigo='S-07a' titulo='Checkout' />],
   ['/secretaria/listagem-cobrancas', S, <CobrancasDoDia />],
@@ -149,7 +157,7 @@ const TELAS = [
   ['/secretaria/listagem-alertas', S, <Alertas />],
   // Paciente e Responsável Legal
   ['/portal/inicio', PORTAL, <InicioPortal />],
-  ['/portal/cadastro-agendamentos', PORTAL, <EmBreve codigo='P-02 e R-02' titulo='Agendar consulta' />],
+  ['/portal/cadastro-agendamentos', PORTAL, <AgendarPortal />],
   ['/portal/listagem-agendamentos', PORTAL, <AgendamentosPortal />],
   ['/portal/listagem-documentos', PORTAL, <DocumentosPortal />],
   ['/portal/listagem-cobrancas', PORTAL, <CobrancasPortal />],
