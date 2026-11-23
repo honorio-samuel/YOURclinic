@@ -3,6 +3,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
 import MenuLateral from './menu-lateral';
 import FaixaRepresentado from './faixa-representado';
+import AvisoDeExpiracao from './aviso-expiracao';
 import { AcessoNegado } from '../views/geral/avisos';
 import { useSessao } from '../sessao/sessao';
 
@@ -22,6 +23,7 @@ export function AreaLogada() {
         <FaixaRepresentado />
         <Outlet />
       </main>
+      <AvisoDeExpiracao />
     </div>
   );
 }

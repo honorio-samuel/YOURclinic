@@ -16,6 +16,8 @@ export const api = axios.create({
 
 let token = null;
 let aoExpirarSessao = () => {};
+// Toda resposta com sessão renova o prazo no servidor; o front acompanha (G-07b).
+let aoResponderComSessao = () => {};
 
 export function definirToken(novoToken) {
   token = novoToken;
@@ -23,6 +25,10 @@ export function definirToken(novoToken) {
 
 export function definirAoExpirarSessao(funcao) {
   aoExpirarSessao = funcao;
+}
+
+export function definirAoResponderComSessao(funcao) {
+  aoResponderComSessao = funcao;
 }
 
 api.interceptors.request.use((config) => {
@@ -33,10 +39,14 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (resposta) => resposta,
+  (resposta) => {
+    if (token) aoResponderComSessao();
+    return resposta;
+  },
   (erro) => {
     const status = erro.response?.status;
     const ehLogin = erro.config?.url === '/login';
+    if (token && erro.response && status !== 401) aoResponderComSessao();
     // Sem sessão ou sessão expirada: volta ao login (G-07).
     if (status === 401 && !ehLogin && token) {
       aoExpirarSessao();

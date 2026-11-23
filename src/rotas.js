@@ -4,6 +4,8 @@ import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { AreaLogada, Permitido } from './components/layout';
 import Login from './views/geral/login';
 import SelecionarRepresentado from './views/geral/selecionar-representado';
+import { PrimeiroAcesso, RecuperarSenha, RedefinirSenha } from './views/geral/credencial';
+import MeuPerfil from './views/geral/perfil';
 import { EmBreve, RegistroIndisponivel } from './views/geral/avisos';
 import Pacientes from './views/cadastro/listagem-pacientes';
 import Medicos from './views/cadastro/listagem-medicos';
@@ -172,7 +174,7 @@ const TELAS = [
   ['/portal/dados', PORTAL, <DadosPortal />],
   ['/portal/representado', ['RESPONSAVEL_LEGAL'], <SelecionarRepresentado />],
   // Todos
-  ['/perfil', TODOS, <EmBreve codigo='G-10' titulo='Meu perfil' />],
+  ['/perfil', TODOS, <MeuPerfil />],
 ];
 
 // Rotas antigas: as de antes do redesenho e as anteriores ao padrão
@@ -259,6 +261,9 @@ function Rotas() {
   return (
     <Routes>
       <Route path='/entrar' element={<Login />} />
+      <Route path='/convite/:token' element={<PrimeiroAcesso />} />
+      <Route path='/recuperar-senha' element={<RecuperarSenha />} />
+      <Route path='/redefinir-senha/:token' element={<RedefinirSenha />} />
       <Route element={<AreaLogada />}>
         <Route index element={<Inicio />} />
         {/* A chave por caminho remonta a tela ao trocar de rota (de /novo para

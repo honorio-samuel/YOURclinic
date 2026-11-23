@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 
 import { INICIO } from '../../navegacao/menus';
 import { PAPEIS } from '../../utils/rotulos';
@@ -98,7 +98,9 @@ function Login() {
                 <button type='submit' className='btn btn-primary' disabled={enviando || !login || !senha}>
                   {enviando ? 'Entrando…' : 'Entrar'}
                 </button>
-                <span className='small text-body-secondary'>Esqueci minha senha: fale com a recepção.</span>
+                <Link to='/recuperar-senha' className='small'>
+                  Esqueci minha senha
+                </Link>
               </div>
             </form>
           </div>

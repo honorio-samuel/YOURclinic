@@ -15,8 +15,32 @@ import {
   sugerirLogin,
 } from '../../utils/mascaras';
 import { CONTA, rotuloDe } from '../../utils/rotulos';
+import { mensagemDeErro } from '../../components/confirmacao';
+import { mensagemErro, mensagemSucesso } from '../../components/toastr';
+import { reenviarConvite } from '../../servicos/credencial';
 
 // Partes comuns aos cadastros de médico (A-03) e de equipe (A-04).
+
+// RF03: o Administrador reenvia o convite da conta pendente; o link anterior
+// deixa de valer (RN-02.2).
+function BotaoReenviarConvite({ conta }) {
+  const [enviando, setEnviando] = React.useState(false);
+  const reenviar = async () => {
+    setEnviando(true);
+    try {
+      mensagemSucesso((await reenviarConvite(conta.id)).mensagem);
+    } catch (e) {
+      mensagemErro(mensagemDeErro(e));
+    } finally {
+      setEnviando(false);
+    }
+  };
+  return (
+    <button type='button' className='btn btn-sm btn-outline-primary' onClick={reenviar} disabled={enviando}>
+      {enviando ? 'Reenviando…' : 'Reenviar convite'}
+    </button>
+  );
+}
 
 export const PROFISSIONAL_VAZIO = { nome: '', cpf: '', dataNascimento: '', sexo: '', telefone: '', email: '', login: '' };
 
@@ -117,7 +141,10 @@ export function SecaoConta({ form, conta, novo, aoTocarLogin }) {
       {conta && (
         <div className='col-md-6'>
           <span className='form-label d-block'>Situação da conta</span>
-          <PilulaStatus {...rotuloDe(CONTA, conta.situacao)} />
+          <div className='d-flex flex-wrap align-items-center gap-2'>
+            <PilulaStatus {...rotuloDe(CONTA, conta.situacao)} />
+            {conta.situacao === 'CONVITE_PENDENTE' && <BotaoReenviarConvite conta={conta} />}
+          </div>
         </div>
       )}
     </Secao>
