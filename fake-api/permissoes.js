@@ -686,8 +686,8 @@ const politica = {
     [A]: { ler: todos, criar: true, editar: true, validar: validarMedico, aposEditar: aposEditarMedico },
     [S]: { ler: todos },
     [M]: { ler: todos, ocultar: (r, ctx) => (proprio(r, ctx) ? [] : soMostrar('id', 'especialidade')(r)) },
-    [P]: { ler: todos, ocultar: soMostrar('id', 'crm', 'ufCrm', 'especialidade') },
-    [R]: { ler: todos, ocultar: soMostrar('id', 'crm', 'ufCrm', 'especialidade') },
+    [P]: { ler: todos, ocultar: soMostrar('id', 'crm', 'ufCrm', 'especialidade', 'situacao') },
+    [R]: { ler: todos, ocultar: soMostrar('id', 'crm', 'ufCrm', 'especialidade', 'situacao') },
   },
   pacientes: {
     // A3-R17: Observações Gerais nunca vão ao Administrador.
