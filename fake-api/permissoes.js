@@ -419,8 +419,10 @@ function validarFechamento(novo, antigo, ctx) {
   return divergente && !novo.justificativa ? 'Justifique a diferença no fechamento.' : null;
 }
 
+// Fecha na primeira contagem e recalcula na recontagem pedida pelo Administrador.
 function fecharCaixa(caixa, antigo, ctx) {
-  if (antigo.dataFechamento != null || caixa.dataFechamento == null) return;
+  const fechando = antigo.dataFechamento == null && caixa.dataFechamento != null;
+  if (!fechando && antigo.situacao !== 'RECONTAGEM') return;
   const esperado = saldoEsperado(caixa, ctx);
   caixa.saldoApurado = esperado;
   caixa.divergencia = Math.round((caixa.saldoContado - esperado) * 100) / 100;
@@ -1116,14 +1118,16 @@ const politica = {
   },
   // D5: fechamento cego; o saldo apurado e a divergência só vão ao Administrador.
   caixas: {
-    [A]: { ler: todos, editar: true, editaveis: ['situacao', 'justificativa'] },
+    [A]: { ler: todos, editar: true, editaveis: ['situacao', 'justificativa', 'motivoDevolucao'] },
+    // A Secretária só fecha e reconta: a situação sai do cálculo do servidor.
     [S]: {
       ler: (r, ctx) => igual(r.idSecretaria, ctx.sessao.idPessoa),
       criar: true,
       editar: true,
+      editaveis: ['dataFechamento', 'saldoContado', 'justificativa'],
       ocultar: ['saldoApurado', 'divergencia'],
-      fixar: (ctx) => ({ idSecretaria: ctx.sessao.idPessoa, situacao: 'ABERTO', dataAbertura: ctx.agoraTexto() }),
-      podeEditar: (atual) => (atual.situacao === 'ABERTO' ? null : 'Este caixa já foi fechado.'),
+      fixar: (ctx) => ({ idSecretaria: ctx.sessao.idPessoa, situacao: 'ABERTO', dataAbertura: ctx.agoraClinica() }),
+      podeEditar: (atual) => (['ABERTO', 'RECONTAGEM'].includes(atual.situacao) ? null : 'Este caixa já foi fechado.'),
       validar: validarFechamento,
       aposEditar: fecharCaixa,
     },

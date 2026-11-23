@@ -307,6 +307,31 @@ describe('caixa: sangria e reforço (RF47)', () => {
     assert.equal(fechado.status, 200);
     assert.equal(api.db.caixas.find((c) => c.id === caixa.id).situacao, 'FECHADO', 'a sangria sai do esperado');
   });
+
+  test('a Secretária não muda a situação do caixa; reconta quando o Administrador devolve', async () => {
+    const token = await api.entrar('secretaria');
+    const aberto = await api.pedir('POST', '/caixas', { token, corpo: { saldoInicial: 100, turno: 'TARDE' } });
+    assert.equal(aberto.status, 201);
+    await api.pedir('PATCH', `/caixas/${aberto.corpo.id}`, { token, corpo: { situacao: 'FECHADO' } });
+    assert.equal(api.db.caixas.find((c) => c.id === aberto.corpo.id).situacao, 'ABERTO');
+
+    await api.pedir('PATCH', `/caixas/${aberto.corpo.id}`, {
+      token,
+      corpo: { dataFechamento: '2026-09-28T18:00:00', saldoContado: 90, justificativa: 'Contagem com pressa.' },
+    });
+    assert.equal(api.db.caixas.find((c) => c.id === aberto.corpo.id).situacao, 'A_APROVAR');
+    const admin = await api.entrar('admin');
+    const devolvido = await api.pedir('PATCH', `/caixas/${aberto.corpo.id}`, {
+      token: admin,
+      corpo: { situacao: 'RECONTAGEM', motivoDevolucao: 'Conte de novo as notas de 10.' },
+    });
+    assert.equal(devolvido.status, 200);
+    const recontado = await api.pedir('PATCH', `/caixas/${aberto.corpo.id}`, { token, corpo: { saldoContado: 100, justificativa: null } });
+    assert.equal(recontado.status, 200);
+    const noBanco = api.db.caixas.find((c) => c.id === aberto.corpo.id);
+    assert.equal(noBanco.situacao, 'FECHADO');
+    assert.equal(noBanco.divergencia, 0);
+  });
 });
 
 describe('cobrança criada pelo Administrador (A-13b)', () => {
