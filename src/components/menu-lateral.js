@@ -7,10 +7,16 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { MENUS } from '../navegacao/menus';
 
 // O item fica aceso na própria rota e nas telas que se abrem a partir dele:
-// o cadastro acende a listagem da mesma entidade; o prontuário, Meus pacientes;
-// e a grade da Secretária, o item Grade e bloqueios.
+// o cadastro acende a listagem da mesma entidade e o prontuário, Meus pacientes.
+// As exceções são telas cujo item de menu tem outro nome.
+const EXCECOES = [
+  [/^\/secretaria\/grade$/, '/secretaria/listagem-bloqueios'],
+  [/^\/admin\/cadastro-cobrancas(\/|$)/, '/admin/listagem-contas-receber'],
+];
+
 function rotaDaListagem(caminho) {
-  if (caminho === '/secretaria/grade') return '/secretaria/listagem-bloqueios';
+  const excecao = EXCECOES.find(([padrao]) => padrao.test(caminho));
+  if (excecao) return excecao[1];
   const cadastro = caminho.match(/^(\/[a-z]+)\/cadastro-([a-z-]+)/);
   if (cadastro) return `${cadastro[1]}/listagem-${cadastro[2]}`;
   if (caminho.startsWith('/medico/prontuario/')) return '/medico/listagem-pacientes';

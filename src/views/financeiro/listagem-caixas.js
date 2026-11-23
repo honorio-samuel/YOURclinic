@@ -9,6 +9,7 @@ import { listar, pessoasPorId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
 import { diaMes, moeda } from '../../utils/formatos';
 import { rotuloDe } from '../../utils/rotulos';
+import ConferenciasPos from './conferencias';
 
 const SITUACAO_CAIXA = {
   ABERTO: { rotulo: 'Aberto', tom: 'info' },
@@ -50,6 +51,7 @@ function Caixas() {
   const linhas = (dados ?? []).filter((c) => !situacao || c.situacao === situacao);
   return (
     <Pagina titulo='Caixas'>
+      <ConferenciasPos />
       <Filtros>
         <CampoSelect
           id='caixaSituacao'

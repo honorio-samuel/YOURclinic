@@ -24,6 +24,8 @@ import GradeHorarios from './views/agenda/grade-horarios';
 import ConsultasAfetadas from './views/agenda/consultas-afetadas';
 import CadastroContaPagar from './views/financeiro/cadastro-conta-pagar';
 import Checkout from './views/financeiro/checkout';
+import MeuCaixa from './views/financeiro/meu-caixa';
+import CadastroCobranca from './views/financeiro/cadastro-cobranca';
 import CadastroProduto from './views/estoque/cadastro-produto';
 import FilaDoDia from './views/agenda/listagem-fila-do-dia';
 import AtendimentosDoDia from './views/agenda/listagem-atendimentos';
@@ -97,6 +99,7 @@ const TELAS = [
   ['/admin/cadastro-bloqueios/:idParam/consultas-afetadas', A, <ConsultasAfetadas />],
   ['/admin/painel-financeiro', A, <EmBreve codigo='A-12' titulo='Painel financeiro' />],
   ['/admin/listagem-contas-receber', A, <ContasReceber />],
+  ['/admin/cadastro-cobrancas/:idParam?', A, <CadastroCobranca />],
   ['/admin/listagem-contas-pagar', A, <ContasPagar />],
   ['/admin/cadastro-contas-pagar/:idParam?', A, <CadastroContaPagar />],
   ['/admin/listagem-conciliacao', A, <Conciliacao />],
@@ -144,7 +147,7 @@ const TELAS = [
   ['/secretaria/listagem-fila-do-dia', S, <FilaDoDia />],
   ['/secretaria/checkout', S, <Checkout />],
   ['/secretaria/listagem-cobrancas', S, <CobrancasDoDia />],
-  ['/secretaria/caixa', S, <EmBreve codigo='S-09' titulo='Meu caixa' />],
+  ['/secretaria/caixa', S, <MeuCaixa />],
   ['/secretaria/listagem-orcamentos', S, <OrcamentosValores />],
   ['/secretaria/listagem-recibos', S, <DocumentosFiscais />],
   ['/secretaria/listagem-estornos', S, <Estornos />],

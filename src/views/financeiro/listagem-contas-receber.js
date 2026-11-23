@@ -14,6 +14,7 @@ import { ORIGEM_TITULO, rotuloDe, SITUACAO_TITULO } from '../../utils/rotulos';
 import { carregarCobrancasComPaciente, situacaoDoTitulo } from './comum';
 
 // A-13a · Contas a receber. Sem "dar baixa": a baixa vem do checkout (D27).
+// Nova cobrança, Ver e Editar abrem a cobrança (A-13b).
 function ContasReceber() {
   const navigate = useNavigate();
   const carregar = async () => {
@@ -33,7 +34,7 @@ function ContasReceber() {
     <Pagina
       titulo='Contas a receber'
       acoes={
-        <button type='button' className='btn btn-primary' onClick={() => emBreve('A criação de cobrança')}>
+        <button type='button' className='btn btn-primary' onClick={() => navigate('/admin/cadastro-cobrancas')}>
           + Nova cobrança
         </button>
       }
@@ -71,10 +72,16 @@ function ContasReceber() {
             titulo: 'Ações',
             render: (t) => {
               const alvo = `título de ${t.devedor}`;
-              const ver = { tipo: 'ver', alvo, aoClicar: () => emBreve('O detalhe do título') };
+              // Título de operadora (lote TISS) não tem cobrança de paciente.
+              const ver = {
+                tipo: 'ver',
+                alvo,
+                aoClicar: () =>
+                  t.idCobranca ? navigate(`/admin/cadastro-cobrancas/${t.idCobranca}?consulta`) : emBreve('O detalhe do título de operadora'),
+              };
               if (t.situacao === 'PAGO') return <AcoesLinha acoes={[ver, { tipo: 'estornar', alvo, aoClicar: () => navigate('/admin/listagem-estornos') }]} />;
-              if (t.situacao === 'ESTORNADO') return <AcoesLinha acoes={[ver]} />;
-              return <AcoesLinha acoes={[ver, { tipo: 'editar', alvo, aoClicar: () => emBreve('A edição da cobrança') }]} />;
+              if (t.situacao === 'ESTORNADO' || !t.idCobranca) return <AcoesLinha acoes={[ver]} />;
+              return <AcoesLinha acoes={[ver, { tipo: 'editar', alvo, aoClicar: () => navigate(`/admin/cadastro-cobrancas/${t.idCobranca}`) }]} />;
             },
           },
         ]}
