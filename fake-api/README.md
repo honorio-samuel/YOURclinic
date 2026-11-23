@@ -117,6 +117,13 @@ Não há PSP nem gerenciador TEF de verdade. Para a demonstração:
 - **TEF:** aprova, com bandeira, final, NSU e autorização gerados pelo "terminal". Valor com centavos ,13 é negado; com ,49, o terminal não responde e a confirmação diz que foi aprovada; com ,48, não responde e a confirmação diz que não houve transação.
 - **Taxa:** o valor líquido usa taxas fictícias por modalidade, só para o Administrador.
 
+### Indicadores
+
+| Rota | Papéis | O que faz |
+|---|---|---|
+| `GET /indicadores/financeiro` | Administrador | Painel financeiro (RF35): a receber de pacientes (a vencer, vencido, pago), de operadoras pela situação da guia (a apresentar, apresentado, glosado, em recurso, pago), cartão em trânsito com bruto, taxa, líquido e data prevista por X35 e X36, contas a pagar e o saldo realizado e projetado, com a data-base |
+| `GET /indicadores/gerencial?de&ate` | Administrador | Dashboard gerencial (RF41) no período, por padrão os últimos 30 dias: desfecho das consultas, particular e convênio por operadora, tempo médio de espera, ociosidade da agenda por blocos, conversão de orçamento, divergência de caixa por operador e índice de glosa por operadora e por motivo. Nada clínico entra no cálculo |
+
 ### Documento exportado
 
 | Rota | Papéis | O que faz |
@@ -151,6 +158,7 @@ Exemplos da matriz: Observações Gerais nunca vão ao Administrador (A3-R17); c
 | Onde | Regra |
 |---|---|
 | Status da consulta (RF22, D1, PR-01) | Secretária: Agendado → Na Recepção, Cancelado ou Não Compareceu; Na Recepção → Cancelado ou Não Compareceu. Médico: Na Recepção → Em Atendimento (chamar) → Finalizado. Titular: Agendado → Cancelado. Cancelar pela clínica exige `motivoCancelamento` |
+| Carimbos da fila (RF22) | Cada mudança de status grava a hora em `carimbos` (`NA_RECEPCAO`, `EM_ATENDIMENTO`, …), que dá a espera na fila e o tempo médio do dashboard |
 | Volta de status | Só o Médico: Em Atendimento → Na Recepção e Finalizado → Em Atendimento, com `motivoTransicao` enviado na própria requisição. O log ganha um registro `TRANSICAO_RETROATIVA` só com a referência; o registro clínico continua selado |
 | Agendamento (RF16 a RF18) | Consulta nova começa Agendada, com paciente, médico e procedimento ativos. O servidor grava a duração do procedimento, o preço vigente como referência (`valorReferencia`, que não vai ao Médico nem ao titular) e, com convênio, `convenioConferido: false`. O horário precisa caber na grade, fora de bloqueio e a partir de agora; o médico não tem duas consultas ativas que se sobreponham, e o paciente também não (Cancelado e Não Compareceu não ocupam horário). Convênio exige convênio ativo e `numeroCarteirinha`. Agendar cria o vínculo pendente com o médico e o aviso de confirmação |
 | Cancelamento e remarcação (RF19, RF20) | Pelo portal, só até X08 horas antes. Remarcar (`dataHora` ou `idMedico`) só consulta Agendada, com `motivoRemarcacao`, e só com médico da mesma especialidade. Cancelar e remarcar geram aviso ao paciente; sem outra consulta agendada com o médico, o vínculo pendente acaba |

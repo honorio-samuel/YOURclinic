@@ -333,7 +333,10 @@ function gerarCobranca(ctx, consulta) {
 // Ao chamar o paciente, o vínculo com o médico passa a Ativo e o prontuário
 // passa a existir (RF05). A transição retroativa ganha um registro próprio no
 // log, só com a referência; o motivo fica na consulta.
+// RF22 e RF41: cada mudança de status guarda a hora em que aconteceu, para a
+// espera na fila e o tempo médio do dashboard.
 function aposMudarStatus(novo, antigo, ctx) {
+  novo.carimbos = { ...(antigo.carimbos ?? {}), [novo.status]: ctx.agoraClinica() };
   if (ehRetroativa(novo, antigo)) {
     ctx.auditar({
       acao: 'TRANSICAO_RETROATIVA',

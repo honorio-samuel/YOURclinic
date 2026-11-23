@@ -22,6 +22,7 @@ const {
   MODALIDADES, PARCELADAS, BANDEIRAS, ADQUIRENTES, centavos, reais, resumoDaCobranca, maximoDeParcelas,
   respostaDoTef, confirmacaoDoTef, cartaoDoTerminal, brcodeSimulado, valorLiquido,
 } = require('./checkout');
+const { painelFinanceiro, dashboardGerencial } = require('./indicadores');
 const { DATA_PADRAO } = require('./seed');
 const { Sessoes, conferirSenha, gerarHash, HASH_DE_ENGANO } = require('./sessao');
 const { filtrar, ordenar, paginar, escolherCampos } = require('./consulta');
@@ -1083,6 +1084,27 @@ function criarApi({
     return enviar(res, 202, { mensagem: `Convite reenviado para ${usuario.email}.` });
   }
 
+  // A-12 e A-29: painel financeiro (RF35) e dashboard gerencial (RF41), só
+  // do Administrador (RC06, nível 3). O período do dashboard vem em ?de&ate;
+  // sem ele, os últimos 30 dias até hoje.
+  function rotaDeIndicadores(req, res, { url, partes, sessao, rota }) {
+    if (sessao.papel !== ADMINISTRADOR) {
+      auditar({ acao: 'LER', sessao, rota, registroAlvo: partes.join('/'), resultado: 'NEGADO', motivo: 'PAPEL' });
+      throw ACESSO_NEGADO();
+    }
+    if (req.method !== 'GET' || partes.length !== 2) throw NAO_ENCONTRADO();
+    const hojeRef = hojeClinica();
+    if (partes[1] === 'financeiro') return enviar(res, 200, painelFinanceiro(db, { hoje: hojeRef, parametro }));
+    if (partes[1] === 'gerencial') {
+      const data = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(v ?? '') ? v : null);
+      const ate = data(url.searchParams.get('ate')) ?? hojeRef;
+      const de = data(url.searchParams.get('de')) ?? somarDias(ate, -29);
+      if (de > ate) throw new ErroHttp(422, 'Período inválido.');
+      return enviar(res, 200, dashboardGerencial(db, { de, ate, hoje: hojeRef }));
+    }
+    throw NAO_ENCONTRADO();
+  }
+
   async function rotaDeColecao(req, res, { url, partes, sessao, rota }) {
     const [colecao, id, ...resto] = partes;
     if (!colecao || resto.length > 0) throw NAO_ENCONTRADO();
@@ -1255,6 +1277,7 @@ function criarApi({
       }
       if (partes[0] === 'agenda') return await rotaDeAgenda(req, res, { url, partes, sessao, rota });
       if (partes[0] === 'checkout') return await rotaDeCheckout(req, res, { partes, sessao, rota });
+      if (partes[0] === 'indicadores') return rotaDeIndicadores(req, res, { url, partes, sessao, rota });
       if (partes[0] === 'usuarios' && partes[2] === 'convite' && partes.length === 3) {
         return await reenviarConvite(req, res, { partes, sessao, rota });
       }

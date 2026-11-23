@@ -446,6 +446,15 @@ function gerarBanco({ data = DATA_PADRAO, contas = lerContas() } = {}) {
   db.consultas.forEach((c, i) => {
     c.id = i + 1;
   });
+  // Hora de cada passo da fila (RF22), sem sortear: a espera varia com o id,
+  // para não mudar o resto do banco sintético.
+  for (const c of db.consultas) {
+    if (!['NA_RECEPCAO', 'EM_ATENDIMENTO', 'FINALIZADO'].includes(c.status)) continue;
+    c.carimbos = { NA_RECEPCAO: somarMinutos(c.dataHora, -((c.id * 7) % 15) - 5) };
+    if (c.status === 'NA_RECEPCAO') continue;
+    c.carimbos.EM_ATENDIMENTO = somarMinutos(c.dataHora, (c.id * 11) % 20);
+    if (c.status === 'FINALIZADO') c.carimbos.FINALIZADO = somarMinutos(c.carimbos.EM_ATENDIMENTO, c.duracao ?? 30);
+  }
 
   const consultasDe = (paciente) => db.consultas.filter((c) => c.idPaciente === paciente.id);
   const finalizadas = db.consultas.filter((c) => c.status === 'FINALIZADO');
