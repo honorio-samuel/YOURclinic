@@ -56,8 +56,8 @@ function chavesDe(valor, encontradas = new Set()) {
 }
 
 describe('banco sintético', () => {
-  test('tem as 53 coleções e nenhuma senha em texto', () => {
-    assert.equal(COLECOES.length, 53);
+  test('tem as 54 coleções e nenhuma senha em texto', () => {
+    assert.equal(COLECOES.length, 54);
     for (const colecao of COLECOES) assert.ok(Array.isArray(BANCO[colecao]), colecao);
     for (const usuario of BANCO.usuarios) {
       assert.equal(usuario.senha, undefined);
@@ -525,6 +525,16 @@ describe('escrita', () => {
 
   test('fechamento de caixa: o servidor calcula a divergência e a Secretária não a vê', async () => {
     const token = await api.entrar('secretaria');
+    // RN-47.2: com o caixa do dia aberto, não se abre outro turno.
+    const segundo = await api.pedir('POST', '/caixas', { token, corpo: { saldoInicial: 100 } });
+    assert.equal(segundo.status, 422);
+    const doDia = (await api.pedir('GET', '/caixas?situacao=ABERTO', { token })).corpo[0];
+    const encerrado = await api.pedir('PATCH', `/caixas/${doDia.id}`, {
+      token,
+      corpo: { dataFechamento: '2026-09-28T12:00:00', saldoContado: doDia.saldoInicial, justificativa: 'Fechamento do turno da manhã.' },
+    });
+    assert.equal(encerrado.status, 200);
+
     const aberto = await api.pedir('POST', '/caixas', { token, corpo: { saldoInicial: 100, situacao: 'FECHADO', idSecretaria: 1 } });
     assert.equal(aberto.status, 201);
     assert.equal(aberto.corpo.situacao, 'ABERTO');

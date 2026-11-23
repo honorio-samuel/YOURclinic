@@ -4,6 +4,7 @@
   "contas": [
     { "papel": "ADMINISTRADOR", "login": "admin", "descricao": "Administrador" },
     { "papel": "SECRETARIA", "login": "secretaria", "descricao": "Secretária do turno da manhã" },
+    { "papel": "SECRETARIA", "login": "secretaria2", "descricao": "Secretária do turno da tarde; confere o lançamento da maquininha avulsa da colega" },
     { "papel": "MEDICO", "login": "medico", "descricao": "Clínica Médica; tem paciente na recepção sem vínculo" },
     { "papel": "MEDICO", "login": "medico2", "descricao": "Pediatria; atende a representada" },
     { "papel": "PACIENTE", "login": "paciente", "descricao": "Paciente com consultas, cobranças, orçamento e documentos" },

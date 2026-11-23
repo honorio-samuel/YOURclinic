@@ -30,6 +30,8 @@ npm test
 | `ORIGENS` | `http://localhost:3000,http://127.0.0.1:3000` | Origens liberadas no CORS |
 | `SESSAO_MINUTOS` | parâmetro X15 (30) | Inatividade até a sessão expirar |
 | `CAMINHO_DB` | `fake-api/db.json` | Arquivo do banco |
+| `PIX_SEGUNDOS` | `8` | Segundos até o Pix simulado ser pago (ver "Checkout simulado") |
+| `TEF_ESPERA_MS` | `1500` | Espera do terminal TEF simulado, em milissegundos |
 | `DATA_DE_HOJE` | `2026-09-28` | "Hoje" das regras de agenda (horário passado, antecedência do X08). É o mesmo dia de `DATA_DE_HOJE` do app, porque os dados simulados ficam nele; a hora vem do relógio. A sessão e o log usam o relógio de verdade |
 
 No app, aponte `REACT_APP_API_URL` para `http://127.0.0.1:3001`.
@@ -49,7 +51,7 @@ O banco sintético é gerado na primeira subida e some a cada novo deploy ou rei
 
 ## Contas de demonstração
 
-Estão em [usuarios-de-teste.json](usuarios-de-teste.json): um login por papel, mais um segundo médico e um segundo responsável (com duas crianças, para o seletor G-09). Todos os usuários ativos do banco usam a mesma senha de demonstração, que vale só para esta API local.
+Estão em [usuarios-de-teste.json](usuarios-de-teste.json): um login por papel, mais uma segunda secretária (para conferir o lançamento da maquininha avulsa da colega), um segundo médico e um segundo responsável (com duas crianças, para o seletor G-09). Todos os usuários ativos do banco usam a mesma senha de demonstração, que vale só para esta API local.
 
 ## Contrato
 
@@ -81,6 +83,32 @@ Consulta no estilo do json-server 0.17: `campo=valor` (repetível), `campo_gte`,
 | `PUT /agenda/grade/:idMedico` `{granularidade, periodos: [{diaSemana, horaInicio, horaFim}]}` | Administrador, Secretária | Troca a grade inteira do médico (A-10, S-05a). `diaSemana` vai de 0 (domingo) a 6. Recusa períodos sobrepostos e, com 409, a grade que deixaria de fora consulta já agendada (RN-13.2) |
 | `POST /agenda/lote` `{motivo, idBloqueio?, acoes: [{idConsulta, acao: "REAGENDAR" | "CANCELAR", dataHora?, idMedico?}]}` | Administrador, Secretária | Trata várias consultas de uma vez (A-11b). Tudo ou nada (A4-R09): se uma ação falha, nenhuma é gravada, e a mensagem diz de qual paciente. Cada consulta ganha o próprio registro no log e o próprio aviso. Com `idBloqueio`, recalcula as consultas atingidas pelo bloqueio |
 
+### Checkout
+
+Só a Secretária executa o checkout; o Administrador cria e edita a cobrança pela coleção `cobrancas` (A-13b). Pagamento nunca nasce pela coleção `pagamentos`. Toda resposta de pagamento traz a cobrança atualizada: itens, total, pago, saldo e pagamentos, sem taxa nem valor líquido.
+
+| Rota | Papéis | O que faz |
+|---|---|---|
+| `GET /checkout/:idCobranca` | Secretária | Itens sem conteúdo clínico, total, pago, saldo, `disponivel` (o saldo menos o que espera desfecho), pagamentos, limites de parcela (X32, X33), limite sem conferência (X52) e se o caixa dela está aberto |
+| `POST /checkout/:idCobranca/dinheiro` `{valor, valorRecebido}` | Secretária | Exige o caixa aberto de quem recebe (RN-47.1) e calcula o troco |
+| `POST /checkout/:idCobranca/pix` `{valor}` | Secretária | Cria o QR dinâmico: txid próprio, BR Code e expiração em X31 minutos. O pagamento fica `PENDENTE` |
+| `POST /checkout/pix/:idPagamento/verificar` | Secretária | Consulta o PSP pelo txid: `CONFIRMADO`, `EXPIRADO` (E1, libera um QR novo) ou ainda `PENDENTE`. `/cancelar` desiste do QR que não foi pago |
+| `POST /checkout/:idCobranca/tef` `{valor, modalidade, parcelas?, chave}` | Secretária | Envia ao terminal. A `chave` torna o pedido idempotente (RN-43.5): repetida, devolve a mesma transação. Resultado `CONFIRMADO`, `NEGADO` (sem o motivo do emissor) ou `INDEFINIDO` |
+| `POST /checkout/tef/:idPagamento/confirmar` | Secretária | Consulta de confirmação da transação `INDEFINIDO`: aprovada depois do tempo (E3) ou não realizada (E4) |
+| `POST /checkout/:idCobranca/pos` `{valor, modalidade, parcelas?, bandeira, ultimosDigitos, nsu, codigoAutorizacao, adquirente}` | Secretária | Lançamento do comprovante da maquininha avulsa, com conciliação pendente. NSU e autorização obrigatórios (RN-46.1); NSU repetido no dia e no adquirente é recusado (RN-46.2); acima do X52, fica `AGUARDANDO_CONFERENCIA` (RN-46.3) |
+| `GET /checkout/conferencias` | Administrador, Secretária | Lançamentos que esperam conferência, com o paciente e quem lançou |
+| `POST /checkout/pagamentos/:idPagamento/conferir` `{aprovar, motivo?}` | Administrador, Secretária | Outro usuário confirma ou recusa (com motivo). Quem lançou não confere |
+
+Modalidades: `DEBITO`, `CREDITO`, `CREDITO_PARCELADO_LOJISTA` e `CREDITO_PARCELADO_EMISSOR`. Parcelas, só no parcelado, de 2 até o menor entre X32, o limite do adquirente (12) e o valor dividido por X33 (RN-43.2). Ao atingir o total, a cobrança passa a `PAGA`, o título a `PAGO` e o titular recebe o aviso `PAGAMENTO_CONFIRMADO`.
+
+#### Checkout simulado
+
+Não há PSP nem gerenciador TEF de verdade. Para a demonstração:
+
+- **Pix:** a primeira verificação feita `PIX_SEGUNDOS` depois de gerar o QR encontra o pagamento feito. Depois de X31 minutos sem pagamento, o QR expira. O BR Code imita o formato do Pix, mas nenhum banco o aceita.
+- **TEF:** aprova, com bandeira, final, NSU e autorização gerados pelo "terminal". Valor com centavos ,13 é negado; com ,49, o terminal não responde e a confirmação diz que foi aprovada; com ,48, não responde e a confirmação diz que não houve transação.
+- **Taxa:** o valor líquido usa taxas fictícias por modalidade, só para o Administrador.
+
 ### Respostas de erro
 
 | Código | Quando | Tela |
@@ -111,7 +139,8 @@ Exemplos da matriz: Observações Gerais nunca vão ao Administrador (A3-R17); c
 | Agendamento (RF16 a RF18) | Consulta nova começa Agendada, com paciente, médico e procedimento ativos. O servidor grava a duração do procedimento, o preço vigente como referência (`valorReferencia`, que não vai ao Médico nem ao titular) e, com convênio, `convenioConferido: false`. O horário precisa caber na grade, fora de bloqueio e a partir de agora; o médico não tem duas consultas ativas que se sobreponham, e o paciente também não (Cancelado e Não Compareceu não ocupam horário). Convênio exige convênio ativo e `numeroCarteirinha`. Agendar cria o vínculo pendente com o médico e o aviso de confirmação |
 | Cancelamento e remarcação (RF19, RF20) | Pelo portal, só até X08 horas antes. Remarcar (`dataHora` ou `idMedico`) só consulta Agendada, com `motivoRemarcacao`, e só com médico da mesma especialidade. Cancelar e remarcar geram aviso ao paciente; sem outra consulta agendada com o médico, o vínculo pendente acaba |
 | Orçamento (RF31, D32) | Cada papel mexe só na sua etapa. Devolver (Secretária para o Médico, Administrador para a Secretária) exige `observacaoDevolucao`, que o titular não vê |
-| Caixa (RF47, D5) | O servidor calcula o esperado e a divergência no fechamento; diferença sem `justificativa` é recusada |
+| Caixa (RF47, D5) | Um turno aberto por vez (RN-47.2). Sangria e reforço (`movimentosCaixa`) pedem motivo e só entram no próprio caixa aberto (RN-47.1). O servidor calcula o esperado (fundo + dinheiro − troco + reforço − sangria) e a divergência no fechamento; diferença sem `justificativa` é recusada |
+| Cobrança (RF32, RF43, A-13b) | Finalizar consulta particular gera a cobrança e o título pelo preço gravado no agendamento; a de convênio, só se a coparticipação já foi apurada; uma consulta não gera duas cobranças. O Administrador cria cobrança de consulta finalizada ou de orçamento aceito sem cobrança, com valor e vencimento, e edita valor e vencimento só antes de qualquer pagamento (RN-32.1) |
 | Prontuário (A5-R03) | Registro selado só muda por retificação |
 | Pessoas (A-02b, S-01b) | Nome completo; CPF com 11 dígitos e sem repetição (só o formato é conferido, porque os CPFs sintéticos têm o dígito verificador errado); e-mail válido; nascimento que não seja futuro |
 | Paciente, médico, secretária, administrador e responsável legal | Nascem com o `id` da pessoa, informado no corpo do POST. Sem a pessoa, 422; com o cadastro já existente, 409 |
@@ -130,7 +159,7 @@ Exemplos da matriz: Observações Gerais nunca vão ao Administrador (A3-R17); c
 
 O dia de referência é 28/09/2026, o mesmo de `DATA_DE_HOJE` no app (`npm run seed -- --data AAAA-MM-DD` muda). As consultas vão de 40 dias antes a 3 semanas depois, e o dia de referência tem os seis status da fila. São 30 pacientes (quatro crianças e uma paciente que fez 18 anos), 5 médicos em atividade e um com convite pendente.
 
-O banco tem as 52 coleções da API do Render, com os mesmos nomes de campos, mais a coleção `relatorios` e campos que as telas do redesenho usam. Entre eles: `usuarios.email`; `procedimentos.codigoInterno`, `tipo` e `situacao`; `convenios.nome`; `bloqueiosAgenda.situacao` e `consultasAfetadas`; `caixas.idSecretaria`, `turno`, `saldoContado`, `situacao` e `justificativa`; `estornos.tipo`, `situacao`, `idSolicitante` e `dataPedido`; `pagamentos.meio`; `orcamentos.idMedico`, `etapa` e `observacaoDevolucao`; `itensOrcamento.idProcedimento`; `consultas.motivoTransicao`; `exportacoes.idPaciente`; `guiasTiss.valor` e `cid`; `autorizacoes.cid` e `justificativa`; `glosas.situacao`; `recursosGlosa.rodada`, `prazo`, `aguardaFundamentacao` e `idMedico`; `anexos.enviadoPor`, `situacao` e `idPaciente`; `prescricoes.idPaciente`; `acessosExcecao.expiraEm`; `parametros.grupo`, `valorSugerido` e `editavel`. A senha do usuário virou `senhaHash`.
+O banco tem as 52 coleções da API do Render, com os mesmos nomes de campos, mais as coleções `relatorios` e `movimentosCaixa` e campos que as telas do redesenho usam. Entre eles: `usuarios.email`; `procedimentos.codigoInterno`, `tipo` e `situacao`; `convenios.nome`; `bloqueiosAgenda.situacao` e `consultasAfetadas`; `caixas.idSecretaria`, `turno`, `saldoContado`, `situacao` e `justificativa`; `estornos.tipo`, `situacao`, `idSolicitante` e `dataPedido`; `pagamentos.meio`; `orcamentos.idMedico`, `etapa` e `observacaoDevolucao`; `itensOrcamento.idProcedimento`; `consultas.motivoTransicao`; `exportacoes.idPaciente`; `guiasTiss.valor` e `cid`; `autorizacoes.cid` e `justificativa`; `glosas.situacao`; `recursosGlosa.rodada`, `prazo`, `aguardaFundamentacao` e `idMedico`; `anexos.enviadoPor`, `situacao` e `idPaciente`; `prescricoes.idPaciente`; `acessosExcecao.expiraEm`; `parametros.grupo`, `valorSugerido` e `editavel`. A senha do usuário virou `senhaHash`.
 
 ## O que esta API não resolve
 

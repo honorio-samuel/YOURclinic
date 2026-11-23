@@ -34,7 +34,7 @@ const COLECOES = [
   'consultas', 'prontuarios', 'anexos', 'registrosClinicos', 'retificacoes',
   'prescricoes', 'itensPrescricao', 'anotacoesPrivadas',
   // Cobrança e financeiro
-  'orcamentos', 'itensOrcamento', 'cobrancas', 'caixas', 'pagamentos',
+  'orcamentos', 'itensOrcamento', 'cobrancas', 'caixas', 'movimentosCaixa', 'pagamentos',
   'pagamentosPix', 'pagamentosCartao', 'pagamentosDinheiro', 'titulosReceber',
   'estornos', 'documentosFiscais', 'titulosPagar',
   // Convênio, TISS e estoque
@@ -308,6 +308,28 @@ function contarAtingidas(bloqueio, ctx) {
 }
 const recontarAtingidas = (atual, antigo, ctx) => contarAtingidas(atual, ctx);
 
+// RF32 e RF58: ao finalizar, o atendimento particular gera a cobrança do
+// paciente pelo preço gravado no agendamento (RN-16.2); o de convênio, só se a
+// coparticipação já foi apurada. Uma consulta não gera duas cobranças.
+function gerarCobranca(ctx, consulta) {
+  if (ctx.db.cobrancas.some((c) => igual(c.idConsulta, consulta.id))) return;
+  const coparticipacao =
+    consulta.idConvenio != null ? ctx.db.coparticipacoes.find((c) => igual(c.idConsulta, consulta.id)) : null;
+  const valor =
+    consulta.idConvenio == null
+      ? consulta.valorReferencia ?? ctx.buscar('procedimentos', consulta.idProcedimento)?.precoParticular
+      : coparticipacao?.valorApurado;
+  if (!(valor > 0)) return;
+  const hoje = ctx.hojeClinica();
+  const cobranca = ctx.inserir('cobrancas', {
+    dataEmissao: hoje, valorTotal: valor, situacao: 'ABERTA', idConsulta: consulta.id, idOrcamento: null, vencimento: hoje,
+  });
+  ctx.inserir('titulosReceber', {
+    origem: coparticipacao ? 'COPARTICIPACAO' : 'PARTICULAR', vencimento: hoje, valor, situacao: 'ABERTO',
+    idCobranca: cobranca.id, idLoteCobranca: null, idCoparticipacao: coparticipacao?.id ?? null,
+  });
+}
+
 // Ao chamar o paciente, o vínculo com o médico passa a Ativo e o prontuário
 // passa a existir (RF05). A transição retroativa ganha um registro próprio no
 // log, só com a referência; o motivo fica na consulta.
@@ -321,6 +343,7 @@ function aposMudarStatus(novo, antigo, ctx) {
     });
     return;
   }
+  if (novo.status === 'FINALIZADO' && antigo.status !== 'FINALIZADO') gerarCobranca(ctx, novo);
   if (antigo.status !== 'NA_RECEPCAO' || novo.status !== 'EM_ATENDIMENTO') return;
   const hoje = ctx.agoraTexto().slice(0, 10);
   const vinculo = ctx.db.vinculos.find(
@@ -371,15 +394,26 @@ function validarOrcamento(novo, antigo, ctx, mudancas) {
 }
 
 // Fechamento cego do caixa (RF47, D5): a Secretária informa o valor contado;
-// o servidor calcula o esperado e a divergência, que ela não vê.
+// o servidor calcula o esperado e a divergência, que ela não vê. Reforço soma
+// e sangria tira do esperado.
 function saldoEsperado(caixa, ctx) {
-  return ctx.db.pagamentosDinheiro
+  const recebido = ctx.db.pagamentosDinheiro
     .filter((p) => igual(p.idCaixa, caixa.id))
     .reduce((soma, p) => soma + (p.valorRecebido ?? 0) - (p.troco ?? 0), caixa.saldoInicial ?? 0);
+  return (ctx.db.movimentosCaixa ?? [])
+    .filter((m) => igual(m.idCaixa, caixa.id))
+    .reduce((soma, m) => soma + (m.tipo === 'REFORCO' ? m.valor : -m.valor), recebido);
 }
 
 function validarFechamento(novo, antigo, ctx) {
-  if (!antigo || novo.dataFechamento == null) return null;
+  if (!antigo) {
+    // RN-47.2: não se abre turno novo com o anterior aberto.
+    if (ctx.db.caixas.some((c) => c.situacao === 'ABERTO' && igual(c.idSecretaria, novo.idSecretaria))) {
+      return 'Feche o caixa aberto antes de abrir outro turno.';
+    }
+    return typeof novo.saldoInicial === 'number' && novo.saldoInicial >= 0 ? null : 'Informe o fundo de troco.';
+  }
+  if (novo.dataFechamento == null) return null;
   if (typeof novo.saldoContado !== 'number') return 'Informe o valor contado.';
   const divergente = Math.abs(novo.saldoContado - saldoEsperado(novo, ctx)) >= 0.005;
   return divergente && !novo.justificativa ? 'Justifique a diferença no fechamento.' : null;
@@ -391,6 +425,64 @@ function fecharCaixa(caixa, antigo, ctx) {
   caixa.saldoApurado = esperado;
   caixa.divergencia = Math.round((caixa.saldoContado - esperado) * 100) / 100;
   caixa.situacao = caixa.divergencia === 0 ? 'FECHADO' : 'A_APROVAR';
+}
+
+function validarMovimentoCaixa(novo, antigo, ctx) {
+  if (!['SANGRIA', 'REFORCO'].includes(novo.tipo)) return 'Escolha sangria ou reforço.';
+  if (!(typeof novo.valor === 'number' && novo.valor > 0)) return 'Informe o valor.';
+  if (!textoInformado(novo.motivo)) return 'Informe o motivo.';
+  const caixa = ctx.buscar('caixas', novo.idCaixa);
+  if (caixa?.situacao !== 'ABERTO' || !igual(caixa.idSecretaria, ctx.sessao.idPessoa)) return 'Lance só no seu caixa aberto.';
+  return null;
+}
+
+// A-13b: cobrança de uma consulta finalizada ou de um orçamento aceito que
+// ainda não têm cobrança, com valor e vencimento.
+function validarCobranca(novo, antigo, ctx) {
+  if (!(typeof novo.valorTotal === 'number' && novo.valorTotal > 0)) return 'Informe o valor.';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(novo.vencimento ?? '')) return 'Informe o vencimento.';
+  if (antigo) return null;
+  if ([novo.idConsulta, novo.idOrcamento].filter((x) => x != null).length !== 1) {
+    return 'Escolha a consulta ou o orçamento de origem.';
+  }
+  if (novo.idConsulta != null) {
+    const consulta = ctx.buscar('consultas', novo.idConsulta);
+    if (consulta?.status !== 'FINALIZADO') return 'Escolha uma consulta finalizada.';
+    if (ctx.db.cobrancas.some((c) => igual(c.idConsulta, consulta.id))) return 'Esta consulta já tem cobrança.';
+    return null;
+  }
+  const orcamento = ctx.buscar('orcamentos', novo.idOrcamento);
+  if (orcamento?.etapa !== 'ACEITO') return 'Escolha um orçamento aceito.';
+  if (ctx.db.cobrancas.some((c) => igual(c.idOrcamento, orcamento.id))) return 'Este orçamento já tem cobrança.';
+  return null;
+}
+
+// Pagamento que não aconteceu (negado, expirado, recusado) não trava a edição.
+const SEM_EFEITO = ['NEGADO', 'EXPIRADO', 'CANCELADO', 'NAO_REALIZADO', 'RECUSADO'];
+const podeEditarCobranca = (atual, ctx) =>
+  atual.situacao !== 'ABERTA' ||
+  ctx.db.pagamentos.some((p) => igual(p.idCobranca, atual.id) && !SEM_EFEITO.includes(p.situacao))
+    ? 'Cobrança com pagamento não se edita; a correção é por estorno.'
+    : null;
+
+function criarTituloDaCobranca(cobranca, ctx) {
+  const consulta = ctx.buscar('consultas', cobranca.idConsulta);
+  ctx.inserir('titulosReceber', {
+    origem: cobranca.idOrcamento != null ? 'ORCAMENTO' : consulta?.idConvenio != null ? 'COPARTICIPACAO' : 'PARTICULAR',
+    vencimento: cobranca.vencimento,
+    valor: cobranca.valorTotal,
+    situacao: 'ABERTO',
+    idCobranca: cobranca.id,
+    idLoteCobranca: null,
+    idCoparticipacao: null,
+  });
+}
+
+function acertarTituloDaCobranca(cobranca, antigo, ctx) {
+  for (const t of ctx.db.titulosReceber.filter((x) => igual(x.idCobranca, cobranca.id) && x.situacao === 'ABERTO')) {
+    t.valor = cobranca.valorTotal;
+    t.vencimento = cobranca.vencimento;
+  }
 }
 
 // Itens dispensados ao paciente no alcance da sessão.
@@ -1004,9 +1096,21 @@ const politica = {
     [P]: { ler: (r, ctx) => ETAPAS_DO_TITULAR.includes(orcamentoDoItem(r, ctx)?.etapa) && doPaciente('itensOrcamento')(r, ctx) },
     [R]: { ler: (r, ctx) => ETAPAS_DO_TITULAR.includes(orcamentoDoItem(r, ctx)?.etapa) && doPaciente('itensOrcamento')(r, ctx) },
   },
+  // A-13b: o Administrador cria e edita a cobrança antes do pagamento; o
+  // título nasce junto. Depois de paga, só por estorno (RN-32.1).
   cobrancas: {
-    [A]: { ler: todos, criar: true, editar: true },
-    [S]: { ler: todos, criar: true },
+    [A]: {
+      ler: todos,
+      criar: true,
+      editar: true,
+      editaveis: ['valorTotal', 'vencimento'],
+      fixar: (ctx) => ({ situacao: 'ABERTA', dataEmissao: ctx.hojeClinica() }),
+      podeEditar: podeEditarCobranca,
+      validar: validarCobranca,
+      aposCriar: criarTituloDaCobranca,
+      aposEditar: acertarTituloDaCobranca,
+    },
+    [S]: { ler: todos },
     [P]: { ler: doPaciente('cobrancas') },
     [R]: { ler: doPaciente('cobrancas') },
   },
@@ -1024,26 +1128,38 @@ const politica = {
       aposEditar: fecharCaixa,
     },
   },
+  // RF47: sangria e reforço, sempre com motivo e só no próprio caixa aberto
+  // (RN-47.1). O total do caixa não sai para a Secretária (D5).
+  movimentosCaixa: {
+    [A]: { ler: todos },
+    [S]: {
+      ler: (r, ctx) => igual(ctx.buscar('caixas', r.idCaixa)?.idSecretaria, ctx.sessao.idPessoa),
+      criar: true,
+      fixar: (ctx) => ({ dataHora: ctx.agoraClinica(), idUsuario: ctx.sessao.idUsuario }),
+      validar: validarMovimentoCaixa,
+    },
+  },
+  // Os pagamentos nascem no checkout (/checkout), nunca por esta coleção.
   pagamentos: {
     [A]: { ler: todos },
-    [S]: { ler: todos, criar: true },
+    [S]: { ler: todos },
     [P]: { ler: doPaciente('pagamentos') },
     [R]: { ler: doPaciente('pagamentos') },
   },
   pagamentosPix: {
     [A]: { ler: todos },
-    [S]: { ler: todos, criar: true },
+    [S]: { ler: todos },
     [P]: { ler: doPaciente('pagamentosPix') },
     [R]: { ler: doPaciente('pagamentosPix') },
   },
   // S-07a: a Secretária não vê o valor líquido (taxa do adquirente).
   pagamentosCartao: {
     [A]: { ler: todos },
-    [S]: { ler: todos, criar: true, ocultar: ['valorLiquido'] },
+    [S]: { ler: todos, ocultar: ['valorLiquido'] },
   },
   pagamentosDinheiro: {
     [A]: { ler: todos },
-    [S]: { ler: todos, criar: true },
+    [S]: { ler: todos },
   },
   // P-05a: o titular vê o vencimento e a ligação com recibo e NFS-e.
   titulosReceber: {

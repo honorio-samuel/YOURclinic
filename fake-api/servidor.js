@@ -17,6 +17,10 @@ const {
   politica, regraPara, projetar, camposGravaveis, igual,
 } = require('./permissoes');
 const { horariosLivres, foraDaGrade, validarGrade, afetadasPeloBloqueio, somarDias } = require('./agenda');
+const {
+  MODALIDADES, PARCELADAS, BANDEIRAS, ADQUIRENTES, centavos, reais, resumoDaCobranca, maximoDeParcelas,
+  respostaDoTef, confirmacaoDoTef, cartaoDoTerminal, brcodeSimulado, valorLiquido,
+} = require('./checkout');
 const { DATA_PADRAO } = require('./seed');
 const { Sessoes, conferirSenha, gerarHash, HASH_DE_ENGANO } = require('./sessao');
 const { filtrar, ordenar, paginar, escolherCampos } = require('./consulta');
@@ -103,6 +107,9 @@ function criarApi({
   minutosSessao,
   origens = ORIGENS_PADRAO,
   dataDeReferencia = DATA_PADRAO,
+  // Provedores simulados do checkout: segundos até o Pix ser pago e espera
+  // do terminal TEF (README, "Checkout simulado").
+  simulacao = { pixSegundos: 8, tefEsperaMs: 0 },
 }) {
   for (const colecao of COLECOES) db[colecao] ??= [];
 
@@ -473,6 +480,316 @@ function criarApi({
     throw NAO_ENCONTRADO();
   }
 
+  // Checkout (RF43 a RF47). Quem recebe é a Secretária, no próprio caixa para
+  // dinheiro. O lançamento da maquininha avulsa acima do X52 espera a
+  // conferência de outro usuário, Secretária ou Administrador (RN-46.3). O PSP
+  // e o TEF são simulados (checkout.js).
+  async function rotaDeCheckout(req, res, { partes, sessao, rota }) {
+    const ctx = contexto(sessao, rota);
+    const exigirPapel = (...papeis) => {
+      if (papeis.includes(sessao.papel)) return;
+      auditar({ acao: ACOES[req.method] ?? req.method, sessao, rota, registroAlvo: partes.join('/'), resultado: 'NEGADO', motivo: 'PAPEL' });
+      throw ACESSO_NEGADO();
+    };
+    const emReais = (valor) => Math.round(Number(valor) * 100) / 100;
+    const cobrancaDe = (id) => {
+      const cobranca = ctx.buscar('cobrancas', id);
+      if (!cobranca) throw NAO_ENCONTRADO();
+      return cobranca;
+    };
+    const pacienteDaCobranca = (cobranca) =>
+      ctx.buscar('consultas', cobranca?.idConsulta)?.idPaciente ?? ctx.buscar('orcamentos', cobranca?.idOrcamento)?.idPaciente ?? null;
+    const caixaAberto = () => db.caixas.find((c) => c.situacao === 'ABERTO' && igual(c.idSecretaria, sessao.idPessoa));
+    const cartaoDe = (id) => db.pagamentosCartao.find((c) => igual(c.id, id));
+    const pixDe = (id) => db.pagamentosPix.find((c) => igual(c.id, id));
+    const nomeDoUsuario = (idUsuario) => nomeDaPessoa(db.usuarios.find((u) => igual(u.id, idUsuario))?.idPessoa);
+
+    // Nada de taxa nem valor líquido: a Secretária não os vê (S-07a).
+    function projetarPagamento(p) {
+      const base = { id: p.id, meio: p.meio, valor: p.valor, situacao: p.situacao, dataHora: p.dataHora };
+      if (p.meio === 'PIX') {
+        const pix = pixDe(p.id);
+        return { ...base, txid: pix?.txid, brcode: p.situacao === 'PENDENTE' ? pix?.brcode : null, expiracao: pix?.expiracao };
+      }
+      if (p.meio === 'CARTAO') {
+        const c = cartaoDe(p.id) ?? {};
+        return {
+          ...base,
+          viaTef: c.viaTef, modalidade: c.modalidade, parcelas: c.parcelas, bandeira: c.bandeira, ultimosDigitos: c.ultimosDigitos,
+          nsu: c.nsu, codigoAutorizacao: c.codigoAutorizacao, adquirente: c.adquirente,
+          lancadoPorMim: igual(p.idUsuario, sessao.idUsuario),
+        };
+      }
+      const d = db.pagamentosDinheiro.find((x) => igual(x.id, p.id));
+      return { ...base, valorRecebido: d?.valorRecebido, troco: d?.troco };
+    }
+
+    // RF43, passo 1: itens, total e origem, sem conteúdo clínico (RN-45.3).
+    function detalhe(cobranca) {
+      const resumo = resumoDaCobranca(db, cobranca);
+      const consulta = ctx.buscar('consultas', cobranca.idConsulta);
+      const procedimento = consulta && ctx.buscar('procedimentos', consulta.idProcedimento);
+      const idPaciente = pacienteDaCobranca(cobranca);
+      const quando = consulta ? `${consulta.dataHora.slice(8, 10)}/${consulta.dataHora.slice(5, 7)}` : null;
+      const descricao = consulta
+        ? `${consulta.idConvenio != null ? 'Coparticipação · ' : ''}${procedimento?.tipo === 'CONSULTA' ? 'Consulta' : 'Atendimento'} de ${quando}`
+        : `Orçamento nº ${cobranca.idOrcamento}`;
+      const maximo = parametro('X32', 12);
+      const valorMinimo = parametro('X33', 50);
+      return {
+        cobranca: {
+          id: cobranca.id, dataEmissao: cobranca.dataEmissao, situacao: cobranca.situacao,
+          idConsulta: cobranca.idConsulta, idOrcamento: cobranca.idOrcamento,
+        },
+        paciente: { id: idPaciente, nome: nomeDaPessoa(idPaciente) },
+        itens: [{ descricao, valor: cobranca.valorTotal }],
+        valorTotal: cobranca.valorTotal,
+        pago: resumo.pago,
+        saldo: resumo.saldo,
+        disponivel: resumo.disponivel,
+        pagamentos: resumo.pagamentos.map(projetarPagamento),
+        parcelas: { maximo, valorMinimo },
+        limiteSemConferencia: parametro('X52', 500),
+        caixaAberto: Boolean(caixaAberto()),
+        bandeiras: BANDEIRAS,
+        adquirentes: ADQUIRENTES,
+      };
+    }
+
+    // Quanto este meio recebe: até o que falta, sem contar o que espera desfecho.
+    function valorDoMeio(cobranca, bruto) {
+      if (cobranca.situacao !== 'ABERTA') throw new ErroHttp(409, 'Esta cobrança já está quitada.');
+      const valor = emReais(bruto);
+      if (!Number.isFinite(valor) || valor <= 0) throw new ErroHttp(422, 'Informe o valor a receber.');
+      const { disponivel } = resumoDaCobranca(db, cobranca);
+      if (centavos(valor) > centavos(disponivel)) throw new ErroHttp(422, 'O valor passa do que falta receber.');
+      return valor;
+    }
+
+    function modalidadeDe(corpo, valor) {
+      if (!MODALIDADES.includes(corpo.modalidade)) throw new ErroHttp(422, 'Escolha a modalidade.');
+      if (!PARCELADAS.includes(corpo.modalidade)) return { modalidade: corpo.modalidade, parcelas: 1 };
+      const maximo = maximoDeParcelas(valor, { maximo: parametro('X32', 12), valorMinimo: parametro('X33', 50) });
+      const parcelas = Number(corpo.parcelas);
+      if (maximo < 2) throw new ErroHttp(422, 'Este valor não pode ser parcelado.');
+      if (!Number.isInteger(parcelas) || parcelas < 2 || parcelas > maximo) throw new ErroHttp(422, `Escolha de 2 a ${maximo} parcelas.`);
+      return { modalidade: corpo.modalidade, parcelas };
+    }
+
+    // RF43, passo 5, e RF32: ao atingir o total, baixa do título e aviso ao titular.
+    function quitarSePago(cobranca) {
+      if (cobranca.situacao === 'PAGA' || resumoDaCobranca(db, cobranca).saldo > 0) return;
+      cobranca.situacao = 'PAGA';
+      for (const t of db.titulosReceber.filter((x) => igual(x.idCobranca, cobranca.id) && x.situacao === 'ABERTO')) t.situacao = 'PAGO';
+      const idPaciente = pacienteDaCobranca(cobranca);
+      const pessoa = ctx.buscar('pessoas', idPaciente);
+      if (!pessoa) return;
+      ctx.inserir('notificacoes', {
+        evento: 'PAGAMENTO_CONFIRMADO',
+        canal: pessoa.telefone ? 'WHATSAPP' : 'EMAIL',
+        destino: pessoa.telefone ?? pessoa.email ?? null,
+        dataEnvio: agoraClinica(),
+        situacao: 'ENVIADA',
+        tentativas: 1,
+        idPessoa: idPaciente,
+        idConsulta: cobranca.idConsulta ?? null,
+        idParametro: null,
+      });
+    }
+
+    function registrar(cobranca, meio, valor, situacao) {
+      const pagamento = ctx.inserir('pagamentos', {
+        valor, dataHora: agoraClinica(), situacao, idCobranca: cobranca.id, meio, idUsuario: sessao.idUsuario,
+      });
+      auditar({ acao: 'CRIAR', sessao, rota, registroAlvo: `pagamentos/${pagamento.id}`, resultado: 'PERMITIDO', motivo: meio });
+      return pagamento;
+    }
+
+    function responder(status, cobranca, pagamento) {
+      salvar();
+      return enviar(res, status, { pagamento: projetarPagamento(pagamento), ...detalhe(cobranca) });
+    }
+
+    // Lançamentos da maquininha avulsa que esperam conferência.
+    if (req.method === 'GET' && partes[1] === 'conferencias' && partes.length === 2) {
+      exigirPapel(ADMINISTRADOR, SECRETARIA);
+      const lista = db.pagamentos
+        .filter((p) => p.situacao === 'AGUARDANDO_CONFERENCIA')
+        .map((p) => ({
+          ...projetarPagamento(p),
+          idCobranca: p.idCobranca,
+          paciente: nomeDaPessoa(pacienteDaCobranca(ctx.buscar('cobrancas', p.idCobranca))),
+          lancadoPor: nomeDoUsuario(p.idUsuario),
+        }));
+      return enviar(res, 200, lista);
+    }
+
+    // RN-46.3: outro usuário confirma ou recusa o lançamento acima do limite.
+    if (req.method === 'POST' && partes[1] === 'pagamentos' && partes[3] === 'conferir' && partes.length === 4) {
+      exigirPapel(ADMINISTRADOR, SECRETARIA);
+      const pagamento = ctx.buscar('pagamentos', partes[2]);
+      if (!pagamento) throw NAO_ENCONTRADO();
+      if (pagamento.situacao !== 'AGUARDANDO_CONFERENCIA') throw new ErroHttp(409, 'Este lançamento não espera conferência.');
+      if (igual(pagamento.idUsuario, sessao.idUsuario)) throw new ErroHttp(409, 'Quem lançou não confere o próprio lançamento.');
+      const corpo = await lerCorpo(req);
+      const cobranca = cobrancaDe(pagamento.idCobranca);
+      if (corpo.aprovar === true) {
+        pagamento.situacao = 'CONFIRMADO';
+        quitarSePago(cobranca);
+      } else {
+        const motivo = typeof corpo.motivo === 'string' ? corpo.motivo.trim() : '';
+        if (motivo.length < 5) throw new ErroHttp(422, 'Informe o motivo da recusa.');
+        pagamento.situacao = 'RECUSADO';
+        pagamento.motivoRecusa = motivo;
+      }
+      pagamento.idConferente = sessao.idUsuario;
+      auditar({
+        acao: 'CONFERIR', sessao, rota, registroAlvo: `pagamentos/${pagamento.id}`, resultado: 'PERMITIDO',
+        motivo: pagamento.situacao === 'CONFIRMADO' ? 'CONFIRMADO' : 'RECUSADO',
+      });
+      return responder(200, cobranca, pagamento);
+    }
+
+    // RF44: "Verificar agora" e a consulta periódica ao PSP pelo txid.
+    if (req.method === 'POST' && partes[1] === 'pix' && partes.length === 4 && ['verificar', 'cancelar'].includes(partes[3])) {
+      exigirPapel(SECRETARIA);
+      const pagamento = ctx.buscar('pagamentos', partes[2]);
+      const pix = pixDe(partes[2]);
+      if (!pagamento || !pix || pagamento.meio !== 'PIX') throw NAO_ENCONTRADO();
+      const cobranca = cobrancaDe(pagamento.idCobranca);
+      if (pagamento.situacao === 'PENDENTE') {
+        const agoraMs = relogio().getTime();
+        if (agoraMs >= pix.expiraEm) pagamento.situacao = 'EXPIRADO';
+        else if (agoraMs - pix.geradoEm >= simulacao.pixSegundos * 1000) {
+          pagamento.situacao = 'CONFIRMADO';
+          pagamento.dataHora = agoraClinica();
+          pix.endToEndId = `E${String(pagamento.id).padStart(8, '0')}${agoraMs}`;
+          quitarSePago(cobranca);
+        } else if (partes[3] === 'cancelar') {
+          pagamento.situacao = 'CANCELADO';
+        }
+      }
+      return responder(200, cobranca, pagamento);
+    }
+
+    // RF45, E2 a E4: a consulta de confirmação da transação sem resposta.
+    if (req.method === 'POST' && partes[1] === 'tef' && partes[3] === 'confirmar' && partes.length === 4) {
+      exigirPapel(SECRETARIA);
+      const pagamento = ctx.buscar('pagamentos', partes[2]);
+      const cartao = cartaoDe(partes[2]);
+      if (!pagamento || !cartao?.viaTef) throw NAO_ENCONTRADO();
+      const cobranca = cobrancaDe(pagamento.idCobranca);
+      if (pagamento.situacao === 'INDEFINIDO') {
+        if (confirmacaoDoTef(pagamento.valor) === 'APROVADO') {
+          pagamento.situacao = 'CONFIRMADO';
+          Object.assign(cartao, cartaoDoTerminal(pagamento.id));
+          quitarSePago(cobranca);
+        } else {
+          pagamento.situacao = 'NAO_REALIZADO';
+        }
+      }
+      return responder(200, cobranca, pagamento);
+    }
+
+    if (req.method === 'GET' && partes.length === 2) {
+      exigirPapel(SECRETARIA);
+      return enviar(res, 200, detalhe(cobrancaDe(partes[1])));
+    }
+
+    if (req.method === 'POST' && partes.length === 3) {
+      exigirPapel(SECRETARIA);
+      const cobranca = cobrancaDe(partes[1]);
+      const corpo = await lerCorpo(req);
+
+      // RF47: dinheiro só no caixa aberto de quem recebe (RN-47.1).
+      if (partes[2] === 'dinheiro') {
+        const caixa = caixaAberto();
+        if (!caixa) throw new ErroHttp(409, 'Abra o seu caixa em Meu caixa para receber em dinheiro.');
+        const valor = valorDoMeio(cobranca, corpo.valor);
+        const recebido = emReais(corpo.valorRecebido);
+        if (!Number.isFinite(recebido) || centavos(recebido) < centavos(valor)) {
+          throw new ErroHttp(422, 'O valor recebido não cobre o valor a pagar.');
+        }
+        const pagamento = registrar(cobranca, 'DINHEIRO', valor, 'CONFIRMADO');
+        db.pagamentosDinheiro.push({ id: pagamento.id, valorRecebido: recebido, troco: reais(centavos(recebido) - centavos(valor)), idCaixa: caixa.id });
+        quitarSePago(cobranca);
+        return responder(201, cobranca, pagamento);
+      }
+
+      // RF44: QR dinâmico com txid próprio e expiração X31.
+      if (partes[2] === 'pix') {
+        const valor = valorDoMeio(cobranca, corpo.valor);
+        const pagamento = registrar(cobranca, 'PIX', valor, 'PENDENTE');
+        const agoraMs = relogio().getTime();
+        const minutos = parametro('X31', 30);
+        const txid = `YC${String(cobranca.id).padStart(6, '0')}${String(pagamento.id).padStart(8, '0')}${agoraMs.toString(36).toUpperCase()}`;
+        db.pagamentosPix.push({
+          id: pagamento.id, txid, brcode: brcodeSimulado(txid, valor), endToEndId: null,
+          expiracao: `${hojeClinica()}T${agoraTexto(minutos).slice(11)}`,
+          geradoEm: agoraMs, expiraEm: agoraMs + minutos * 60 * 1000,
+        });
+        return responder(201, cobranca, pagamento);
+      }
+
+      // RF45: o valor vai ao terminal; a chave evita cobrança em dobro (RN-43.5).
+      if (partes[2] === 'tef') {
+        const chave = typeof corpo.chave === 'string' ? corpo.chave : '';
+        if (!/^[\w-]{8,64}$/.test(chave)) throw new ErroHttp(422, 'Pedido sem identificador da transação.');
+        const repetido = db.pagamentosCartao.find((c) => c.chave === chave);
+        if (repetido) return responder(200, cobranca, ctx.buscar('pagamentos', repetido.id));
+        const valor = valorDoMeio(cobranca, corpo.valor);
+        const { modalidade, parcelas } = modalidadeDe(corpo, valor);
+        if (simulacao.tefEsperaMs) await new Promise((pronto) => setTimeout(pronto, simulacao.tefEsperaMs));
+        const resposta = respostaDoTef(valor);
+        const situacao = { APROVADO: 'CONFIRMADO', NEGADO: 'NEGADO', INDEFINIDO: 'INDEFINIDO' }[resposta];
+        const pagamento = registrar(cobranca, 'CARTAO', valor, situacao);
+        const terminal = cartaoDoTerminal(pagamento.id);
+        db.pagamentosCartao.push({
+          id: pagamento.id, chave, viaTef: true, modalidade, parcelas,
+          ...(resposta === 'APROVADO' ? terminal : { bandeira: null, nsu: null, codigoAutorizacao: null, ultimosDigitos: null, adquirente: terminal.adquirente }),
+          valorBruto: valor, valorLiquido: valorLiquido(valor, modalidade), situacaoConciliacao: 'PENDENTE', dataHora: agoraClinica(),
+        });
+        if (resposta === 'APROVADO') quitarSePago(cobranca);
+        return responder(201, cobranca, pagamento);
+      }
+
+      // RF46: lançamento do comprovante da maquininha avulsa, a conciliar depois.
+      if (partes[2] === 'pos') {
+        const valor = valorDoMeio(cobranca, corpo.valor);
+        const { modalidade, parcelas } = modalidadeDe(corpo, valor);
+        const nsu = typeof corpo.nsu === 'string' ? corpo.nsu.trim() : '';
+        const codigo = typeof corpo.codigoAutorizacao === 'string' ? corpo.codigoAutorizacao.trim().toUpperCase() : '';
+        if (!/^\d{4,12}$/.test(nsu) || !/^[A-Z0-9]{4,12}$/.test(codigo)) {
+          throw new ErroHttp(422, 'Informe o NSU e o código de autorização do comprovante.');
+        }
+        if (!/^\d{4}$/.test(corpo.ultimosDigitos ?? '')) throw new ErroHttp(422, 'Informe os quatro últimos dígitos do cartão.');
+        if (!BANDEIRAS.includes(corpo.bandeira)) throw new ErroHttp(422, 'Escolha a bandeira.');
+        if (!ADQUIRENTES.includes(corpo.adquirente)) throw new ErroHttp(422, 'Escolha o adquirente.');
+        // RN-46.2: NSU repetido no mesmo dia e adquirente é lançamento em dobro.
+        const hoje = hojeClinica();
+        const repetido = db.pagamentosCartao.some(
+          (c) =>
+            c.nsu === nsu &&
+            c.adquirente === corpo.adquirente &&
+            String(c.dataHora ?? '').startsWith(hoje) &&
+            ctx.buscar('pagamentos', c.id)?.situacao !== 'RECUSADO'
+        );
+        if (repetido) throw new ErroHttp(409, 'Este NSU já foi lançado hoje neste adquirente. Confira o comprovante.');
+        const conferir = valor > parametro('X52', 500);
+        const pagamento = registrar(cobranca, 'CARTAO', valor, conferir ? 'AGUARDANDO_CONFERENCIA' : 'CONFIRMADO');
+        db.pagamentosCartao.push({
+          id: pagamento.id, viaTef: false, modalidade, parcelas, bandeira: corpo.bandeira, nsu, codigoAutorizacao: codigo,
+          ultimosDigitos: corpo.ultimosDigitos, adquirente: corpo.adquirente,
+          valorBruto: valor, valorLiquido: valorLiquido(valor, modalidade), situacaoConciliacao: 'PENDENTE', dataHora: agoraClinica(),
+        });
+        if (!conferir) quitarSePago(cobranca);
+        return responder(201, cobranca, pagamento);
+      }
+    }
+
+    throw NAO_ENCONTRADO();
+  }
+
   async function rotaDeColecao(req, res, { url, partes, sessao, rota }) {
     const [colecao, id, ...resto] = partes;
     if (!colecao || resto.length > 0) throw NAO_ENCONTRADO();
@@ -640,6 +957,7 @@ function criarApi({
         return await rotaDeSessao(req, res, { partes, sessao, token, rota });
       }
       if (partes[0] === 'agenda') return await rotaDeAgenda(req, res, { url, partes, sessao, rota });
+      if (partes[0] === 'checkout') return await rotaDeCheckout(req, res, { partes, sessao, rota });
       return await rotaDeColecao(req, res, { url, partes, sessao, rota });
     } catch (erro) {
       if (erro instanceof ErroHttp) return enviar(res, erro.status, { erro: erro.message });
@@ -672,7 +990,14 @@ function iniciar() {
   const porta = Number(process.env.PORTA || process.env.PORT) || 3001;
   const host = process.env.HOST || (process.env.RENDER ? '0.0.0.0' : '127.0.0.1');
   http
-    .createServer(criarApi({ db, salvar, origens, minutosSessao, dataDeReferencia: process.env.DATA_DE_HOJE || DATA_PADRAO }))
+    .createServer(criarApi({
+      db,
+      salvar,
+      origens,
+      minutosSessao,
+      dataDeReferencia: process.env.DATA_DE_HOJE || DATA_PADRAO,
+      simulacao: { pixSegundos: Number(process.env.PIX_SEGUNDOS ?? 8), tefEsperaMs: Number(process.env.TEF_ESPERA_MS ?? 1500) },
+    }))
     .listen(porta, host, () => console.log(`API simulada em http://${host}:${porta}`));
 }
 

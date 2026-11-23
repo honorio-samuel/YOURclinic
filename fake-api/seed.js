@@ -282,6 +282,13 @@ function gerarBanco({ data = DATA_PADRAO, contas = lerContas() } = {}) {
     ['X28', 'Agenda', 'Intervalo de atualização da fila do dia', 30, 's', 10, 120, true],
     ['X42', 'Privacidade', 'Validade do link de exportação', 24, 'h', 1, 72, true],
     ['X46', 'Estoque', 'Antecedência do alerta de validade', 30, 'dias', 7, 90, true],
+    ['X31', 'Pagamento', 'Expiração do QR Code Pix dinâmico', 30, 'min', 5, 1440, true],
+    ['X32', 'Pagamento', 'Número máximo de parcelas no cartão de crédito', 12, 'parcelas', 1, 21, true],
+    ['X33', 'Pagamento', 'Valor mínimo por parcela', 50, 'R$', 0, 1000, true],
+    ['X49', 'Pagamento', 'Espera pela resposta do TEF antes de declarar a transação indefinida', 120, 's', 30, 300, true],
+    // Sem código na especificação; a proposta PR-10 cria o X52 (D18). Valor
+    // inicial escolhido pela equipe em 22/11/2026.
+    ['X52', 'Pagamento', 'Valor do POS avulso acima do qual outro usuário confere', 500, 'R$', 0, 10000, true],
   ].forEach(([chave, grupo, descricao, valor, unidade, faixaMinima, faixaMaxima, editavel]) =>
     novo('parametros', {
       chave, grupo, descricao, valor, valorSugerido: valor, unidade, faixaMinima, faixaMaxima, editavel,
