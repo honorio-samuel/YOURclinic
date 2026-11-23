@@ -11,7 +11,7 @@
 // - campo oculto não sai na resposta e não pode ser escrito;
 // - nenhum campo cujo nome comece por "senha" sai em resposta alguma.
 
-const { afetadasPeloBloqueio, conferirHorario, horasEntre } = require('./agenda');
+const { afetadasPeloBloqueio, conferirHorario, horasEntre, somarDias } = require('./agenda');
 
 const A = 'ADMINISTRADOR';
 const M = 'MEDICO';
@@ -343,7 +343,10 @@ function aposMudarStatus(novo, antigo, ctx) {
     });
     return;
   }
-  if (novo.status === 'FINALIZADO' && antigo.status !== 'FINALIZADO') gerarCobranca(ctx, novo);
+  if (novo.status === 'FINALIZADO' && antigo.status !== 'FINALIZADO') {
+    selarRegistros(ctx, novo);
+    gerarCobranca(ctx, novo);
+  }
   if (antigo.status !== 'NA_RECEPCAO' || novo.status !== 'EM_ATENDIMENTO') return;
   const hoje = ctx.agoraTexto().slice(0, 10);
   const vinculo = ctx.db.vinculos.find(
@@ -496,7 +499,195 @@ function loteDispensadoAoTitular(idLote, ctx) {
 const produtoDispensadoAoTitular = (r, ctx) =>
   ctx.db.lotes.some((l) => igual(l.idProduto, r.id) && loteDispensadoAoTitular(l.id, ctx));
 
-const pedidoDeExportacao = { situacao: 'SOLICITADA', dataConclusao: null };
+// ── Prontuário (RF06, RF23 a RF25, RF28) ─────────────────────────────────
+const CAMPOS_CLINICOS = ['queixas', 'exameFisico', 'diagnostico', 'cid', 'conduta'];
+// A prescrição selada também só muda por retificação (RF25, passo 5).
+const CAMPOS_RETIFICAVEIS = [...CAMPOS_CLINICOS, 'prescricao'];
+const CLASSIFICACOES = ['COMUM', 'ANTIMICROBIANO', 'CONTROLE_ESPECIAL'];
+
+// O autor é quem criou o registro; nos registros antigos, o médico da consulta.
+const autorDoRegistro = (registro, ctx) => registro?.idMedico ?? ctx.buscar('consultas', registro?.idConsulta)?.idMedico;
+
+// RF23: só há registro de consulta em atendimento, do próprio médico, um por
+// consulta. O servidor liga o registro ao prontuário e marca o feito sob
+// acesso de exceção (RN-06.2).
+function completarRegistro(novo, ctx) {
+  const consulta = ctx.buscar('consultas', novo.idConsulta);
+  const idPaciente = consulta?.idPaciente;
+  novo.idProntuario = ctx.db.prontuarios.find((p) => igual(p.idPaciente, idPaciente))?.id ?? null;
+  novo.dataHora = ctx.agoraClinica();
+  novo.selado = false;
+  novo.idMedico = ctx.sessao.idPessoa;
+  novo.sobExcecao = !ctx.db.vinculos.some(
+    (v) => igual(v.idMedico, ctx.sessao.idPessoa) && igual(v.idPaciente, idPaciente) && v.estado === 'ATIVO'
+  );
+  for (const campo of CAMPOS_CLINICOS) if (typeof novo[campo] !== 'string') novo[campo] = '';
+}
+
+function validarRegistro(novo, antigo, ctx) {
+  if (antigo) return null;
+  const consulta = ctx.buscar('consultas', novo.idConsulta);
+  if (!consulta || !igual(consulta.idMedico, ctx.sessao.idPessoa)) return 'Escolha uma consulta sua.';
+  if (consulta.status !== 'EM_ATENDIMENTO') return 'Só existe registro clínico de consulta em atendimento.';
+  if (ctx.db.registrosClinicos.some((r) => igual(r.idConsulta, consulta.id))) return 'Esta consulta já tem registro.';
+  if (novo.idProntuario == null) return 'O paciente ainda não tem prontuário.';
+  return null;
+}
+
+// A5-R03 e RF23, E2: selado ou fora de atendimento, só por retificação.
+function podeEditarRegistro(atual, ctx) {
+  if (atual.selado) return 'Registro selado: use a retificação.';
+  if (!igual(autorDoRegistro(atual, ctx), ctx.sessao.idPessoa)) return 'Só o autor edita o registro.';
+  const consulta = ctx.buscar('consultas', atual.idConsulta);
+  if (consulta && consulta.status !== 'EM_ATENDIMENTO') return 'A consulta saiu de atendimento: use a retificação.';
+  return null;
+}
+
+// RF22 e RN-23.2: finalizar sela o registro; voltar de Finalizado não dessela.
+function selarRegistros(ctx, consulta) {
+  for (const r of ctx.db.registrosClinicos.filter((x) => igual(x.idConsulta, consulta.id) && !x.selado)) {
+    r.selado = true;
+    r.dataSelagem = ctx.agoraClinica();
+  }
+}
+
+// RF24: a retificação guarda o texto vigente antes dela e nunca apaga nada.
+function valorVigente(ctx, registro, campo) {
+  const ultima = ctx.db.retificacoes.filter((r) => igual(r.idRegistroClinico, registro.id) && r.campo === campo).at(-1);
+  if (ultima) return ultima.textoCorrigido;
+  return campo === 'prescricao' ? '' : registro[campo] ?? '';
+}
+
+function completarRetificacao(novo, ctx) {
+  const registro = ctx.buscar('registrosClinicos', novo.idRegistroClinico);
+  novo.dataHora = ctx.agoraClinica();
+  novo.idMedico = ctx.sessao.idPessoa;
+  novo.textoAnterior = registro && CAMPOS_RETIFICAVEIS.includes(novo.campo) ? valorVigente(ctx, registro, novo.campo) : null;
+}
+
+function validarRetificacao(novo, antigo, ctx) {
+  const registro = ctx.buscar('registrosClinicos', novo.idRegistroClinico);
+  if (!registro) return 'Escolha o registro.';
+  if (!registro.selado) return 'O registro ainda está em edição: altere direto.';
+  // RN-24.2: só o autor retifica; outro médico faz o próprio registro.
+  if (!igual(autorDoRegistro(registro, ctx), ctx.sessao.idPessoa)) return 'Só o autor retifica o registro.';
+  if (!CAMPOS_RETIFICAVEIS.includes(novo.campo)) return 'Escolha o que será retificado.';
+  if (!textoInformado(novo.motivo)) return 'Informe o motivo da retificação.';
+  // RN-24.3: cada retificação tem motivo próprio.
+  const motivo = novo.motivo.trim().toLowerCase();
+  if (ctx.db.retificacoes.some((r) => igual(r.idRegistroClinico, registro.id) && (r.motivo ?? '').trim().toLowerCase() === motivo)) {
+    return 'Use um motivo diferente dos de retificações anteriores deste registro.';
+  }
+  if (typeof novo.textoCorrigido !== 'string' || !novo.textoCorrigido.trim()) return 'Escreva o texto corrigido.';
+  if (novo.textoCorrigido.trim() === (novo.textoAnterior ?? '').trim()) return 'O texto corrigido é igual ao vigente.';
+  return null;
+}
+
+// RF25: a prescrição nasce do registro da consulta em atendimento.
+function completarPrescricao(novo, ctx) {
+  const registro = ctx.buscar('registrosClinicos', novo.idRegistroClinico);
+  const hoje = ctx.hojeClinica();
+  novo.dataEmissao = hoje;
+  novo.validade = somarDias(hoje, 30);
+  novo.idPaciente = registro ? ctx.buscar('prontuarios', registro.idProntuario)?.idPaciente ?? null : null;
+  novo.tipoReceita = 'SIMPLES';
+  // A assinatura ICP-Brasil está fora do escopo do protótipo (RF25, passo 3).
+  novo.assinaturaDigital = false;
+  novo.idMedico = ctx.sessao.idPessoa;
+}
+
+function prescricaoAberta(registro, ctx) {
+  if (!registro) return 'A prescrição sai do registro da consulta em atendimento.';
+  if (registro.selado) return 'Prescrição selada: use a retificação.';
+  if (!igual(autorDoRegistro(registro, ctx), ctx.sessao.idPessoa)) return 'Só o autor do registro prescreve nele.';
+  return null;
+}
+
+const validarPrescricao = (novo, antigo, ctx) =>
+  antigo ? null : prescricaoAberta(ctx.buscar('registrosClinicos', novo.idRegistroClinico), ctx);
+
+const registroDoItem = (item, ctx) =>
+  ctx.buscar('registrosClinicos', ctx.buscar('prescricoes', item.idPrescricao)?.idRegistroClinico);
+
+// Classificação sempre escolhida, sem valor padrão (RF25, passo 2).
+function validarItemPrescricao(novo, antigo, ctx) {
+  const aberta = prescricaoAberta(registroDoItem(novo, ctx), ctx);
+  if (aberta) return aberta;
+  if (!preenchido(novo.medicamento, 2)) return 'Informe o medicamento.';
+  if (!preenchido(novo.concentracao, 1)) return 'Informe a concentração.';
+  if (!preenchido(novo.posologia, 3)) return 'Informe a posologia.';
+  if (!(Number.isInteger(novo.quantidade) && novo.quantidade > 0)) return 'Informe a quantidade.';
+  if (!preenchido(novo.duracao, 1)) return 'Informe a duração do tratamento.';
+  if (!CLASSIFICACOES.includes(novo.classificacao)) return 'Escolha a classificação do item.';
+  return null;
+}
+
+const podeEditarItemPrescricao = (atual, ctx) => prescricaoAberta(registroDoItem(atual, ctx), ctx);
+
+// Receita com item de controle especial vira receita de controle especial.
+function acertarTipoDeReceita(item, antigo, ctx) {
+  const prescricao = ctx.buscar('prescricoes', item.idPrescricao);
+  if (!prescricao) return;
+  const itens = ctx.db.itensPrescricao.filter((i) => igual(i.idPrescricao, prescricao.id));
+  prescricao.tipoReceita = itens.some((i) => i.classificacao === 'CONTROLE_ESPECIAL') ? 'CONTROLE_ESPECIAL' : 'SIMPLES';
+}
+
+// RF06: justificativa com conteúdo, que não repete a anterior nem é só
+// caracteres sem sentido.
+function validarAcessoExcecao(novo, antigo, ctx) {
+  if (!ctx.buscar('pacientes', novo.idPaciente)) return 'Escolha o paciente.';
+  const texto = typeof novo.justificativa === 'string' ? novo.justificativa.trim().replace(/\s+/g, ' ') : '';
+  const palavras = texto.split(' ').filter((p) => /[a-zà-ü]{2,}/i.test(p));
+  if (texto.length < 20 || palavras.length < 4) return 'Descreva a situação que exige o acesso, com ao menos quatro palavras.';
+  const letras = texto.toLowerCase().replace(/[^a-zà-ü]/g, '');
+  if (/(.)\1{3,}/.test(letras) || new Set(letras).size < 6) return 'A justificativa precisa ser legível para a auditoria.';
+  const anterior = ctx.db.acessosExcecao.filter((a) => igual(a.idMedico, ctx.sessao.idPessoa)).at(-1);
+  if (anterior && (anterior.justificativa ?? '').trim().replace(/\s+/g, ' ').toLowerCase() === texto.toLowerCase()) {
+    return 'Escreva uma justificativa nova; não repita a do acesso anterior.';
+  }
+  return null;
+}
+
+// RF06: registro destacado no log, aviso ao Administrador no ato e, no
+// segundo pedido sobre o mesmo paciente em 30 dias, a marca de padrão atípico.
+function aposCriarAcessoExcecao(acesso, ctx) {
+  const desde = somarDias(acesso.dataHora.slice(0, 10), -30);
+  acesso.padraoAtipico = ctx.db.acessosExcecao.some(
+    (a) =>
+      a !== acesso && igual(a.idMedico, acesso.idMedico) && igual(a.idPaciente, acesso.idPaciente) && a.dataHora.slice(0, 10) >= desde
+  );
+  ctx.auditar({
+    acao: 'ACESSO_EXCECAO',
+    registroAlvo: `acessosExcecao/${acesso.id}`,
+    resultado: 'PERMITIDO',
+    motivo: acesso.padraoAtipico ? 'PADRAO_ATIPICO' : 'EXCECAO',
+  });
+  for (const admin of ctx.db.administradores) {
+    const pessoa = ctx.buscar('pessoas', admin.id);
+    ctx.inserir('notificacoes', {
+      evento: acesso.padraoAtipico ? 'ACESSO_EXCECAO_ATIPICO' : 'ACESSO_EXCECAO',
+      canal: 'EMAIL',
+      destino: pessoa?.email ?? null,
+      dataEnvio: ctx.agoraClinica(),
+      situacao: 'ENVIADA',
+      tentativas: 1,
+      idPessoa: admin.id,
+      idConsulta: null,
+      idParametro: null,
+    });
+  }
+}
+
+// RF29 e RF30: pedido de exportação, gerado depois (RNF13) e ligado a quem pediu.
+const TIPOS_DE_EXPORTACAO = ['HISTORICO', 'PRONTUARIO'];
+const pedidoDeExportacao = (ctx) => ({
+  situacao: 'SOLICITADA',
+  dataConclusao: null,
+  dataSolicitacao: ctx.agoraTexto(),
+  idSolicitante: ctx.sessao.idUsuario,
+});
+const validarExportacao = (novo) => (TIPOS_DE_EXPORTACAO.includes(novo.tipo) ? null : 'Escolha o documento.');
+
 
 // ── Cadastros (A-02b, S-01b, A-03, A-04, A-05, A-06) ───────────────────────
 // Paciente, médico, secretária, administrador e responsável legal são
@@ -855,10 +1046,8 @@ const politica = {
           revisado: false,
         };
       },
-      validar: (novo) =>
-        typeof novo.justificativa === 'string' && novo.justificativa.trim().length >= 10
-          ? null
-          : 'Descreva a justificativa do acesso.',
+      validar: validarAcessoExcecao,
+      aposCriar: aposCriarAcessoExcecao,
     },
   },
   solicitacoesTitular: {
@@ -884,11 +1073,21 @@ const politica = {
   // RF29 (histórico) vale para todos; RF30 (prontuário completo), só para
   // Médico, Paciente e Responsável Legal.
   exportacoes: {
-    [A]: { ler: comCampo('tipo', 'HISTORICO'), criar: true, fixar: () => pedidoDeExportacao },
-    [S]: { ler: comCampo('tipo', 'HISTORICO'), criar: true, fixar: () => pedidoDeExportacao },
-    [M]: { ler: doPaciente('exportacoes'), criar: true, fixar: () => pedidoDeExportacao },
-    [P]: { ler: doPaciente('exportacoes'), criar: true, fixar: (ctx) => ({ ...fixarTitular(ctx), ...pedidoDeExportacao }) },
-    [R]: { ler: doPaciente('exportacoes'), criar: true, fixar: (ctx) => ({ ...fixarTitular(ctx), ...pedidoDeExportacao }) },
+    [A]: { ler: comCampo('tipo', 'HISTORICO'), criar: true, fixar: pedidoDeExportacao, validar: validarExportacao },
+    [S]: { ler: comCampo('tipo', 'HISTORICO'), criar: true, fixar: pedidoDeExportacao, validar: validarExportacao },
+    [M]: { ler: doPaciente('exportacoes'), criar: true, fixar: pedidoDeExportacao, validar: validarExportacao },
+    [P]: {
+      ler: doPaciente('exportacoes'),
+      criar: true,
+      fixar: (ctx) => ({ ...fixarTitular(ctx), ...pedidoDeExportacao(ctx) }),
+      validar: validarExportacao,
+    },
+    [R]: {
+      ler: doPaciente('exportacoes'),
+      criar: true,
+      fixar: (ctx) => ({ ...fixarTitular(ctx), ...pedidoDeExportacao(ctx) }),
+      validar: validarExportacao,
+    },
   },
 
   // ── Agenda e prontuário ──────────────────────────────────────────────────
@@ -1009,18 +1208,38 @@ const politica = {
       ler: doPaciente('registrosClinicos'),
       criar: true,
       editar: true,
+      editaveis: CAMPOS_CLINICOS,
+      completar: completarRegistro,
+      validar: validarRegistro,
       // A5-R03: registro selado só muda por retificação.
-      podeEditar: (atual) => (atual.selado ? 'Registro selado: use a retificação.' : null),
+      podeEditar: podeEditarRegistro,
     },
   },
   retificacoes: {
-    [M]: { ler: doPaciente('retificacoes'), criar: true },
+    [M]: { ler: doPaciente('retificacoes'), criar: true, completar: completarRetificacao, validar: validarRetificacao },
   },
   prescricoes: {
-    [M]: { ler: doPaciente('prescricoes'), criar: true, editar: true },
+    [M]: {
+      ler: doPaciente('prescricoes'),
+      criar: true,
+      editar: true,
+      editaveis: ['validade'],
+      completar: completarPrescricao,
+      validar: validarPrescricao,
+      podeEditar: (atual, ctx) => prescricaoAberta(ctx.buscar('registrosClinicos', atual.idRegistroClinico), ctx),
+    },
   },
   itensPrescricao: {
-    [M]: { ler: doPaciente('itensPrescricao'), criar: true, editar: true },
+    [M]: {
+      ler: doPaciente('itensPrescricao'),
+      criar: true,
+      editar: true,
+      editaveis: ['medicamento', 'concentracao', 'posologia', 'quantidade', 'duracao', 'classificacao'],
+      validar: validarItemPrescricao,
+      podeEditar: podeEditarItemPrescricao,
+      aposCriar: (item, ctx) => acertarTipoDeReceita(item, null, ctx),
+      aposEditar: acertarTipoDeReceita,
+    },
   },
   // RF28 e D2: só o autor, e só de paciente no seu alcance.
   anotacoesPrivadas: {
@@ -1029,7 +1248,12 @@ const politica = {
       criar: true,
       editar: true,
       excluir: true,
+      editaveis: ['texto'],
       fixar: fixarPessoa('idMedico'),
+      completar: (novo, ctx) => {
+        novo.dataHora = ctx.agoraClinica();
+      },
+      validar: (novo) => (preenchido(novo.texto) ? null : 'Escreva a anotação.'),
     },
   },
 

@@ -14,7 +14,7 @@ const path = require('node:path');
 
 const {
   COLECOES, CLINICAS, ESPECIALIZACOES, ADMINISTRADOR, SECRETARIA, MEDICO, PACIENTE, RESPONSAVEL_LEGAL,
-  politica, regraPara, projetar, camposGravaveis, igual,
+  politica, regraPara, projetar, camposGravaveis, igual, pacienteDe,
 } = require('./permissoes');
 const { horariosLivres, foraDaGrade, validarGrade, afetadasPeloBloqueio, somarDias } = require('./agenda');
 const {
@@ -109,7 +109,7 @@ function criarApi({
   dataDeReferencia = DATA_PADRAO,
   // Provedores simulados do checkout: segundos até o Pix ser pago e espera
   // do terminal TEF (README, "Checkout simulado").
-  simulacao = { pixSegundos: 8, tefEsperaMs: 0 },
+  simulacao = { pixSegundos: 8, tefEsperaMs: 0, exportacaoSegundos: 3 },
 }) {
   for (const colecao of COLECOES) db[colecao] ??= [];
 
@@ -790,6 +790,123 @@ function criarApi({
     throw NAO_ENCONTRADO();
   }
 
+  // RNF13: a exportação é gerada depois do pedido; aqui ela fica pronta
+  // alguns segundos depois (README, "Exportações simuladas").
+  function concluirExportacoes() {
+    const segundos = simulacao.exportacaoSegundos;
+    if (!(segundos >= 0)) return;
+    const agora = agoraTexto();
+    let mudou = false;
+    for (const e of db.exportacoes) {
+      if (e.situacao !== 'SOLICITADA' || !e.dataSolicitacao) continue;
+      if (Date.parse(`${agora}Z`) - Date.parse(`${e.dataSolicitacao}Z`) >= segundos * 1000) {
+        e.situacao = 'CONCLUIDA';
+        e.dataConclusao = agora;
+        mudou = true;
+      }
+    }
+    if (mudou) salvar();
+  }
+
+  const STATUS_NO_HISTORICO = {
+    AGENDADO: 'Agendado', NA_RECEPCAO: 'Na recepção', EM_ATENDIMENTO: 'Em atendimento',
+    FINALIZADO: 'Realizado', CANCELADO: 'Cancelado', NAO_COMPARECEU: 'Não compareceu',
+  };
+
+  // RF29 e RF30: o conteúdo do documento sai do servidor, que monta o
+  // histórico sem conteúdo clínico e o prontuário sem anotações privadas.
+  function montarDocumento(exportacao, idPaciente, sessao) {
+    const pessoa = db.pessoas.find((p) => igual(p.id, idPaciente));
+    const medico = (id) => {
+      const m = db.medicos.find((x) => igual(x.id, id));
+      return { nome: nomeDaPessoa(id), especialidade: m?.especialidade ?? null, crm: m ? `${m.crm}/${m.ufCrm}` : null };
+    };
+    const procedimento = (id) => db.procedimentos.find((p) => igual(p.id, id));
+    const consultas = db.consultas
+      .filter((c) => igual(c.idPaciente, idPaciente) && c.dataHora <= agoraClinica())
+      .sort((a, b) => a.dataHora.localeCompare(b.dataHora));
+    const verificacao = `YC-${String(exportacao.id).padStart(6, '0')}-${(exportacao.id * 7919 + Date.parse(`${exportacao.dataConclusao}Z`) / 1000)
+      .toString(36)
+      .toUpperCase()
+      .slice(-6)}`;
+    const base = {
+      id: exportacao.id,
+      tipo: exportacao.tipo,
+      paciente: { nome: pessoa?.nome ?? '—', dataNascimento: pessoa?.dataNascimento ?? null },
+      solicitante: nomeDaPessoa(db.usuarios.find((u) => igual(u.id, exportacao.idSolicitante))?.idPessoa) ?? nomeDaPessoa(sessao.idPessoa),
+      emitidoEm: agoraClinica(),
+      verificacao,
+    };
+    if (exportacao.tipo === 'HISTORICO') {
+      // Sem anamnese, diagnóstico, prescrição nem motivo de cancelamento (RN-29.2).
+      return {
+        ...base,
+        atendimentos: consultas.map((c) => ({
+          dataHora: c.dataHora,
+          tipo: procedimento(c.idProcedimento)?.tipo === 'CONSULTA' ? 'Consulta' : 'Procedimento',
+          medico: medico(c.idMedico).nome,
+          especialidade: medico(c.idMedico).especialidade,
+          situacao: STATUS_NO_HISTORICO[c.status] ?? c.status,
+        })),
+      };
+    }
+    const prontuario = db.prontuarios.find((p) => igual(p.idPaciente, idPaciente));
+    const registros = db.registrosClinicos
+      .filter((r) => prontuario && igual(r.idProntuario, prontuario.id) && r.selado)
+      .sort((a, b) => a.dataHora.localeCompare(b.dataHora));
+    return {
+      ...base,
+      registros: registros.map((r) => {
+        const consulta = db.consultas.find((c) => igual(c.id, r.idConsulta));
+        const retificacoes = db.retificacoes.filter((x) => igual(x.idRegistroClinico, r.id));
+        // A versão vigente de cada campo, com as retificações sinalizadas (RF24).
+        const vigente = (campo) => retificacoes.filter((x) => x.campo === campo).at(-1)?.textoCorrigido ?? r[campo] ?? '';
+        const prescricoes = db.prescricoes.filter((p) => igual(p.idRegistroClinico, r.id));
+        return {
+          dataHora: r.dataHora,
+          medico: medico(r.idMedico ?? consulta?.idMedico),
+          sobExcecao: Boolean(r.sobExcecao),
+          queixas: vigente('queixas'),
+          exameFisico: vigente('exameFisico'),
+          diagnostico: vigente('diagnostico'),
+          cid: vigente('cid'),
+          conduta: vigente('conduta'),
+          prescricoes: prescricoes.map((p) => ({
+            dataEmissao: p.dataEmissao,
+            itens: db.itensPrescricao
+              .filter((i) => igual(i.idPrescricao, p.id))
+              .map((i) => ({ medicamento: i.medicamento, concentracao: i.concentracao, posologia: i.posologia, quantidade: i.quantidade, duracao: i.duracao ?? null, classificacao: i.classificacao })),
+          })),
+          correcaoDaPrescricao: retificacoes.filter((x) => x.campo === 'prescricao').at(-1)?.textoCorrigido ?? null,
+          retificacoes: retificacoes.map((x) => ({ dataHora: x.dataHora, autor: nomeDaPessoa(x.idMedico ?? r.idMedico ?? consulta?.idMedico), motivo: x.motivo, campo: x.campo ?? null })),
+        };
+      }),
+    };
+  }
+
+  // O documento é de quem o pediu (RN-27.1), só pronto e só dentro de X42 horas.
+  async function rotaDeDocumento(req, res, { partes, sessao, rota }) {
+    if (req.method !== 'GET' || partes.length !== 3) throw NAO_ENCONTRADO();
+    const ctx = contexto(sessao, rota);
+    const regra = regraPara('exportacoes', sessao.papel);
+    const exportacao = ctx.buscar('exportacoes', partes[1]);
+    if (!regra?.ler || !exportacao || !regra.ler(exportacao, ctx)) {
+      auditar({ acao: 'LER', sessao, rota, registroAlvo: `exportacoes/${partes[1]}`, resultado: 'NEGADO', motivo: 'FORA_DO_ALCANCE' });
+      throw NAO_ENCONTRADO();
+    }
+    if (exportacao.idSolicitante != null && !igual(exportacao.idSolicitante, sessao.idUsuario)) {
+      throw new ErroHttp(403, 'Este documento é de quem o pediu.');
+    }
+    if (exportacao.situacao !== 'CONCLUIDA') throw new ErroHttp(409, 'O documento ainda está sendo gerado.');
+    const horas = parametro('X42', 24);
+    if (exportacao.dataConclusao && Date.parse(`${agoraTexto()}Z`) - Date.parse(`${exportacao.dataConclusao}Z`) > horas * 3600 * 1000) {
+      throw new ErroHttp(410, 'O link expirou. Peça a exportação de novo.');
+    }
+    const idPaciente = pacienteDe('exportacoes', exportacao, ctx);
+    auditar({ acao: 'BAIXAR', sessao, rota, registroAlvo: `exportacoes/${exportacao.id}`, resultado: 'PERMITIDO' });
+    return enviar(res, 200, montarDocumento(exportacao, idPaciente, sessao));
+  }
+
   async function rotaDeColecao(req, res, { url, partes, sessao, rota }) {
     const [colecao, id, ...resto] = partes;
     if (!colecao || resto.length > 0) throw NAO_ENCONTRADO();
@@ -953,11 +1070,13 @@ function criarApi({
         return enviar(res, 401, { erro: 'Sessão ausente ou expirada.' });
       }
 
+      concluirExportacoes();
       if (partes[0] === 'sessao' || url.pathname === '/logout') {
         return await rotaDeSessao(req, res, { partes, sessao, token, rota });
       }
       if (partes[0] === 'agenda') return await rotaDeAgenda(req, res, { url, partes, sessao, rota });
       if (partes[0] === 'checkout') return await rotaDeCheckout(req, res, { partes, sessao, rota });
+      if (partes[0] === 'exportacoes' && partes[2] === 'documento') return await rotaDeDocumento(req, res, { partes, sessao, rota });
       return await rotaDeColecao(req, res, { url, partes, sessao, rota });
     } catch (erro) {
       if (erro instanceof ErroHttp) return enviar(res, erro.status, { erro: erro.message });
@@ -996,7 +1115,11 @@ function iniciar() {
       origens,
       minutosSessao,
       dataDeReferencia: process.env.DATA_DE_HOJE || DATA_PADRAO,
-      simulacao: { pixSegundos: Number(process.env.PIX_SEGUNDOS ?? 8), tefEsperaMs: Number(process.env.TEF_ESPERA_MS ?? 1500) },
+      simulacao: {
+        pixSegundos: Number(process.env.PIX_SEGUNDOS ?? 8),
+        tefEsperaMs: Number(process.env.TEF_ESPERA_MS ?? 1500),
+        exportacaoSegundos: Number(process.env.EXPORTACAO_SEGUNDOS ?? 3),
+      },
     }))
     .listen(porta, host, () => console.log(`API simulada em http://${host}:${porta}`));
 }

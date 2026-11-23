@@ -32,6 +32,7 @@ npm test
 | `CAMINHO_DB` | `fake-api/db.json` | Arquivo do banco |
 | `PIX_SEGUNDOS` | `8` | Segundos até o Pix simulado ser pago (ver "Checkout simulado") |
 | `TEF_ESPERA_MS` | `1500` | Espera do terminal TEF simulado, em milissegundos |
+| `EXPORTACAO_SEGUNDOS` | `3` | Segundos até a exportação pedida ficar pronta |
 | `DATA_DE_HOJE` | `2026-09-28` | "Hoje" das regras de agenda (horário passado, antecedência do X08). É o mesmo dia de `DATA_DE_HOJE` do app, porque os dados simulados ficam nele; a hora vem do relógio. A sessão e o log usam o relógio de verdade |
 
 No app, aponte `REACT_APP_API_URL` para `http://127.0.0.1:3001`.
@@ -109,6 +110,14 @@ Não há PSP nem gerenciador TEF de verdade. Para a demonstração:
 - **TEF:** aprova, com bandeira, final, NSU e autorização gerados pelo "terminal". Valor com centavos ,13 é negado; com ,49, o terminal não responde e a confirmação diz que foi aprovada; com ,48, não responde e a confirmação diz que não houve transação.
 - **Taxa:** o valor líquido usa taxas fictícias por modalidade, só para o Administrador.
 
+### Documento exportado
+
+| Rota | Papéis | O que faz |
+|---|---|---|
+| `GET /exportacoes/:id/documento` | Quem pediu a exportação | Conteúdo do documento, montado no servidor. Histórico (RF29): datas, tipo de atendimento, médico, especialidade e situação, sem conteúdo clínico nem motivo de cancelamento. Prontuário completo (RF30): registros selados na versão vigente, com as retificações sinalizadas e as prescrições, nunca as anotações privadas. Traz quem pediu, a emissão e um identificador de verificação. 409 enquanto gera, 410 depois de X42 horas, 403 para quem não pediu; cada leitura vai ao log como `BAIXAR` |
+
+A exportação nasce `SOLICITADA` e fica `CONCLUIDA` `EXPORTACAO_SEGUNDOS` depois (RNF13). O app mostra o documento numa página própria, com o botão de imprimir ou salvar em PDF do navegador.
+
 ### Respostas de erro
 
 | Código | Quando | Tela |
@@ -141,7 +150,11 @@ Exemplos da matriz: Observações Gerais nunca vão ao Administrador (A3-R17); c
 | Orçamento (RF31, D32) | Cada papel mexe só na sua etapa. Devolver (Secretária para o Médico, Administrador para a Secretária) exige `observacaoDevolucao`, que o titular não vê |
 | Caixa (RF47, D5) | Um turno aberto por vez (RN-47.2). Sangria e reforço (`movimentosCaixa`) pedem motivo e só entram no próprio caixa aberto (RN-47.1). O servidor calcula o esperado (fundo + dinheiro − troco + reforço − sangria) e a divergência no fechamento; diferença sem `justificativa` é recusada |
 | Cobrança (RF32, RF43, A-13b) | Finalizar consulta particular gera a cobrança e o título pelo preço gravado no agendamento; a de convênio, só se a coparticipação já foi apurada; uma consulta não gera duas cobranças. O Administrador cria cobrança de consulta finalizada ou de orçamento aceito sem cobrança, com valor e vencimento, e edita valor e vencimento só antes de qualquer pagamento (RN-32.1) |
-| Prontuário (A5-R03) | Registro selado só muda por retificação |
+| Prontuário (RF23, A5-R03) | O registro clínico só nasce de consulta em atendimento do próprio médico, um por consulta, ligado ao prontuário e marcado `sobExcecao` quando feito sem vínculo Ativo (RN-06.2). Em edição, só o autor altera queixas, exame físico, diagnóstico, CID e conduta. Finalizar a consulta sela o registro (`selado`, `dataSelagem`); voltar de Finalizado não dessela. Selado ou fora de atendimento, só muda por retificação |
+| Retificação (RF24) | Só o autor, em registro selado, com motivo diferente dos anteriores do mesmo registro. O servidor guarda o texto vigente antes (`textoAnterior`); o registro original nunca muda |
+| Prescrição (RF25) | Nasce do registro em edição do próprio médico, com emissão, validade de 30 dias e o paciente do registro. Cada item exige medicamento, concentração, posologia, quantidade, duração e classificação (`COMUM`, `ANTIMICROBIANO` ou `CONTROLE_ESPECIAL`, sem padrão); item de controle especial faz a receita ser de controle especial. Selada a consulta, nada muda |
+| Anotação privada (RF28, D2) | Só o autor cria, lê, edita e exclui; o texto não pode ficar vazio. A exclusão vai ao log sem o conteúdo |
+| Acesso de exceção (RF06) | Justificativa com ao menos 20 caracteres e quatro palavras, legível e diferente da do acesso anterior do médico. O acesso vale X07 minutos, vai ao log como `ACESSO_EXCECAO` e avisa cada Administrador no ato; o segundo pedido do mesmo médico sobre o mesmo paciente em 30 dias ganha `padraoAtipico` |
 | Pessoas (A-02b, S-01b) | Nome completo; CPF com 11 dígitos e sem repetição (só o formato é conferido, porque os CPFs sintéticos têm o dígito verificador errado); e-mail válido; nascimento que não seja futuro |
 | Paciente, médico, secretária, administrador e responsável legal | Nascem com o `id` da pessoa, informado no corpo do POST. Sem a pessoa, 422; com o cadastro já existente, 409 |
 | Paciente (RF07) | Convênio exige um convênio ativo e `numeroCarteirinha`; `pendenteDeCpf` exige `justificativaSemCpf` |
