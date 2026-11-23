@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import PilulaStatus from '../../components/pilula-status';
@@ -22,7 +22,7 @@ import { criar, listar } from '../../servicos/dados';
 import { convidar } from '../../servicos/pessoas';
 import { carregarPaciente, encerrarRepresentacao, PACIENTE_VAZIO, salvarPaciente } from '../../servicos/pacientes';
 import { useCarregar } from '../../hooks/use-carregar';
-import { useCadastro } from '../../navegacao/caminhos';
+import { caminhoCadastro, useCadastro } from '../../navegacao/caminhos';
 import { useSessao } from '../../sessao/sessao';
 import { soDigitos } from '../../utils/formatos';
 import {
@@ -72,9 +72,14 @@ function validar(v, temRepresentacao) {
 // então não tem abas; a Secretária não encerra a representação nem lê as
 // contas de acesso.
 function CadastroPaciente() {
-  const { id, consulta: leitura, listagem, editar } = useCadastro('pacientes');
+  const { id, consulta: leitura, listagem: listagemDePacientes, editar } = useCadastro('pacientes');
   const { sessao } = useSessao();
   const navigate = useNavigate();
+  // Aberto pelo Novo agendamento (RF16: busca o paciente ou cria o cadastro na
+  // hora): salvar e cancelar voltam ao agendamento, com o paciente novo escolhido.
+  const [busca] = useSearchParams();
+  const agendamento = !id && busca.has('agendar') ? caminhoCadastro(sessao.usuario.papel, 'agendamentos') : null;
+  const listagem = agendamento ?? listagemDePacientes;
   const ehSecretaria = sessao.usuario.papel === 'SECRETARIA';
   const form = useFormulario(PACIENTE_VAZIO);
   const { carregar } = form;
@@ -115,9 +120,9 @@ function CadastroPaciente() {
     if (!form.validar(validar(v, Boolean(representacao)))) return;
     setSalvando(true);
     try {
-      await salvarPaciente(id, v, original);
+      const novo = await salvarPaciente(id, v, original);
       mensagemSucesso(id ? 'Cadastro atualizado.' : 'Paciente cadastrado.');
-      navigate(listagem);
+      navigate(agendamento ? `${agendamento}?paciente=${novo}` : listagem);
     } catch (falha) {
       mensagemErro(mensagemDeErro(falha));
       if (falha.idCriado) navigate(editar(falha.idCriado));
