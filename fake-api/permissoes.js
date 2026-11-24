@@ -423,6 +423,30 @@ function validarDecisaoDoExame(novo, antigo) {
   return null;
 }
 
+// RF53: a justificativa clínica da autorização é do médico; preenchida, o
+// pedido segue para a operadora.
+function validarJustificativaAutorizacao(novo, antigo) {
+  if (mudou('justificativa', novo, antigo) && !preenchido(novo.justificativa, 20)) {
+    return 'Escreva a justificativa clínica, com ao menos 20 caracteres.';
+  }
+  return null;
+}
+function enviarAutorizacao(autorizacao) {
+  if (autorizacao.situacao === 'PENDENTE_JUSTIFICATIVA' && preenchido(autorizacao.justificativa, 20)) autorizacao.situacao = 'EM_ANALISE';
+}
+
+// RF57: o recurso que espera o médico volta para a recepção depois da
+// fundamentação clínica.
+function validarFundamentacao(novo, antigo) {
+  if (antigo?.aguardaFundamentacao && novo.aguardaFundamentacao === false && !preenchido(novo.fundamentacaoClinica, 20)) {
+    return 'Escreva a fundamentação clínica, com ao menos 20 caracteres.';
+  }
+  return null;
+}
+function devolverRecursoFundamentado(recurso) {
+  if (!recurso.aguardaFundamentacao && recurso.situacao === 'AGUARDANDO_FUNDAMENTACAO') recurso.situacao = 'EM_PREPARO';
+}
+
 // RF42: dimensão conhecida e período de até um ano.
 function validarRelatorio(novo) {
   if (!Object.keys(DIMENSOES).includes(novo.nome)) return 'Escolha a dimensão do relatório.';
@@ -1528,7 +1552,13 @@ const politica = {
   autorizacoes: {
     [A]: { ler: todos, ocultar: ['justificativa'] },
     [S]: { ler: todos, criar: true, editar: true, ocultar: ['justificativa'] },
-    [M]: { ler: doPaciente('autorizacoes'), editar: true, editaveis: ['justificativa', 'cid'] },
+    [M]: {
+      ler: doPaciente('autorizacoes'),
+      editar: true,
+      editaveis: ['justificativa', 'cid'],
+      validar: validarJustificativaAutorizacao,
+      aposEditar: enviarAutorizacao,
+    },
     [P]: { ler: doPaciente('autorizacoes'), ocultar: ['justificativa', 'cid'] },
     [R]: { ler: doPaciente('autorizacoes'), ocultar: ['justificativa', 'cid'] },
   },
@@ -1547,15 +1577,18 @@ const politica = {
     [S]: { ler: todos, criar: true },
     [M]: { ler: doPaciente('glosas'), ocultar: ['valorGlosado'] },
   },
+  // A fundamentação clínica do recurso fica com o Médico (RC10).
   recursosGlosa: {
-    [A]: { ler: todos, editar: true },
-    [S]: { ler: todos, criar: true, editar: true },
+    [A]: { ler: todos, editar: true, ocultar: ['fundamentacaoClinica'] },
+    [S]: { ler: todos, criar: true, editar: true, ocultar: ['fundamentacaoClinica'] },
     // M-06: o Médico fundamenta o recurso que lhe foi pedido.
     [M]: {
       ler: ou(doMedico, doPaciente('recursosGlosa')),
       editar: true,
-      editaveis: ['aguardaFundamentacao'],
+      editaveis: ['aguardaFundamentacao', 'fundamentacaoClinica'],
       ocultar: ['valorRecuperado'],
+      validar: validarFundamentacao,
+      aposEditar: devolverRecursoFundamentado,
     },
   },
   coparticipacoes: {
