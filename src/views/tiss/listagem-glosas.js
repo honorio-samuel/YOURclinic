@@ -6,8 +6,9 @@ import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
 import { CampoSelect, Filtros } from '../../components/campos';
 import JanelaDetalhe from '../../components/janela-detalhe';
-import { emBreve } from '../../components/confirmacao';
-import { listar, porId } from '../../servicos/dados';
+import { emBreve, useConfirmacao } from '../../components/confirmacao';
+import { mensagemErro, mensagemSucesso } from '../../components/toastr';
+import { criar, listar, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
 import { data, moeda } from '../../utils/formatos';
 import { rotuloDe } from '../../utils/rotulos';
@@ -43,6 +44,31 @@ function Glosas() {
   const [operadora, setOperadora] = React.useState('');
   const [situacao, setSituacao] = React.useState(ehAdmin ? '' : 'GLOSADO');
   const [aberta, setAberta] = React.useState(null);
+  const [modal, confirmar] = useConfirmacao();
+  // RF57: o recurso sai com a justificativa da recepção; se o item glosado
+  // pede argumento clínico, espera antes a fundamentação do médico.
+  const abrirRecurso = async (g) => {
+    const justificativa = await confirmar({
+      titulo: `Abrir recurso da glosa da guia ${g.guia}?`,
+      texto: `${g.codigo} · ${g.motivo}. Valor glosado: ${moeda(g.valorGlosado)}. Prazo de 30 dias.`,
+      campo: 'Justificativa do recurso',
+      rotuloConfirmar: 'Abrir recurso',
+    });
+    if (!justificativa) return;
+    const pedirMedico = await confirmar({
+      titulo: 'Pedir a fundamentação do médico?',
+      texto: 'Se o motivo da glosa é clínico, o recurso espera o médico da consulta escrever a fundamentação antes de seguir.',
+      rotuloConfirmar: 'Pedir ao médico',
+      rotuloCancelar: 'Enviar sem fundamentação',
+    });
+    try {
+      await criar('recursosGlosa', { idGlosa: g.id, justificativa, aguardaFundamentacao: Boolean(pedirMedico) });
+      mensagemSucesso(pedirMedico ? 'Recurso aberto. Fica esperando a fundamentação do médico.' : 'Recurso aberto e enviado à operadora.');
+      recarregar();
+    } catch (e) {
+      mensagemErro(e.response?.data?.erro ?? 'Não foi possível abrir o recurso agora.');
+    }
+  };
   const linhas = (dados ?? []).filter((g) => (!operadora || g.operadora === operadora) && (!situacao || g.situacao === situacao));
 
   return (
@@ -83,7 +109,7 @@ function Glosas() {
             render: (g) => (
               <PilulaStatus
                 {...rotuloDe(SITUACAO_GLOSA, g.situacao)}
-                transicoes={!ehAdmin && g.situacao === 'GLOSADO' ? [{ rotulo: 'Abrir recurso', aoEscolher: () => emBreve('O recurso de glosa') }] : null}
+                transicoes={!ehAdmin && g.situacao === 'GLOSADO' ? [{ rotulo: 'Abrir recurso', aoEscolher: () => abrirRecurso(g) }] : null}
               />
             ),
           },
@@ -106,6 +132,7 @@ function Glosas() {
           ]}
         />
       )}
+      {modal}
     </Pagina>
   );
 }

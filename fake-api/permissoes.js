@@ -447,6 +447,36 @@ function devolverRecursoFundamentado(recurso) {
   if (!recurso.aguardaFundamentacao && recurso.situacao === 'AGUARDANDO_FUNDAMENTACAO') recurso.situacao = 'EM_PREPARO';
 }
 
+// RF57: o recurso nasce da glosa ainda sem recurso aberto, com prazo de 30
+// dias; se pedir a fundamentação clínica, espera o médico da consulta.
+function completarRecurso(novo, ctx) {
+  const glosa = ctx.buscar('glosas', novo.idGlosa);
+  const guia = ctx.buscar('guiasTiss', glosa?.idGuiaTiss);
+  const hoje = ctx.hojeClinica();
+  const prazo = new Date(Date.parse(`${hoje}T00:00:00Z`) + 30 * 86400000).toISOString().slice(0, 10);
+  Object.assign(novo, {
+    dataInterposicao: hoje,
+    rodada: 1,
+    prazo,
+    aguardaFundamentacao: novo.aguardaFundamentacao === true,
+    situacao: novo.aguardaFundamentacao === true ? 'AGUARDANDO_FUNDAMENTACAO' : 'ENVIADO',
+    valorRecuperado: null,
+    idMedico: ctx.buscar('consultas', guia?.idConsulta)?.idMedico ?? null,
+  });
+}
+function validarRecurso(novo, antigo, ctx) {
+  if (antigo) return null;
+  const glosa = ctx.buscar('glosas', novo.idGlosa);
+  if (!glosa) return 'Escolha a glosa.';
+  if (glosa.situacao !== 'GLOSADO') return 'Esta glosa já tem recurso ou foi encerrada.';
+  if (!preenchido(novo.justificativa, 10)) return 'Escreva a justificativa do recurso.';
+  return null;
+}
+function marcarGlosaEmRecurso(recurso, ctx) {
+  const glosa = ctx.buscar('glosas', recurso.idGlosa);
+  if (glosa) glosa.situacao = 'EM_RECURSO';
+}
+
 // RF42: dimensão conhecida e período de até um ano.
 function validarRelatorio(novo) {
   if (!Object.keys(DIMENSOES).includes(novo.nome)) return 'Escolha a dimensão do relatório.';
@@ -1580,7 +1610,15 @@ const politica = {
   // A fundamentação clínica do recurso fica com o Médico (RC10).
   recursosGlosa: {
     [A]: { ler: todos, editar: true, ocultar: ['fundamentacaoClinica'] },
-    [S]: { ler: todos, criar: true, editar: true, ocultar: ['fundamentacaoClinica'] },
+    [S]: {
+      ler: todos,
+      criar: true,
+      editar: true,
+      ocultar: ['fundamentacaoClinica'],
+      completar: completarRecurso,
+      validar: validarRecurso,
+      aposCriar: marcarGlosaEmRecurso,
+    },
     // M-06: o Médico fundamenta o recurso que lhe foi pedido.
     [M]: {
       ler: ou(doMedico, doPaciente('recursosGlosa')),

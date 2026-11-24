@@ -7,6 +7,7 @@ import { mensagemErro, mensagemSucesso, mostrarMensagem } from './toastr';
 // que muda dado pede confirmação (PR-22).
 // Uso: const [modal, confirmar] = useConfirmacao(); ... if (await confirmar({...}))
 // Com "campo" (rótulo do motivo), devolve o texto digitado em vez de true.
+// "rotuloCancelar" troca o "Voltar" quando as duas saídas são escolhas.
 // Com "motivos" (lista fechada, RF20), devolve o motivo escolhido; em "Outro",
 // pede o detalhe e devolve "Outro: detalhe".
 const OUTRO = 'Outro';
@@ -86,7 +87,7 @@ export function useConfirmacao() {
             </div>
             <div className='modal-footer'>
               <button type='button' className='btn btn-outline-secondary' onClick={() => fechar(false)}>
-                Voltar
+                {pedido.rotuloCancelar ?? 'Voltar'}
               </button>
               <button
                 type='button'
