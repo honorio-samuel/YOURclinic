@@ -6,7 +6,8 @@ import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
 import { CampoSelect, Filtros } from '../../components/campos';
 import Modal from '../../components/modal';
-import { emBreve, mensagemDeErro } from '../../components/confirmacao';
+import { CampoMarcar, CampoSelecao, CampoTextoLongo } from '../../components/formulario';
+import { mensagemDeErro, salvarComAviso } from '../../components/confirmacao';
 import { mensagemErro, mensagemSucesso } from '../../components/toastr';
 import { FALHAS } from '../../components/notificacoes-com-falha';
 import { listar, pessoasPorId } from '../../servicos/dados';
@@ -14,6 +15,116 @@ import { registrarAvisoPorTelefone, reenviarNotificacao } from '../../servicos/n
 import { useCarregar } from '../../hooks/use-carregar';
 import { diaMesHora } from '../../utils/formatos';
 import { CANAL, EVENTO_NOTIFICACAO, rotuloDe, SITUACAO_NOTIFICACAO } from '../../utils/rotulos';
+
+// RF59: texto, canal e situação de cada aviso. O texto só leva quem, quando,
+// com quem e onde (RF21); a API recusa outros campos.
+function JanelaModelos({ aoFechar }) {
+  const { dados, carregando, erro, recarregar } = useCarregar(() => listar('modelosNotificacao', { _sort: 'id' }));
+  const [editando, setEditando] = React.useState(null);
+  const [salvando, setSalvando] = React.useState(false);
+  const mudar = (campo) => (valor) => setEditando((atual) => ({ ...atual, [campo]: valor }));
+  const salvar = async () => {
+    setSalvando(true);
+    const ok = await salvarComAviso(
+      'modelosNotificacao',
+      editando.id,
+      { texto: editando.texto.trim(), canal: editando.canal, ativo: editando.ativo },
+      'Modelo atualizado. Vale para os próximos avisos.'
+    );
+    setSalvando(false);
+    if (ok) {
+      setEditando(null);
+      recarregar();
+    }
+  };
+  return (
+    <Modal
+      titulo={editando ? `Modelo · ${EVENTO_NOTIFICACAO[editando.evento] ?? editando.evento}` : 'Modelos e canais'}
+      aoFechar={aoFechar}
+      largo
+      rodape={
+        editando ? (
+          <>
+            <button type='button' className='btn btn-outline-secondary' onClick={() => setEditando(null)} disabled={salvando}>
+              Voltar
+            </button>
+            <button type='button' className='btn btn-primary' onClick={salvar} disabled={salvando}>
+              {salvando ? 'Salvando…' : 'Salvar'}
+            </button>
+          </>
+        ) : (
+          <button type='button' className='btn btn-outline-secondary' onClick={aoFechar}>
+            Fechar
+          </button>
+        )
+      }
+    >
+      {carregando && <p className='text-body-secondary mb-0'>Carregando os modelos…</p>}
+      {erro && <p className='text-danger mb-0'>Não foi possível carregar os modelos agora.</p>}
+      {editando && (
+        <form
+          noValidate
+          aria-label='Modelo do aviso'
+          className='row g-3'
+          onSubmit={(e) => {
+            e.preventDefault();
+            salvar();
+          }}
+        >
+          <CampoSelecao
+            id='modeloCanal'
+            rotulo='Canal preferido'
+            valor={editando.canal}
+            aoMudar={mudar('canal')}
+            opcoes={Object.entries(CANAL)}
+            ajuda='Sem o contato deste canal, o aviso vai pelo outro.'
+          />
+          <CampoMarcar id='modeloAtivo' rotulo='Enviar este aviso' marcado={editando.ativo} aoMudar={mudar('ativo')} />
+          <CampoTextoLongo
+            id='modeloTexto'
+            rotulo='Texto'
+            valor={editando.texto}
+            aoMudar={mudar('texto')}
+            linhas={4}
+            maxLength={300}
+            ajuda='Use {paciente}, {data}, {hora}, {medico} e {local}. O aviso não leva conteúdo clínico.'
+          />
+        </form>
+      )}
+      {!editando && dados && (
+        <div className='table-responsive'>
+          <table className='table table-sm align-middle'>
+            <caption className='visually-hidden'>Modelos de aviso por evento</caption>
+            <thead>
+              <tr>
+                <th scope='col'>Evento</th>
+                <th scope='col'>Canal</th>
+                <th scope='col'>Texto</th>
+                <th scope='col'>Situação</th>
+                <th scope='col'>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dados.map((m) => (
+                <tr key={m.id}>
+                  <td>{EVENTO_NOTIFICACAO[m.evento] ?? m.evento}</td>
+                  <td>{CANAL[m.canal] ?? m.canal}</td>
+                  <td className='small'>{m.texto}</td>
+                  <td>
+                    <PilulaStatus rotulo={m.ativo ? 'Ativo' : 'Desligado'} tom={m.ativo ? 'sucesso' : 'neutro'} />
+                  </td>
+                  <td>
+                    <AcoesLinha acoes={[{ tipo: 'editar', alvo: `modelo ${EVENTO_NOTIFICACAO[m.evento] ?? m.evento}`, aoClicar: () => setEditando({ ...m }) }]} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Modal>
+  );
+}
 
 // A-32 · Notificações. Reenvio manual das que falharam (RF59).
 function Notificacoes() {
@@ -28,6 +139,7 @@ function Notificacoes() {
   const [situacao, setSituacao] = React.useState('');
 
   const [aberta, setAberta] = React.useState(null);
+  const [modelos, setModelos] = React.useState(false);
   const tratar = async (n, acao) => {
     try {
       if (acao === 'reenviar') await reenviarNotificacao(n.id);
@@ -44,14 +156,14 @@ function Notificacoes() {
     <Pagina
       titulo='Notificações'
       acoes={
-        <button type='button' className='btn btn-outline-primary' onClick={() => emBreve('A edição de modelos e canais')}>
+        <button type='button' className='btn btn-outline-primary' onClick={() => setModelos(true)}>
           Modelos e canais
         </button>
       }
     >
       <Filtros>
         <CampoSelect id='notEvento' rotulo='Evento' valor={evento} aoMudar={setEvento} opcoes={[['', 'Todos'], ...Object.entries(EVENTO_NOTIFICACAO)]} />
-        <CampoSelect id='notCanal' rotulo='Canal' valor={canal} aoMudar={setCanal} opcoes={[['', 'Todos'], ['SMS', 'Mensagem de texto'], ['EMAIL', 'E-mail']]} />
+        <CampoSelect id='notCanal' rotulo='Canal' valor={canal} aoMudar={setCanal} opcoes={[['', 'Todos'], ...Object.entries(CANAL)]} />
         <CampoSelect
           id='notSituacao'
           rotulo='Situação'
@@ -123,6 +235,7 @@ function Notificacoes() {
           </dl>
         </Modal>
       )}
+      {modelos && <JanelaModelos aoFechar={() => setModelos(false)} />}
     </Pagina>
   );
 }

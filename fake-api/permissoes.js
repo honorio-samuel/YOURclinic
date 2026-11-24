@@ -14,6 +14,7 @@
 const { afetadasPeloBloqueio, conferirHorario, horasEntre, somarDias } = require('./agenda');
 const { TIPOS_COM_LOTE } = require('./estoque');
 const { DIMENSOES } = require('./relatorios');
+const { validarModelo } = require('./modelos');
 
 const A = 'ADMINISTRADOR';
 const M = 'MEDICO';
@@ -44,7 +45,7 @@ const COLECOES = [
   'lotesCobranca', 'guiasTiss', 'glosas', 'recursosGlosa', 'coparticipacoes',
   'produtos', 'lotes', 'movimentacoes', 'alertasEstoque',
   // Gestão
-  'relatorios',
+  'relatorios', 'modelosNotificacao',
 ];
 
 // Coleções cuja leitura também é registrada no log (RF40).
@@ -243,12 +244,17 @@ function validarConsulta(novo, antigo, ctx, mudancas) {
 
 // RF21: o aviso leva só data, hora, médico e local; o conteúdo não fica aqui.
 // Vai por mensagem ao telefone do paciente ou, sem telefone, por e-mail.
+// O modelo do evento (RF59) diz se o aviso sai e por qual canal; sem o
+// contato daquele canal, vai pelo outro.
 function notificar(ctx, consulta, evento) {
+  const modelo = (ctx.db.modelosNotificacao ?? []).find((m) => m.evento === evento);
+  if (modelo?.ativo === false) return;
+  const preferido = modelo?.canal ?? 'WHATSAPP';
   const pessoa = ctx.buscar('pessoas', consulta.idPaciente);
-  const porTelefone = Boolean(pessoa?.telefone);
+  const porTelefone = preferido === 'EMAIL' ? !pessoa?.email && Boolean(pessoa?.telefone) : Boolean(pessoa?.telefone);
   ctx.inserir('notificacoes', {
     evento,
-    canal: porTelefone ? 'WHATSAPP' : 'EMAIL',
+    canal: porTelefone ? (preferido === 'EMAIL' ? 'WHATSAPP' : preferido) : 'EMAIL',
     destino: porTelefone ? pessoa.telefone : pessoa?.email ?? null,
     dataEnvio: ctx.agoraClinica(),
     situacao: 'ENVIADA',
@@ -1225,6 +1231,11 @@ const politica = {
   },
   // RF59: reenvio e aviso por telefone passam por /notificacoes/:id/…, que
   // registram quem tratou; a coleção é só de leitura.
+  // RF59: o Administrador ajusta o texto, o canal e se o aviso sai.
+  modelosNotificacao: {
+    [A]: { ler: todos, editar: true, editaveis: ['texto', 'canal', 'ativo'], validar: validarModelo },
+    [S]: { ler: todos },
+  },
   notificacoes: {
     [A]: { ler: todos },
     [S]: { ler: todos },

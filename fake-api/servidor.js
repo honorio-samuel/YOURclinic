@@ -31,6 +31,7 @@ const { MEIOS_DE_DEVOLUCAO, avaliarReversao } = require('./estorno');
 const { aliquotasEm, imposto, proximoNumero, origemDoTitulo, pagadoresPossiveis, montarDocumentoFiscal } = require('./fiscal');
 const { detectarTipo, tipoPelaExtensao, reprovadoNaVarredura, nomeSeguro, arquivoDeDemonstracao } = require('./anexo');
 const { montarRelatorio, paraCsv } = require('./relatorios');
+const { MODELOS_PADRAO } = require('./modelos');
 const { DATA_PADRAO } = require('./seed');
 const { Sessoes, conferirSenha, gerarHash, HASH_DE_ENGANO } = require('./sessao');
 const { filtrar, ordenar, paginar, escolherCampos } = require('./consulta');
@@ -129,6 +130,8 @@ function criarApi({
     ),
 }) {
   for (const colecao of COLECOES) db[colecao] ??= [];
+  // Um banco anterior aos modelos de notificação recebe os modelos padrão.
+  if (db.modelosNotificacao.length === 0) MODELOS_PADRAO.forEach((m, i) => db.modelosNotificacao.push({ id: i + 1, ...m }));
 
   const agoraTexto = (minutos = 0) => textoLocal(new Date(relogio().getTime() + minutos * 60 * 1000));
   const hoje = () => agoraTexto().slice(0, 10);

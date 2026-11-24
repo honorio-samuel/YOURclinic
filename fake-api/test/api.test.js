@@ -56,8 +56,8 @@ function chavesDe(valor, encontradas = new Set()) {
 }
 
 describe('banco sintético', () => {
-  test('tem as 54 coleções e nenhuma senha em texto', () => {
-    assert.equal(COLECOES.length, 54);
+  test('tem as 55 coleções e nenhuma senha em texto', () => {
+    assert.equal(COLECOES.length, 55);
     for (const colecao of COLECOES) assert.ok(Array.isArray(BANCO[colecao]), colecao);
     for (const usuario of BANCO.usuarios) {
       assert.equal(usuario.senha, undefined);
