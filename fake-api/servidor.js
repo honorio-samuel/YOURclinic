@@ -1715,6 +1715,60 @@ function criarApi({
     return enviar(res, 200, notificacao);
   }
 
+  // RF55: a recepção monta o lote com guias liberadas de uma operadora e o
+  // envia; a operadora simulada devolve o protocolo na hora. Cada guia do
+  // lote vira um título a receber da operadora (RF32).
+  async function rotaDeLote(req, res, { partes, sessao, rota }) {
+    const ctx = contexto(sessao, rota);
+    if (sessao.papel !== SECRETARIA) {
+      auditar({ acao: 'CRIAR', sessao, rota, registroAlvo: partes.join('/'), resultado: 'NEGADO', motivo: 'PAPEL' });
+      throw ACESSO_NEGADO();
+    }
+    if (req.method !== 'POST') throw NAO_ENCONTRADO();
+    const convenioDaGuia = (g) => ctx.buscar('contratosOperadora', g.idContratoOperadora)?.idConvenio;
+    const projetarLote = (lote) => projetar(regraPara('lotesCobranca', SECRETARIA), lote, ctx);
+
+    if (partes.length === 2) {
+      const corpo = await lerCorpo(req);
+      const convenio = ctx.buscar('convenios', corpo.idConvenio);
+      if (!convenio) throw new ErroHttp(422, 'Escolha a operadora.');
+      const ids = Array.isArray(corpo.idsGuias) ? corpo.idsGuias : [];
+      const guias = ids.map((id) => ctx.buscar('guiasTiss', id));
+      if (guias.length === 0) throw new ErroHttp(422, 'Escolha ao menos uma guia.');
+      if (guias.some((g) => !g || g.situacao !== 'LIBERADA' || g.idLoteCobranca != null || !igual(convenioDaGuia(g), convenio.id))) {
+        throw new ErroHttp(422, 'Só entram no lote guias liberadas, fora de outro lote, desta operadora.');
+      }
+      const maior = db.lotesCobranca.reduce((m, l) => Math.max(m, Number(String(l.numero).replace(/\D/g, '')) || 0), 0);
+      const lote = ctx.inserir('lotesCobranca', {
+        numero: `LOTE-${String(maior + 1).padStart(4, '0')}`, dataEnvio: null, protocolo: null,
+        valorApresentado: reais(guias.reduce((s, g) => s + centavos(g.valor), 0)), situacao: 'A_ENVIAR', idConvenio: convenio.id,
+      });
+      const vencimento = somarDias(hojeClinica(), 60);
+      for (const g of guias) {
+        g.idLoteCobranca = lote.id;
+        ctx.inserir('titulosReceber', {
+          origem: 'CONVENIO', vencimento, valor: g.valor, situacao: 'ABERTO', idCobranca: null, idLoteCobranca: lote.id, idCoparticipacao: null, idGuiaTiss: g.id,
+        });
+      }
+      auditar({ acao: 'CRIAR', sessao, rota, registroAlvo: `lotesCobranca/${lote.id}`, resultado: 'PERMITIDO' });
+      salvar();
+      return enviar(res, 201, { ...projetarLote(lote), guias: guias.length });
+    }
+
+    if (partes.length === 4 && partes[3] === 'enviar') {
+      const lote = ctx.buscar('lotesCobranca', partes[2]);
+      if (!lote) throw NAO_ENCONTRADO();
+      if (lote.situacao !== 'A_ENVIAR') throw new ErroHttp(409, 'Este lote já foi enviado.');
+      Object.assign(lote, { situacao: 'PROTOCOLADO', dataEnvio: agoraClinica(), protocolo: `PROT-${String(Date.now()).slice(-8)}` });
+      for (const g of db.guiasTiss.filter((x) => igual(x.idLoteCobranca, lote.id))) g.situacao = 'ENVIADA';
+      auditar({ acao: 'EDITAR', sessao, rota, registroAlvo: `lotesCobranca/${lote.id}`, resultado: 'PERMITIDO', motivo: 'ENVIO' });
+      salvar();
+      return enviar(res, 200, projetarLote(lote));
+    }
+
+    throw NAO_ENCONTRADO();
+  }
+
   // RF52: a recepção consulta a elegibilidade do beneficiário na operadora,
   // aqui simulada: carteirinha terminada em 9 está inativa; as demais valem
   // até o fim do ano seguinte. A resposta fica registrada na consulta.
@@ -1980,6 +2034,7 @@ function criarApi({
       if (partes[0] === 'financeiro' && partes[1] === 'documentos') return await rotaDeDocumentoFiscal(req, res, { partes, sessao, rota });
       if (partes[0] === 'anexos' && (partes[1] === 'envio' || partes[2] === 'arquivo')) return await rotaDeAnexo(req, res, { partes, sessao, rota });
       if (partes[0] === 'tiss' && partes[1] === 'elegibilidade') return await rotaDeElegibilidade(req, res, { partes, sessao, rota });
+      if (partes[0] === 'tiss' && partes[1] === 'lotes') return await rotaDeLote(req, res, { partes, sessao, rota });
       if (partes[0] === 'relatorios' && partes.length === 3 && ['dados', 'arquivo'].includes(partes[2])) return rotaDeRelatorio(req, res, { partes, sessao, rota });
       if ((partes[0] === 'notificacoes' && partes.length === 3) || (partes[0] === 'portal' && partes[1] === 'preferencias')) {
         return await rotaDeNotificacao(req, res, { partes, sessao, rota });

@@ -946,7 +946,9 @@ function gerarBanco({ data = DATA_PADRAO, contas = lerContas() } = {}) {
   for (const c of finalizadasComConvenio) {
     const antiga = dataDe(c) < dia(-21);
     const deHoje = dataDe(c) === data;
-    const lote = deHoje ? null : lotes.find((l) => l.idConvenio === c.idConvenio && l.situacao === (antiga ? 'PROTOCOLADO' : 'A_ENVIAR'));
+    // As guias liberadas dos últimos dias ainda esperam a montagem do lote (RF55).
+    const recente = !deHoje && dataDe(c) >= dia(-5);
+    const lote = deHoje || recente ? null : lotes.find((l) => l.idConvenio === c.idConvenio && l.situacao === (antiga ? 'PROTOCOLADO' : 'A_ENVIAR'));
     const valor = precoNegociado(c);
     const guia = novo('guiasTiss', {
       tipo: procedimentoDe(c).tipo === 'CONSULTA' ? 'CONSULTA' : 'SP_SADT',

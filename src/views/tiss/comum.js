@@ -29,6 +29,7 @@ export async function carregarGuias() {
     return {
       ...g,
       paciente: pessoas[c?.idPaciente]?.nome ?? '—',
+      idConvenio: contrato[g.idContratoOperadora]?.idConvenio ?? null,
       operadora: nomeOperadora(convenio[contrato[g.idContratoOperadora]?.idConvenio]),
       item: p ? `${p.codigo} · ${p.nome}` : '—',
       lote: lote[g.idLoteCobranca]?.numero ?? null,
