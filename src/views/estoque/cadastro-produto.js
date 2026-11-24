@@ -16,15 +16,16 @@ import {
 import { mensagemDeErro, useConfirmacao } from '../../components/confirmacao';
 import { mensagemErro, mensagemSucesso } from '../../components/toastr';
 import { RegistroIndisponivel } from '../geral/avisos';
-import { buscar, criar } from '../../servicos/dados';
+import { buscar, criar, listar } from '../../servicos/dados';
 import { atualizarSeMudou } from '../../servicos/pessoas';
 import { useCarregar } from '../../hooks/use-carregar';
 import { useCadastro } from '../../navegacao/caminhos';
 import { useSessao } from '../../sessao/sessao';
 import { mascararDigitos, mascararMoeda, moedaParaNumero, numeroParaMoeda } from '../../utils/mascaras';
 import { TIPO_PRODUTO, UNIDADE_PRODUTO } from '../../utils/rotulos';
+import { TIPOS_COM_LOTE } from './comum';
 
-const VAZIO = { descricao: '', tipo: '', unidade: '', estoqueMinimo: '', controlaLote: true, custoAquisicao: '' };
+const VAZIO = { descricao: '', tipo: '', unidade: '', estoqueMinimo: '', controlaLote: true, controleEspecial: false, custoAquisicao: '' };
 
 // A-26 e S-17 · Cadastro do produto. Lote, validade e saldo nascem das
 // entradas em Movimentações; aqui fica só o produto. O custo de aquisição é
@@ -40,6 +41,9 @@ function CadastroProduto() {
   const [salvando, setSalvando] = React.useState(false);
 
   const { dados: atual, carregando, erro } = useCarregar(() => (id ? buscar('produtos', id) : Promise.resolve(null)), [id]);
+  // O controle de lote não muda depois da primeira entrada (a API recusa).
+  const { dados: lotes } = useCarregar(() => (id ? listar('lotes', { idProduto: id }) : Promise.resolve([])), [id]);
+  const comEntrada = (lotes ?? []).length > 0;
 
   React.useEffect(() => {
     if (atual) {
@@ -49,6 +53,7 @@ function CadastroProduto() {
         unidade: atual.unidade ?? '',
         estoqueMinimo: atual.estoqueMinimo != null ? String(atual.estoqueMinimo) : '',
         controlaLote: Boolean(atual.controlaLote),
+        controleEspecial: Boolean(atual.controleEspecial),
         custoAquisicao: numeroParaMoeda(atual.custoAquisicao),
       });
     }
@@ -59,6 +64,8 @@ function CadastroProduto() {
   if (erro?.status === 404) return <RegistroIndisponivel />;
 
   const v = form.valores;
+  // RN-36.1: medicamento e amostra sempre controlam lote e validade.
+  const exigeLote = TIPOS_COM_LOTE.includes(v.tipo);
   const salvar = async (e) => {
     e.preventDefault();
     const ok = form.validar({
@@ -74,7 +81,8 @@ function CadastroProduto() {
       tipo: v.tipo,
       unidade: v.unidade,
       estoqueMinimo: Number(v.estoqueMinimo),
-      controlaLote: v.controlaLote,
+      controlaLote: exigeLote || v.controlaLote,
+      controleEspecial: v.controleEspecial,
       ...(ehAdmin ? { custoAquisicao: moedaParaNumero(v.custoAquisicao) } : {}),
     };
     try {
@@ -137,8 +145,21 @@ function CadastroProduto() {
             )}
             <CampoMarcar
               {...form.marcar('controlaLote')}
+              marcado={exigeLote || v.controlaLote}
+              disabled={exigeLote || comEntrada}
               rotulo='Controla lote e validade'
-              ajuda='Cada entrada registra o número do lote e a validade; a saída é por lote.'
+              ajuda={
+                exigeLote
+                  ? 'Obrigatório para medicamento e amostra: cada entrada registra o lote e a validade.'
+                  : comEntrada
+                    ? 'Não muda depois da primeira entrada.'
+                    : 'Cada entrada registra o número do lote e a validade; a saída é por lote.'
+              }
+            />
+            <CampoMarcar
+              {...form.marcar('controleEspecial')}
+              rotulo='Sujeito a controle especial'
+              ajuda='Medicamento controlado (receita de controle especial): a saída pede a conferência manual.'
             />
           </Secao>
           {!id && (

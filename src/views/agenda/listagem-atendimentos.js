@@ -1,14 +1,47 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
 import { DATA_DE_HOJE } from '../../config/axios';
+import { listar, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
 import { useSessao } from '../../sessao/sessao';
-import { hora } from '../../utils/formatos';
+import { data, diasEntre, hora } from '../../utils/formatos';
+import { carregarProdutos } from '../estoque/comum';
 import { carregarConsultas, doDia, useMudarStatus } from './comum';
+
+// RN-38.3: o alerta de validade chega ao Médico no contexto do atendimento,
+// para ser visto quando ele vai entregar o item (o de estoque mínimo não é dele).
+async function carregarAvisosDeEstoque() {
+  const [alertas, produtos] = await Promise.all([listar('alertasEstoque', { situacao: 'ABERTO' }), carregarProdutos()]);
+  const produto = porId(produtos);
+  return alertas
+    .map((a) => ({ id: a.id, tipo: a.tipo, produto: produto[a.idProduto]?.descricao, lote: produto[a.idProduto]?.lotes.find((l) => l.id === a.idLote) }))
+    .filter((a) => a.produto && a.lote);
+}
+
+function AvisosDeEstoque({ avisos }) {
+  if (!avisos?.length) return null;
+  return (
+    <div className='alert alert-warning mb-0' role='status'>
+      <p className='mb-1 fw-semibold'>Avisos do estoque</p>
+      <ul className='mb-1 ps-3'>
+        {avisos.map((a) => {
+          const dias = diasEntre(DATA_DE_HOJE, a.lote.validade);
+          return (
+            <li key={a.id}>
+              {a.produto}, lote {a.lote.numero}:{' '}
+              {a.tipo === 'VENCIDO' ? `venceu em ${data(a.lote.validade)}, só sai por descarte.` : `vence em ${dias} ${dias === 1 ? 'dia' : 'dias'}, use este lote primeiro.`}
+            </li>
+          );
+        })}
+      </ul>
+      <Link to='/medico/listagem-produtos'>Abrir o estoque</Link>
+    </div>
+  );
+}
 
 // M-01 Atendimentos do dia. O Médico vê só os próprios atendimentos e não vê valores.
 function AtendimentosDoDia() {
@@ -19,6 +52,7 @@ function AtendimentosDoDia() {
     carregarConsultas({ ...doDia(DATA_DE_HOJE), idMedico })
   );
   const [modal, mudar] = useMudarStatus(recarregar);
+  const avisos = useCarregar(carregarAvisosDeEstoque);
 
   const transicoes = (c) => {
     if (c.status === 'NA_RECEPCAO') return [{ rotulo: 'Chamar paciente', aoEscolher: () => mudar(c, 'EM_ATENDIMENTO') }];
@@ -62,6 +96,7 @@ function AtendimentosDoDia() {
 
   return (
     <Pagina titulo='Atendimentos do dia'>
+      <AvisosDeEstoque avisos={avisos.dados} />
       <Listagem
         carregando={carregando}
         erro={erro}
