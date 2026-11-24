@@ -447,6 +447,33 @@ function devolverRecursoFundamentado(recurso) {
   if (!recurso.aguardaFundamentacao && recurso.situacao === 'AGUARDANDO_FUNDAMENTACAO') recurso.situacao = 'EM_PREPARO';
 }
 
+// RF54: operadora conhecida, vigência coerente e prazos em dias.
+function validarContrato(novo, antigo, ctx) {
+  if (!ctx.buscar('convenios', novo.idConvenio)) return 'Escolha a operadora.';
+  if (!preenchido(novo.numero, 3)) return 'Informe o número do contrato.';
+  if (repetido(ctx.db.contratosOperadora, novo, (c) => c.numero === novo.numero)) return 'Já existe um contrato com este número.';
+  const data = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+  if (!data(novo.vigenciaInicio) || !data(novo.vigenciaFim) || novo.vigenciaInicio > novo.vigenciaFim) return 'Informe uma vigência válida.';
+  if (!preenchido(novo.versaoTiss, 3)) return 'Informe a versão TISS.';
+  if (!['WEBSERVICE', 'PORTAL'].includes(novo.meioTransmissao)) return 'Escolha o meio de transmissão.';
+  for (const prazo of ['prazoApresentacao', 'prazoPagamento', 'prazoRecurso']) {
+    if (!Number.isInteger(novo[prazo]) || novo[prazo] < 1 || novo[prazo] > 365) return 'Os prazos vão de 1 a 365 dias.';
+  }
+  if (!['VIGENTE', 'ENCERRADO'].includes(novo.situacao)) return 'Escolha a situação do contrato.';
+  return null;
+}
+// O preço negociado é positivo e cada procedimento aparece uma vez por contrato.
+function validarItemDeTabela(novo, antigo, ctx) {
+  if (!(typeof novo.valorNegociado === 'number' && novo.valorNegociado > 0)) return 'Informe o valor negociado.';
+  if (antigo) return null;
+  if (!ctx.buscar('contratosOperadora', novo.idContratoOperadora)) return 'Escolha o contrato.';
+  if (!ctx.buscar('procedimentos', novo.idProcedimento)) return 'Escolha o procedimento.';
+  if (repetido(ctx.db.itensTabelaPreco, novo, (i) => igual(i.idContratoOperadora, novo.idContratoOperadora) && igual(i.idProcedimento, novo.idProcedimento))) {
+    return 'Este procedimento já está na tabela do contrato.';
+  }
+  return null;
+}
+
 // RF57: o recurso nasce da glosa ainda sem recurso aberto, com prazo de 30
 // dias; se pedir a fundamentação clínica, espera o médico da consulta.
 function completarRecurso(novo, ctx) {
@@ -1561,12 +1588,13 @@ const politica = {
   },
 
   // ── Convênio, TISS e estoque ─────────────────────────────────────────────
+  // RF54: o contrato com a operadora e a tabela de preços negociada.
   contratosOperadora: {
-    [A]: { ler: todos, criar: true, editar: true },
+    [A]: { ler: todos, criar: true, editar: true, validar: validarContrato },
     [S]: { ler: todos },
   },
   itensTabelaPreco: {
-    [A]: { ler: todos, criar: true, editar: true },
+    [A]: { ler: todos, criar: true, editar: true, editaveis: ['valorNegociado'], validar: validarItemDeTabela },
     [S]: { ler: todos },
   },
   // RF52: a consulta à operadora passa por POST /tiss/elegibilidade.
