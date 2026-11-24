@@ -86,8 +86,9 @@ Prontuário (Médico):
 | Registro selado e retificação (M-02c) | Finalizar a consulta sela o registro; só o autor retifica, com motivo, e o texto anterior fica no histórico |
 | Prescrição (M-02d) | Itens com classificação obrigatória e aviso de controle especial; via de impressão com médico, CRM, data e validade |
 | Anotações privadas (M-02f) | Criar, editar e excluir, só o autor |
-| Exportações (M-02g) | Histórico e prontuário completo, gerados em segundos; o documento abre numa página própria para imprimir ou salvar em PDF |
+| Exportações (M-02g, P-04, R-04) | Histórico e prontuário completo, gerados em segundos, pelo médico ou pelo titular no portal ("Gerar PDF"); o documento abre numa página própria para imprimir ou salvar em PDF |
 | Acesso de exceção (M-02h) | Em Meus pacientes ou no prontuário sem vínculo, com justificativa; o prontuário mostra até quando vale |
+| Anexos de exame (M-02e, S-01d, P-04, R-04) | Recepção, prontuário e portal enviam PDF, JPG ou PNG de até 5 MB (X13); a API confere o tipo pelo conteúdo e faz uma varredura simulada. O Médico e o titular abrem e baixam; a Secretária vê só nome, data e situação. O exame enviado pelo portal espera o aceite do médico, e a recusa leva motivo, que o titular vê |
 | Orçamentos · escopo clínico (M-04) | Novo orçamento para paciente com vínculo: procedimentos do catálogo, quantidade e justificativa clínica, sem nenhum preço. Rascunho editável até enviar para valores, e de novo se a Secretária devolver |
 
 Acesso e conta:

@@ -135,6 +135,15 @@ O pedido e a decisão passam por estas rotas; a coleção `estornos` é só de l
 | `POST /financeiro/estornos` `{idPagamento, valor, motivo, chargeback: true}` | Secretária | Registro de chargeback (contestação do portador), só em cartão, sem aprovação e sem efeito no título |
 | `POST /financeiro/estornos/:id/aprovar` e `/recusar` `{motivo}` | Administrador | Aprovar confere de novo o que o meio permite, grava o protocolo, reabre o título, cancela recibo e NFS-e e, em dinheiro, lança a devolução num caixa aberto (o do recebimento ou o de quem pediu). Recusar pede motivo |
 
+### Anexos
+
+A coleção `anexos` traz só os metadados e não recebe arquivo; o envio e a leitura do conteúdo passam por estas rotas. O arquivo fica na pasta `anexos/`, ao lado do banco (o git a ignora), com nome aleatório; os exames do banco sintético não têm arquivo, e a API gera um PDF ou PNG de demonstração.
+
+| Rota | Papéis | O que faz |
+|---|---|---|
+| `POST /anexos/envio` `{idPaciente, nomeArquivo, conteudo}` | Secretária, Médico (paciente no alcance), Paciente e Responsável (o titular, sempre) | `conteudo` em base64. Aceita PDF, JPG e PNG pelo conteúdo, não pela extensão (E1, a tentativa vai ao log); acima de X13 MB, 413 (E2); a varredura simulada reprova o arquivo de teste EICAR (E3). Do portal, o exame nasce `A_ACEITAR`. Responde só os metadados |
+| `GET /anexos/:id/arquivo` `?baixar` | Médico com o paciente no alcance, Paciente e Responsável (o próprio) | O conteúdo, com a sessão de quem pede; nunca à Secretária (RN-26.1). Cada abertura vai ao log como `LER` e cada download como `BAIXAR` (RF27) |
+
 ### Documentos fiscais
 
 A coleção `documentosFiscais` é só de leitura; a emissão passa por estas rotas.
@@ -217,6 +226,7 @@ Exemplos da matriz: Observações Gerais nunca vão ao Administrador (A3-R17); c
 | Conta a pagar (RF50) | Nasce `ABERTO`, com fornecedor, categoria, vencimento e valor maior que zero. Paga, só o estorno a muda (`situacao` e `motivoEstorno`); estornada, não muda mais |
 | Bloqueio de agenda (RF14) | Motivo da lista fechada (férias, feriado, congresso, capacitação, intervalo, outro), fim depois do início e médico ativo; sem médico, vale para a clínica inteira. O servidor conta as consultas atingidas (`consultasAfetadas`). O Médico registra só a própria indisponibilidade (M-03); quem trata as consultas atingidas é a recepção |
 | Produto (RF36) | Descrição, tipo (`MEDICAMENTO`, `MATERIAL` ou `AMOSTRA`), unidade (`UN`, `CX`, `PCT`, `FR` ou `DOSE`) e estoque mínimo inteiro. Custo, se informado, não negativo; a Secretária não grava o custo. Medicamento e amostra controlam lote, e o controle de lote não muda depois da primeira entrada. `controleEspecial` marca o item que pede conferência manual na saída |
+| Exame do titular (RN-26.6) | O Médico só muda a situação do exame que espera o aceite, para `ACEITO` ou `RECUSADO`; a recusa exige `motivoRecusa`, que o titular lê e a Secretária não |
 | Estorno (RF48) | Só pelas rotas de [Estorno](#estorno). A Secretária pede, o Administrador decide; quem pede não aprova. O pagamento original não muda |
 | Movimentação de estoque (RF37, RC08) | Só pelas rotas de [Estoque](#estoque). Da dispensação, Administrador e Secretária não leem `idConsulta` nem `justificativa`; o titular não lê quem registrou nem a justificativa |
 

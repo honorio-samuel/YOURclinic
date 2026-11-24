@@ -328,6 +328,10 @@ Os parâmetros do emitente são os da clínica fictícia da demonstração, fixo
 
 Recibo e NFS-e têm cada um a própria sequência, sem lacunas (RN-33.1); o banco sintético usava uma sequência só para os dois. O documento cancelado mantém o número.
 
+### B33 · Arquivo do anexo
+
+O arquivo viaja em base64 e fica numa pasta ao lado do banco, com nome aleatório, fora de qualquer pasta servida. O conteúdo volta só com a sessão de quem pode vê-lo, que o navegador abre na própria tela; a sessão faz o papel da URL assinada e expirável (RNF09). A varredura antivírus é simulada: reprova o arquivo de teste EICAR. Os exames do banco sintético abrem com um arquivo de demonstração gerado pela API, e os dois de imagem passaram a PNG.
+
 ## Estado das telas
 
 Das 112 telas, 108 estão `ok`, 2 em `conflito` e 2 em `lacuna`. S-07d saiu da lista com a decisão B8 e G-04b, com a B16.
