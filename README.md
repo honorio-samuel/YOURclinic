@@ -108,7 +108,16 @@ Campo obrigatório leva `*` no rótulo; o erro aparece em texto junto do campo, 
 
 Todas as listagens do redesenho, com filtros, pílulas de status com as transições permitidas a cada papel, ícones de ação e estados de carregando, vazio e erro: painel do dia, fila do dia, atendimentos, prontuário (prescrição, anexos, anotações privadas e exportações), financeiro, faturamento TISS, estoque, gestão e o portal do Paciente e do Responsável Legal.
 
-Telas que ainda não existem (painéis financeiro e gerencial) aparecem no menu como "Em construção", com o código da tela no protótipo. Ações de fluxo como estornar, conciliar, ajustar estoque e check-in ficam nas listagens, como antes.
+Painéis (Administrador):
+
+| Tela | Observação |
+|---|---|
+| Painel financeiro (A-12) | A receber de pacientes e de operadoras, cartão em trânsito com a data prevista, contas a pagar e o saldo realizado e projetado, com a data-base; cada bloco leva à tela de origem |
+| Dashboard gerencial (A-29) | Desfecho das consultas, particular e convênio, tempo médio de espera, ociosidade da agenda, conversão de orçamento, divergência de caixa e índice de glosa, no período escolhido; atualiza a cada X28 segundos |
+
+Os dois são calculados pela API, sem nenhum dado clínico. A Fila do dia ganhou a coluna Espera, pela hora em que o paciente chegou, e se atualiza sozinha a cada X28 segundos.
+
+Todas as telas do menu existem; nenhuma aparece mais como "Em construção". Ações de fluxo como estornar, conciliar, ajustar estoque e check-in ficam nas listagens, como antes.
 
 ## Regras que o front respeita
 

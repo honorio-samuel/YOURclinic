@@ -143,7 +143,7 @@ Este trecho não foi compilado nem testado. Um ponto a conferir na primeira comp
 | 4. Contraste das pílulas | Resolvido com os tokens do tema | front |
 | 5. Yeti pré-compilado | Resolvido: `src/tema.scss` compila Bootstrap e Yeti com os tokens AA | front |
 | 6. `lang` e título | Resolvido: `pt-BR`, título "YOURClinic" e título por tela sem nome de paciente | front |
-| 7. Fila do dia | Em parte: lista completa, filtro por médico e transições do papel. A coluna Espera e a atualização automática continuam pendentes | front |
+| 7. Fila do dia | Resolvido em 23/11/2026: lista completa, filtro por médico, transições do papel, coluna Espera pela hora gravada em cada mudança de status e atualização a cada X28 segundos | front e API |
 | 8. Texto de regra na tela | Resolvido: as telas antigas foram substituídas | front |
 | 9. Fila busca a pessoa inteira | Em parte: busca só as pessoas citadas; a API ainda devolve todos os campos se o front não pedir `_campos` | front |
 | 10. `/listagem-usuarios` vazia | Resolvido: a rota antiga leva à tela nova correspondente | front |

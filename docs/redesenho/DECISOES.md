@@ -272,6 +272,14 @@ Escolha da equipe em 23/11/2026: a API local não envia e-mail; o convite e o li
 
 A API renova a sessão a cada pedido. O app acompanha esse prazo a partir das respostas, sem redesenhar a tela, e mostra o aviso de expiração dois minutos antes do fim (WCAG 2.2.1). Sem resposta, a sessão termina e o login avisa que ela expirou.
 
+### B19 · Painéis calculados na API
+
+O painel financeiro e o dashboard gerencial saem de duas rotas só do Administrador, que calculam sobre o banco inteiro. No navegador, o Administrador não lê os orçamentos fora da etapa de aprovação (RC09), e a conversão de orçamento ficaria errada. Nenhum indicador usa diagnóstico, CID ou prescrição (RN-41.2), e os dois trazem a data-base.
+
+### B20 · Hora de cada passo da fila
+
+Cada mudança de status da consulta grava a hora em que aconteceu. É o carimbo que o RF41 pede para o tempo médio de espera e que a Fila do dia usa na coluna Espera. O banco sintético ganha esses carimbos nas consultas já atendidas, calculados pelo id, para não mudar o resto dos dados.
+
 ## Estado das telas
 
 Das 112 telas, 108 estão `ok`, 2 em `conflito` e 2 em `lacuna`. S-07d saiu da lista com a decisão B8 e G-04b, com a B16.
