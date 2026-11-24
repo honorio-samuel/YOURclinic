@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { atualizar } from '../servicos/dados';
-import { mensagemErro, mensagemSucesso, mostrarMensagem } from './toastr';
+import { mensagemErro, mensagemSucesso } from './toastr';
 
 // Modal de confirmação (Modal/Confirmacao e Modal/ComMotivo do Figma). Toda ação
 // que muda dado pede confirmação (PR-22).
@@ -130,11 +130,6 @@ export function mensagemDeErro(e) {
   if (status === 404) return 'Este registro não está mais disponível.';
   if ((status === 409 || status === 422) && e.response?.data?.erro) return e.response.data.erro;
   return 'Não foi possível salvar agora. Tente de novo.';
-}
-
-// Ações que dependem de telas que ainda não foram implementadas.
-export function emBreve(oQue) {
-  mostrarMensagem('Próxima etapa', `${oQue} entra numa próxima etapa do app.`, 'info');
 }
 
 // Inativar e reativar cadastros: muda só a situação; nada é apagado.
