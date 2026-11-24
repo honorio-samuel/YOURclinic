@@ -15,6 +15,7 @@ const { afetadasPeloBloqueio, conferirHorario, horasEntre, somarDias } = require
 const { TIPOS_COM_LOTE } = require('./estoque');
 const { DIMENSOES } = require('./relatorios');
 const { validarModelo } = require('./modelos');
+const { gerarGuia } = require('./guias');
 
 const A = 'ADMINISTRADOR';
 const M = 'MEDICO';
@@ -357,6 +358,8 @@ function aposMudarStatus(novo, antigo, ctx) {
   if (novo.status === 'FINALIZADO' && antigo.status !== 'FINALIZADO') {
     selarRegistros(ctx, novo);
     gerarCobranca(ctx, novo);
+    // RF54: o atendimento de convênio finalizado ganha a guia em rascunho.
+    gerarGuia(ctx.db, novo, { inserir: ctx.inserir, hoje: ctx.hojeClinica() });
   }
   if (antigo.status !== 'NA_RECEPCAO' || novo.status !== 'EM_ATENDIMENTO') return;
   const hoje = ctx.agoraTexto().slice(0, 10);
@@ -451,6 +454,16 @@ function validarFundamentacao(novo, antigo) {
 }
 function devolverRecursoFundamentado(recurso) {
   if (!recurso.aguardaFundamentacao && recurso.situacao === 'AGUARDANDO_FUNDAMENTACAO') recurso.situacao = 'EM_PREPARO';
+}
+
+// RF54: a guia é cancelada com motivo e antes de entrar em lote; liberar é só
+// pela crítica prévia.
+function validarCancelamentoDeGuia(novo, antigo) {
+  if (!mudou('situacao', novo, antigo)) return null;
+  if (novo.situacao !== 'CANCELADA') return 'A guia só é liberada pela crítica prévia, na revisão da guia.';
+  if (antigo.idLoteCobranca != null) return 'A guia já está em um lote e não pode mais ser cancelada aqui.';
+  if (!preenchido(novo.motivoCancelamento, 5)) return 'Escreva o motivo do cancelamento.';
+  return null;
 }
 
 // RF54: operadora conhecida, vigência coerente e prazos em dias.
@@ -1638,7 +1651,9 @@ const politica = {
   },
   guiasTiss: {
     [A]: { ler: todos },
-    [S]: { ler: todos, criar: true, editar: true },
+    // RF54: pela coleção, a Secretária só cancela; gerar, atualizar e liberar
+    // passam pela crítica prévia em /tiss/guias.
+    [S]: { ler: todos, editar: true, editaveis: ['situacao', 'motivoCancelamento'], validar: validarCancelamentoDeGuia },
     [M]: { ler: doPaciente('guiasTiss'), ocultar: ['valor'] },
   },
   glosas: {

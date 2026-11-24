@@ -976,6 +976,11 @@ function gerarBanco({ data = DATA_PADRAO, contas = lerContas() } = {}) {
     }
   }
 
+  // RF54: um dos rascunhos de hoje ficou com o valor anterior à tabela; a
+  // crítica prévia bloqueia a liberação até a guia ser atualizada.
+  const rascunhos = db.guiasTiss.filter((g) => g.situacao === 'EM_DIGITACAO');
+  if (rascunhos.length > 1) rascunhos[rascunhos.length - 1].valor = dinheiro(rascunhos[rascunhos.length - 1].valor + 10);
+
   // O recurso que aguarda fundamentação é de uma guia do primeiro médico.
   const guiasEnviadas = db.guiasTiss.filter((g) => g.situacao === 'ENVIADA');
   const medicoDaGuia = (g) => db.consultas[g.idConsulta - 1].idMedico;

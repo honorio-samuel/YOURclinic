@@ -32,6 +32,7 @@ const { aliquotasEm, imposto, proximoNumero, origemDoTitulo, pagadoresPossiveis,
 const { detectarTipo, tipoPelaExtensao, reprovadoNaVarredura, nomeSeguro, arquivoDeDemonstracao } = require('./anexo');
 const { montarRelatorio, paraCsv } = require('./relatorios');
 const { MODELOS_PADRAO } = require('./modelos');
+const { EM_REVISAO, dadosDaGuia, gerarGuia, criticaPrevia, guiaAtiva } = require('./guias');
 const { DATA_PADRAO } = require('./seed');
 const { Sessoes, conferirSenha, gerarHash, HASH_DE_ENGANO } = require('./sessao');
 const { filtrar, ordenar, paginar, escolherCampos } = require('./consulta');
@@ -1828,6 +1829,74 @@ function criarApi({
     return enviar(res, 200, { lote: lote.numero, pagas, glosadas });
   }
 
+  // RF54: a Secretária gera a guia de um atendimento de convênio finalizado
+  // (a guia nova depois de um cancelamento, por exemplo), revisa a crítica
+  // prévia, atualiza os dados que o sistema preenche e libera para o lote.
+  async function rotaDeGuia(req, res, { partes, sessao, rota }) {
+    const ctx = contexto(sessao, rota);
+    if (sessao.papel !== SECRETARIA) {
+      auditar({ acao: 'EDITAR', sessao, rota, registroAlvo: partes.join('/'), resultado: 'NEGADO', motivo: 'PAPEL' });
+      throw ACESSO_NEGADO();
+    }
+    const hoje = hojeClinica();
+    const projetarGuia = (guia) => projetar(regraPara('guiasTiss', SECRETARIA), guia, ctx);
+    const resposta = (guia) => {
+      const consulta = ctx.buscar('consultas', guia.idConsulta);
+      const procedimento = ctx.buscar('procedimentos', consulta?.idProcedimento);
+      return {
+        guia: projetarGuia(guia),
+        bloqueios: criticaPrevia(db, guia, hoje),
+        atendimento: {
+          data: consulta?.dataHora ?? null,
+          procedimento: procedimento ? `${procedimento.codigo} · ${procedimento.nome}` : null,
+          exigeAutorizacao: Boolean(procedimento?.exigeAutorizacao),
+          elegibilidade: ctx.buscar('elegibilidades', guia.idElegibilidade)?.situacao ?? null,
+          autorizacao: ctx.buscar('autorizacoes', guia.idAutorizacao)?.situacao ?? null,
+        },
+      };
+    };
+
+    if (partes.length === 2 && req.method === 'POST') {
+      const corpo = await lerCorpo(req);
+      const consulta = ctx.buscar('consultas', corpo.idConsulta);
+      if (!consulta || !consulta.idConvenio || consulta.status !== 'FINALIZADO') throw new ErroHttp(422, 'Escolha um atendimento de convênio finalizado.');
+      if (guiaAtiva(db, consulta.id)) throw new ErroHttp(409, 'Este atendimento já tem guia. Para corrigir uma guia liberada, cancele-a antes.');
+      const guia = gerarGuia(db, consulta, { inserir: ctx.inserir, hoje });
+      auditar({ acao: 'CRIAR', sessao, rota, registroAlvo: `guiasTiss/${guia.id}`, resultado: 'PERMITIDO' });
+      salvar();
+      return enviar(res, 201, resposta(guia));
+    }
+
+    const guia = partes.length === 4 ? db.guiasTiss.find((g) => igual(g.id, partes[2])) : null;
+    if (!guia) throw NAO_ENCONTRADO();
+    if (partes[3] === 'critica' && req.method === 'GET') return enviar(res, 200, resposta(guia));
+    if (req.method !== 'POST' || !['atualizar', 'liberar'].includes(partes[3])) throw NAO_ENCONTRADO();
+    if (!EM_REVISAO.includes(guia.situacao)) throw new ErroHttp(409, 'Depois de liberada, a guia não muda: a correção é cancelar e gerar outra.');
+
+    if (partes[3] === 'atualizar') {
+      Object.assign(guia, dadosDaGuia(db, ctx.buscar('consultas', guia.idConsulta)));
+      if (guia.situacao === 'BLOQUEADA' && criticaPrevia(db, guia, hoje).length === 0) guia.situacao = 'EM_DIGITACAO';
+      auditar({ acao: 'EDITAR', sessao, rota, registroAlvo: `guiasTiss/${guia.id}`, resultado: 'PERMITIDO', motivo: 'ATUALIZAR' });
+      salvar();
+      return enviar(res, 200, resposta(guia));
+    }
+
+    const bloqueios = criticaPrevia(db, guia, hoje);
+    if (bloqueios.length > 0) {
+      guia.situacao = 'BLOQUEADA';
+      auditar({ acao: 'EDITAR', sessao, rota, registroAlvo: `guiasTiss/${guia.id}`, resultado: 'NEGADO', motivo: 'CRITICA_PREVIA' });
+      salvar();
+      return enviar(res, 422, {
+        erro: `A crítica prévia encontrou ${bloqueios.length === 1 ? 'um bloqueio' : `${bloqueios.length} bloqueios`}.`,
+        bloqueios,
+      });
+    }
+    guia.situacao = 'LIBERADA';
+    auditar({ acao: 'EDITAR', sessao, rota, registroAlvo: `guiasTiss/${guia.id}`, resultado: 'PERMITIDO', motivo: 'LIBERAR' });
+    salvar();
+    return enviar(res, 200, resposta(guia));
+  }
+
   async function rotaDeLote(req, res, { partes, sessao, rota }) {
     const ctx = contexto(sessao, rota);
     if (sessao.papel !== SECRETARIA) {
@@ -2146,6 +2215,7 @@ function criarApi({
       if (partes[0] === 'anexos' && (partes[1] === 'envio' || partes[2] === 'arquivo')) return await rotaDeAnexo(req, res, { partes, sessao, rota });
       if (partes[0] === 'tiss' && partes[1] === 'elegibilidade') return await rotaDeElegibilidade(req, res, { partes, sessao, rota });
       if (partes[0] === 'tiss' && partes[1] === 'lotes') return await rotaDeLote(req, res, { partes, sessao, rota });
+      if (partes[0] === 'tiss' && partes[1] === 'guias') return await rotaDeGuia(req, res, { partes, sessao, rota });
       if (partes[0] === 'tiss' && partes[1] === 'demonstrativo') return await rotaDeDemonstrativo(req, res, { partes, sessao, rota });
       if (partes[0] === 'relatorios' && partes.length === 3 && ['dados', 'arquivo'].includes(partes[2])) return rotaDeRelatorio(req, res, { partes, sessao, rota });
       if ((partes[0] === 'notificacoes' && partes.length === 3) || (partes[0] === 'portal' && partes[1] === 'preferencias')) {
