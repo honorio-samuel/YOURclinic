@@ -137,6 +137,16 @@ O pedido e a decisão passam por estas rotas; a coleção `estornos` é só de l
 | `POST /financeiro/estornos` `{idPagamento, valor, motivo, chargeback: true}` | Secretária | Registro de chargeback (contestação do portador), só em cartão, sem aprovação e sem efeito no título |
 | `POST /financeiro/estornos/:id/aprovar` e `/recusar` `{motivo}` | Administrador | Aprovar confere de novo o que o meio permite, grava o protocolo, reabre o título, cancela recibo e NFS-e e, em dinheiro, lança a devolução num caixa aberto (o do recebimento ou o de quem pediu). Recusar pede motivo |
 
+### Notificações
+
+| Rota | Papéis | O que faz |
+|---|---|---|
+| `POST /notificacoes/:id/reenviar` | Secretária, Administrador | Reenvia a notificação que falhou pelo provedor simulado, que entrega; registra quem e quando. Sem telefone nem e-mail, 409 |
+| `POST /notificacoes/:id/aviso-por-telefone` | Secretária, Administrador | Registra que a recepção avisou por telefone |
+| `GET` e `PUT /portal/preferencias` `{lembretes, cobrancas}` | Paciente, Responsável | Preferência de aviso do titular, guardada no cadastro do paciente (RF39, RN-59.2) |
+
+A coleção `notificacoes` é só de leitura.
+
 ### Anexos
 
 A coleção `anexos` traz só os metadados e não recebe arquivo; o envio e a leitura do conteúdo passam por estas rotas. O arquivo fica na pasta `anexos/`, ao lado do banco (o git a ignora), com nome aleatório; os exames do banco sintético não têm arquivo, e a API gera um PDF ou PNG de demonstração.

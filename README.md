@@ -112,6 +112,13 @@ Estoque:
 | Produtos e lotes (A-26, S-17) e Estoque (M-05a) | Administrador, Secretária, Médico | Saldo que pode sair, com o vencido à parte, e a situação de cada lote pelo X14. Medicamento e amostra sempre controlam lote |
 | Alertas (A-28, S-19) | Administrador, Secretária | Estoque mínimo, lote a vencer e lote vencido; cada alerta leva à entrada ou ao descarte. O Médico vê os de validade em Atendimentos do dia |
 
+Notificações:
+
+| Tela | Papéis | Observação |
+|---|---|---|
+| Notificações sem entrega (S-06) e Notificações (A-32) | Secretária, Administrador | Reenviar a notificação que falhou ou registrar que avisou por telefone; o detalhe mostra canal, endereço e tentativas, sem conteúdo clínico |
+| Meus dados e privacidade (P-06, R-06) | Paciente, Responsável Legal | Liga e desliga lembretes e avisos de cobrança, com efeito na hora; o aviso de cancelamento pela clínica continua. "Ver" acompanha os pedidos feitos à clínica, com o prazo de resposta |
+
 Os e-mails de convite e de nova senha saem no terminal da API local, com o link (detalhes em [fake-api/README.md](fake-api/README.md)).
 
 O Pix e a maquininha integrada são simulados pela API local: o Pix é pago sozinho uns segundos depois de gerado, e valores terminados em ,13 simulam cartão negado (detalhes em [fake-api/README.md](fake-api/README.md#checkout-simulado)). Finalizar uma consulta particular gera a cobrança na hora.
