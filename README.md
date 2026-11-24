@@ -17,6 +17,8 @@ Em outro terminal:
 npm start
 ```
 
+Para apresentar, siga o [roteiro de demonstração](docs/ROTEIRO-DE-DEMONSTRACAO.md): como subir do zero e o que mostrar em cada papel.
+
 O app abre em `http://localhost:3000` e usa a API em `http://127.0.0.1:3001` (`REACT_APP_API_URL` em `.env.development`). Para apontar para outra API sem mexer nesse arquivo, crie `.env.development.local`. Na primeira vez, a API gera `fake-api/db.json` com dados sintéticos; as gravações ficam nesse arquivo, que o git ignora, e `npm run seed` dentro de `fake-api/` volta ao banco inicial.
 
 ## Contas de demonstração

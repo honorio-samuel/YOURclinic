@@ -33,9 +33,9 @@ npm test
 | `PIX_SEGUNDOS` | `8` | Segundos até o Pix simulado ser pago (ver "Checkout simulado") |
 | `TEF_ESPERA_MS` | `1500` | Espera do terminal TEF simulado, em milissegundos |
 | `EXPORTACAO_SEGUNDOS` | `3` | Segundos até a exportação pedida ficar pronta |
+| `DATA_DE_HOJE` | `2026-09-28` | "Hoje" das regras de agenda (horário passado, antecedência do X08). É o mesmo dia de `DATA_DE_HOJE` do app, porque os dados simulados ficam nele; a hora vem do relógio. A sessão e o log usam o relógio de verdade |
 
 Os e-mails de convite e de redefinição de senha não são enviados: a API escreve no terminal o destinatário, o assunto e o link, que vale como se tivesse chegado por e-mail.
-| `DATA_DE_HOJE` | `2026-09-28` | "Hoje" das regras de agenda (horário passado, antecedência do X08). É o mesmo dia de `DATA_DE_HOJE` do app, porque os dados simulados ficam nele; a hora vem do relógio. A sessão e o log usam o relógio de verdade |
 
 No app, aponte `REACT_APP_API_URL` para `http://127.0.0.1:3001`.
 
