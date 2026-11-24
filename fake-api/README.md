@@ -124,6 +124,17 @@ Não há PSP nem gerenciador TEF de verdade. Para a demonstração:
 | `GET /indicadores/financeiro` | Administrador | Painel financeiro (RF35): a receber de pacientes (a vencer, vencido, pago), de operadoras pela situação da guia (a apresentar, apresentado, glosado, em recurso, pago), cartão em trânsito com bruto, taxa, líquido e data prevista por X35 e X36, contas a pagar e o saldo realizado e projetado, com a data-base |
 | `GET /indicadores/gerencial?de&ate` | Administrador | Dashboard gerencial (RF41) no período, por padrão os últimos 30 dias: desfecho das consultas, particular e convênio por operadora, tempo médio de espera, ociosidade da agenda por blocos, conversão de orçamento, divergência de caixa por operador e índice de glosa por operadora e por motivo. Nada clínico entra no cálculo |
 
+### Estorno
+
+O pedido e a decisão passam por estas rotas; a coleção `estornos` é só de leitura. O pagamento original nunca muda (RN-48.1): o estorno aprovado é o lançamento de sinal oposto e sai do pago da cobrança e do recebido do painel financeiro.
+
+| Rota | Papéis | O que faz |
+|---|---|---|
+| `GET /financeiro/estornos/avaliar/:idPagamento` | Secretária, Administrador | O que o meio permite hoje (RF48): `tipo` (`CANCELAMENTO` no mesmo dia, `ESTORNO` depois), `forma`, se aceita parcial, se pede o meio da devolução, quanto ainda pode ser devolvido e a orientação para o operador |
+| `POST /financeiro/estornos` `{idPagamento, valor, motivo, meioDevolucao?}` | Secretária | Pedido, que fica `A_APROVAR`. Dinheiro sai do caixa aberto; Pix volta pelo PSP até 90 dias (depois, transferência manual); débito só se cancela no dia e sempre pelo total; crédito se cancela no adquirente até X34 dias. Fora disso, `meioDevolucao` `PIX` ou `DINHEIRO`. Um pedido aberto por pagamento |
+| `POST /financeiro/estornos` `{idPagamento, valor, motivo, chargeback: true}` | Secretária | Registro de chargeback (contestação do portador), só em cartão, sem aprovação e sem efeito no título |
+| `POST /financeiro/estornos/:id/aprovar` e `/recusar` `{motivo}` | Administrador | Aprovar confere de novo o que o meio permite, grava o protocolo, reabre o título, cancela recibo e NFS-e e, em dinheiro, lança a devolução num caixa aberto (o do recebimento ou o de quem pediu). Recusar pede motivo |
+
 ### Estoque
 
 O saldo do lote é a soma das movimentações (RN-36.2): nenhum papel grava em `movimentacoes` ou `lotes` pela coleção. Cada resposta traz a movimentação, do jeito que o papel a vê, e o lote com o saldo novo.
@@ -194,6 +205,7 @@ Exemplos da matriz: Observações Gerais nunca vão ao Administrador (A3-R17); c
 | Conta a pagar (RF50) | Nasce `ABERTO`, com fornecedor, categoria, vencimento e valor maior que zero. Paga, só o estorno a muda (`situacao` e `motivoEstorno`); estornada, não muda mais |
 | Bloqueio de agenda (RF14) | Motivo da lista fechada (férias, feriado, congresso, capacitação, intervalo, outro), fim depois do início e médico ativo; sem médico, vale para a clínica inteira. O servidor conta as consultas atingidas (`consultasAfetadas`). O Médico registra só a própria indisponibilidade (M-03); quem trata as consultas atingidas é a recepção |
 | Produto (RF36) | Descrição, tipo (`MEDICAMENTO`, `MATERIAL` ou `AMOSTRA`), unidade (`UN`, `CX`, `PCT`, `FR` ou `DOSE`) e estoque mínimo inteiro. Custo, se informado, não negativo; a Secretária não grava o custo. Medicamento e amostra controlam lote, e o controle de lote não muda depois da primeira entrada. `controleEspecial` marca o item que pede conferência manual na saída |
+| Estorno (RF48) | Só pelas rotas de [Estorno](#estorno). A Secretária pede, o Administrador decide; quem pede não aprova. O pagamento original não muda |
 | Movimentação de estoque (RF37, RC08) | Só pelas rotas de [Estoque](#estoque). Da dispensação, Administrador e Secretária não leem `idConsulta` nem `justificativa`; o titular não lê quem registrou nem a justificativa |
 
 ## Dados sintéticos

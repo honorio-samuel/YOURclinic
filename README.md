@@ -75,6 +75,7 @@ Caixa e cobrança:
 | Meu caixa (S-09) | Secretária | Abrir o turno, sangria e reforço com motivo, fechamento cego e recontagem quando o Administrador devolve |
 | Cobrança (A-13b) | Administrador | Cria a cobrança de uma consulta finalizada que ficou sem ela e edita valor e vencimento até o primeiro pagamento |
 | Caixas · supervisão (A-16) | Administrador | Ganhou a lista de lançamentos da maquininha avulsa a conferir |
+| Estornos (S-12) e Cancelamentos e estornos (A-17) | Secretária, Administrador | A Secretária escolhe o pagamento e vê o que o meio permite hoje: dinheiro pelo caixa, Pix pelo PSP, débito só no mesmo dia, crédito até X34 dias; fora disso, devolução por Pix ou dinheiro. Parcial só no crédito e no Pix. O Administrador aprova ou recusa; aprovado, o título reabre e o recibo e a NFS-e são cancelados. Chargeback a Secretária só registra |
 
 Prontuário (Médico):
 

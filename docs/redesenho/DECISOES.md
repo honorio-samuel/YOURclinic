@@ -304,6 +304,18 @@ O banco sintético guardava a antecedência do alerta de validade com o código 
 
 O produto ganha a marca de controle especial. A saída desse item pede a conferência manual (RN-37.3), gravada com o usuário que registrou a saída. O banco sintético inclui um item assim, para a demonstração.
 
+### B27 · Estorno como lançamento de sinal oposto
+
+O pagamento original não muda (RN-48.1). O estorno aprovado é o lançamento de sinal oposto: sai do pago da cobrança e do recebido do painel financeiro, reabre o título e cancela o recibo e a NFS-e, que mantêm o número. A devolução em dinheiro sai de um caixa aberto, o do recebimento ou o de quem pediu; sem caixa aberto, a aprovação espera.
+
+### B28 · Prazos e parcial por meio
+
+O Pix aceita devolução pelo PSP até 90 dias, o prazo do arranjo, já que a especificação deixa o prazo como parâmetro do provedor sem código. O débito, fora do dia da venda, só é devolvido por Pix ou dinheiro, e sempre pelo total. A devolução em dinheiro admite valor parcial, como o crédito e o Pix (RN-48.2 só proíbe o parcial no débito). Cancelamento é o pedido feito no dia do pagamento; estorno, o feito depois (RN-48.3).
+
+### B29 · Chargeback só registrado
+
+O chargeback parte do portador do cartão, e a clínica não o controla (RN-48.3). A Secretária o registra com valor e descrição, sem aprovação e sem mexer no título; o efeito financeiro chega pela conciliação.
+
 ## Estado das telas
 
 Das 112 telas, 108 estão `ok`, 2 em `conflito` e 2 em `lacuna`. S-07d saiu da lista com a decisão B8 e G-04b, com a B16.
