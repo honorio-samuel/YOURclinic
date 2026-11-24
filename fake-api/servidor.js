@@ -23,6 +23,10 @@ const {
   respostaDoTef, confirmacaoDoTef, cartaoDoTerminal, brcodeSimulado, valorLiquido,
 } = require('./checkout');
 const { painelFinanceiro, dashboardGerencial } = require('./indicadores');
+const {
+  ORIGENS_DE_ENTRADA, DESTINOS_DE_SAIDA, MOTIVOS_DE_DESCARTE, TIPOS_COM_LOTE, STATUS_DE_ENTREGA, atualizarSaldo, vencido,
+  lotesParaSaida, recalcularAlertas, inteiroPositivo, dataValida: ehDataValida, texto: textoLimpo, dataBr,
+} = require('./estoque');
 const { DATA_PADRAO } = require('./seed');
 const { Sessoes, conferirSenha, gerarHash, HASH_DE_ENGANO } = require('./sessao');
 const { filtrar, ordenar, paginar, escolherCampos } = require('./consulta');
@@ -206,6 +210,8 @@ function criarApi({
       hojeClinica,
       parametro,
       emitirConvite: (usuario) => emitirToken(usuario, 'CONVITE'),
+      // RN-38.2: alertas de estoque refeitos depois de cada mudança no estoque.
+      recalcularAlertas: () => recalcularAlertas(db, { hoje: hojeClinica(), antecedencia: parametro('X14', 60), inserir: ctx.inserir }),
       buscar(colecao, id) {
         if (id == null || !db[colecao]) return undefined;
         if (!indices.has(colecao)) {
@@ -1084,6 +1090,201 @@ function criarApi({
     return enviar(res, 202, { mensagem: `Convite reenviado para ${usuario.email}.` });
   }
 
+  // Estoque (RF36 a RF38). Entrada, saída e ajuste passam só por aqui, para
+  // que o saldo nunca seja editado direto (RN-36.2). Entrada: Administrador e
+  // Secretária. Saída: Secretária e Médico (RF37, corrigido na v2.0). Ajuste:
+  // o do Administrador vale na hora; o da Secretária espera a aprovação dele.
+  async function rotaDeEstoque(req, res, { partes, sessao, rota }) {
+    const ctx = contexto(sessao, rota);
+    const exigirPapel = (...papeis) => {
+      if (papeis.includes(sessao.papel)) return;
+      auditar({ acao: ACOES[req.method] ?? req.method, sessao, rota, registroAlvo: partes.join('/'), resultado: 'NEGADO', motivo: 'PAPEL' });
+      throw ACESSO_NEGADO();
+    };
+    if (req.method !== 'POST') throw NAO_ENCONTRADO();
+    const hoje = hojeClinica();
+    const loteDe = (id) => {
+      const lote = ctx.buscar('lotes', id);
+      if (!lote) throw new ErroHttp(422, 'Escolha o lote.');
+      return lote;
+    };
+    const nomeDoLote = (lote) => (lote.numero ? `lote ${lote.numero}` : 'item sem lote');
+    const quantidadeDe = (valor) => {
+      const n = Number(valor);
+      if (!inteiroPositivo(n)) throw new ErroHttp(422, 'Informe a quantidade, um número inteiro maior que zero.');
+      return n;
+    };
+
+    function gravar(dados) {
+      const m = ctx.inserir('movimentacoes', {
+        dataHora: agoraClinica(), justificativa: null, motivoDescarte: null, idConsulta: null, idTituloPagar: null,
+        ajusteSituacao: null, conferenciaManual: null, idUsuario: sessao.idUsuario, ...dados,
+      });
+      auditar({ acao: 'CRIAR', sessao, rota, registroAlvo: `movimentacoes/${m.id}`, resultado: 'PERMITIDO', motivo: m.origem });
+      return m;
+    }
+    // RN-38.2: o alerta é recalculado a cada movimentação.
+    function concluir(status, m, lote) {
+      atualizarSaldo(db, lote);
+      ctx.recalcularAlertas();
+      salvar();
+      const regra = regraPara('movimentacoes', sessao.papel);
+      return enviar(res, status, {
+        movimentacao: regra ? projetar(regra, m, ctx) : { id: m.id },
+        lote: { id: lote.id, numero: lote.numero, validade: lote.validade, quantidade: lote.quantidade },
+      });
+    }
+
+    // Entrada: produto, lote, validade, quantidade e origem. Sendo compra, o
+    // Administrador pode vincular o título a pagar (RF50).
+    if (partes[1] === 'entradas' && partes.length === 2) {
+      exigirPapel(ADMINISTRADOR, SECRETARIA);
+      const corpo = await lerCorpo(req);
+      const produto = ctx.buscar('produtos', corpo.idProduto);
+      if (!produto) throw new ErroHttp(422, 'Escolha o produto.');
+      if (produto.situacao !== 'ATIVO') throw new ErroHttp(409, 'Produto inativo. Reative o produto para registrar a entrada.');
+      const quantidade = quantidadeDe(corpo.quantidade);
+      if (!ORIGENS_DE_ENTRADA.includes(corpo.origem)) throw new ErroHttp(422, 'Escolha a origem.');
+      let idTituloPagar = null;
+      // A Secretária não vê títulos a pagar (RC06); o campo dela é ignorado.
+      if (sessao.papel === ADMINISTRADOR && corpo.idTituloPagar != null && corpo.idTituloPagar !== '') {
+        if (corpo.origem !== 'COMPRA') throw new ErroHttp(422, 'Só a compra se vincula a um título a pagar.');
+        const titulo = ctx.buscar('titulosPagar', corpo.idTituloPagar);
+        if (!titulo) throw new ErroHttp(422, 'Título a pagar não encontrado.');
+        idTituloPagar = titulo.id;
+      }
+      let lote;
+      if (produto.controlaLote || TIPOS_COM_LOTE.includes(produto.tipo)) {
+        // RN-36.1: lote e validade obrigatórios.
+        const numero = textoLimpo(corpo.numeroLote);
+        if (!numero) throw new ErroHttp(422, 'Informe o número do lote.');
+        if (numero.length > 30) throw new ErroHttp(422, 'O número do lote tem até 30 caracteres.');
+        if (!ehDataValida(corpo.validade)) throw new ErroHttp(422, 'Informe a validade do lote.');
+        if (corpo.validade < hoje) throw new ErroHttp(422, 'A validade já passou: lote vencido não entra no estoque.');
+        lote = db.lotes.find((l) => igual(l.idProduto, produto.id) && (l.numero ?? '').toUpperCase() === numero.toUpperCase());
+        if (lote && lote.validade !== corpo.validade) {
+          throw new ErroHttp(422, `O lote ${lote.numero} já está cadastrado com validade ${dataBr(lote.validade)}. Confira o número ou a validade.`);
+        }
+        lote ??= ctx.inserir('lotes', { numero, validade: corpo.validade, quantidade: 0, idProduto: produto.id });
+      } else {
+        // Produto sem controle de lote: um só lote, sem número nem validade.
+        lote =
+          db.lotes.find((l) => igual(l.idProduto, produto.id) && l.numero == null) ??
+          ctx.inserir('lotes', { numero: null, validade: null, quantidade: 0, idProduto: produto.id });
+      }
+      return concluir(201, gravar({ tipo: 'ENTRADA', quantidade, origem: corpo.origem, idLote: lote.id, idTituloPagar }), lote);
+    }
+
+    // Saída: para o paciente atendido hoje (dispensação) ou descarte.
+    if (partes[1] === 'saidas' && partes.length === 2) {
+      exigirPapel(SECRETARIA, MEDICO);
+      const corpo = await lerCorpo(req);
+      const lote = loteDe(corpo.idLote);
+      const produto = ctx.buscar('produtos', lote.idProduto);
+      if (!produto || produto.situacao !== 'ATIVO') throw new ErroHttp(409, 'Produto inativo. Reative o produto para registrar a saída.');
+      const quantidade = quantidadeDe(corpo.quantidade);
+      if (quantidade > lote.quantidade) throw new ErroHttp(422, `O ${nomeDoLote(lote)} tem só ${lote.quantidade} em estoque.`);
+      if (!DESTINOS_DE_SAIDA.includes(corpo.destino)) throw new ErroHttp(422, 'Escolha o destino: paciente ou descarte.');
+      // RN-37.3: item de controle especial só sai depois da conferência manual.
+      if (produto.controleEspecial && corpo.conferenciaManual !== true) {
+        throw new ErroHttp(422, 'Item de controle especial: registre a conferência manual antes da saída.');
+      }
+      const justificativa = textoLimpo(corpo.justificativa);
+      const dados = { tipo: 'SAIDA', quantidade, origem: corpo.destino, idLote: lote.id, conferenciaManual: produto.controleEspecial ? true : null };
+      if (corpo.destino === 'DISPENSACAO') {
+        // RN-38.1: lote vencido não sai para o paciente, e nenhum papel sobrepõe.
+        if (vencido(lote, hoje)) throw new ErroHttp(409, `O ${nomeDoLote(lote)} venceu em ${dataBr(lote.validade)}: só sai por descarte.`);
+        // O Médico entrega no próprio atendimento; a Secretária, a quem está na clínica hoje.
+        const consulta = ctx.buscar('consultas', corpo.idConsulta);
+        const statusAceitos = sessao.papel === MEDICO ? ['EM_ATENDIMENTO', 'FINALIZADO'] : STATUS_DE_ENTREGA;
+        const aceita =
+          consulta &&
+          consulta.dataHora.slice(0, 10) === hoje &&
+          statusAceitos.includes(consulta.status) &&
+          (sessao.papel !== MEDICO || igual(consulta.idMedico, sessao.idPessoa));
+        if (!aceita) throw new ErroHttp(422, 'Escolha o paciente entre os atendidos hoje.');
+        // A sugestão é o lote que vence primeiro; trocar exige justificativa.
+        const sugerido = lotesParaSaida(db, produto.id, hoje)[0];
+        const trocou = sugerido && !igual(sugerido.id, lote.id);
+        if (trocou && justificativa.length < 5) {
+          throw new ErroHttp(422, `O ${nomeDoLote(sugerido)} vence antes. Para usar outro lote, explique o motivo da troca.`);
+        }
+        Object.assign(dados, { idConsulta: consulta.id, justificativa: trocou ? justificativa : null });
+      } else {
+        if (!MOTIVOS_DE_DESCARTE.includes(corpo.motivoDescarte)) throw new ErroHttp(422, 'Escolha o motivo do descarte.');
+        if (corpo.motivoDescarte === 'VENCIMENTO' && !vencido(lote, hoje)) {
+          throw new ErroHttp(422, `O ${nomeDoLote(lote)} ainda está na validade. Escolha outro motivo.`);
+        }
+        if (corpo.motivoDescarte === 'OUTRO' && justificativa.length < 5) throw new ErroHttp(422, 'Descreva o motivo do descarte.');
+        Object.assign(dados, { motivoDescarte: corpo.motivoDescarte, justificativa: justificativa || null });
+      }
+      return concluir(201, gravar(dados), lote);
+    }
+
+    // Ajuste de inventário: a diferença entre a contagem e o saldo, com motivo.
+    if (partes[1] === 'ajustes' && partes.length === 2) {
+      exigirPapel(ADMINISTRADOR, SECRETARIA);
+      const corpo = await lerCorpo(req);
+      const lote = loteDe(corpo.idLote);
+      const contada = Number(corpo.quantidadeContada);
+      if (!(Number.isInteger(contada) && contada >= 0)) throw new ErroHttp(422, 'Informe a quantidade contada, um número inteiro.');
+      const diferenca = contada - lote.quantidade;
+      if (diferenca === 0) throw new ErroHttp(422, 'A contagem bate com o saldo: não há o que ajustar.');
+      const justificativa = textoLimpo(corpo.justificativa);
+      if (justificativa.length < 5) throw new ErroHttp(422, 'Informe o motivo do ajuste.');
+      if (db.movimentacoes.some((m) => igual(m.idLote, lote.id) && m.tipo === 'AJUSTE' && m.ajusteSituacao === 'A_APROVAR')) {
+        throw new ErroHttp(409, 'Já há um pedido de ajuste deste lote esperando o Administrador.');
+      }
+      const doAdministrador = sessao.papel === ADMINISTRADOR;
+      const m = gravar({
+        tipo: 'AJUSTE', origem: 'AJUSTE_INVENTARIO', quantidade: diferenca, idLote: lote.id, justificativa,
+        saldoNaContagem: lote.quantidade, quantidadeContada: contada,
+        ajusteSituacao: doAdministrador ? 'APROVADO' : 'A_APROVAR',
+        idAprovador: doAdministrador ? sessao.idUsuario : null,
+        dataDecisao: doAdministrador ? agoraClinica() : null,
+        motivoRecusa: null,
+      });
+      return concluir(201, m, lote);
+    }
+
+    // Decisão do Administrador sobre o pedido de ajuste da Secretária.
+    if (partes[1] === 'ajustes' && partes.length === 4 && ['aprovar', 'recusar'].includes(partes[3])) {
+      exigirPapel(ADMINISTRADOR);
+      const corpo = await lerCorpo(req);
+      const m = db.movimentacoes.find((x) => igual(x.id, partes[2]) && x.tipo === 'AJUSTE');
+      if (!m) throw NAO_ENCONTRADO();
+      if (m.ajusteSituacao !== 'A_APROVAR') throw new ErroHttp(409, 'Este pedido já foi decidido.');
+      const lote = loteDe(m.idLote);
+      if (partes[3] === 'aprovar') {
+        if (lote.quantidade + m.quantidade < 0) {
+          throw new ErroHttp(409, `O ajuste deixaria o lote com saldo negativo: hoje o saldo é ${lote.quantidade}. Recuse e peça uma nova contagem.`);
+        }
+        m.ajusteSituacao = 'APROVADO';
+      } else {
+        const motivo = textoLimpo(corpo.motivo);
+        if (motivo.length < 5) throw new ErroHttp(422, 'Informe o motivo da recusa.');
+        m.ajusteSituacao = 'RECUSADO';
+        m.motivoRecusa = motivo;
+      }
+      m.idAprovador = sessao.idUsuario;
+      m.dataDecisao = agoraClinica();
+      auditar({ acao: 'EDITAR', sessao, rota, registroAlvo: `movimentacoes/${m.id}`, resultado: 'PERMITIDO', motivo: m.ajusteSituacao });
+      return concluir(200, m, lote);
+    }
+
+    throw NAO_ENCONTRADO();
+  }
+
+  // RN-38.2: além de a cada movimentação, os alertas são revistos uma vez por
+  // dia da clínica, no primeiro pedido do dia (o ator Sistema da especificação).
+  let ultimaRevisaoDoEstoque = null;
+  function revisarEstoqueDoDia() {
+    const hoje = hojeClinica();
+    if (ultimaRevisaoDoEstoque === hoje) return;
+    ultimaRevisaoDoEstoque = hoje;
+    if (recalcularAlertas(db, { hoje, antecedencia: parametro('X14', 60), inserir })) salvar();
+  }
+
   // A-12 e A-29: painel financeiro (RF35) e dashboard gerencial (RF41), só
   // do Administrador (RC06, nível 3). O período do dashboard vem em ?de&ate;
   // sem ele, os últimos 30 dias até hoje.
@@ -1272,12 +1473,14 @@ function criarApi({
       }
 
       concluirExportacoes();
+      revisarEstoqueDoDia();
       if (partes[0] === 'sessao' || url.pathname === '/logout') {
         return await rotaDeSessao(req, res, { partes, sessao, token, rota });
       }
       if (partes[0] === 'agenda') return await rotaDeAgenda(req, res, { url, partes, sessao, rota });
       if (partes[0] === 'checkout') return await rotaDeCheckout(req, res, { partes, sessao, rota });
       if (partes[0] === 'indicadores') return rotaDeIndicadores(req, res, { url, partes, sessao, rota });
+      if (partes[0] === 'estoque') return await rotaDeEstoque(req, res, { partes, sessao, rota });
       if (partes[0] === 'usuarios' && partes[2] === 'convite' && partes.length === 3) {
         return await reenviarConvite(req, res, { partes, sessao, rota });
       }

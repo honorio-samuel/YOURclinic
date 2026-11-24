@@ -13,6 +13,7 @@ const path = require('node:path');
 
 const { COLECOES, ADMINISTRADOR, MEDICO, SECRETARIA, PACIENTE, RESPONSAVEL_LEGAL } = require('./permissoes');
 const { gerarHash } = require('./sessao');
+const { efeitoNoSaldo } = require('./estoque');
 
 // O app trata 28/09/2026 como "hoje" (src/config/axios.js).
 const DATA_PADRAO = '2026-09-28';
@@ -281,7 +282,7 @@ function gerarBanco({ data = DATA_PADRAO, contas = lerContas() } = {}) {
     ['X15', 'Acesso', 'Inatividade até a sessão expirar', 30, 'min', 5, 60, true],
     ['X28', 'Agenda', 'Intervalo de atualização da fila do dia', 30, 's', 10, 120, true],
     ['X42', 'Privacidade', 'Validade do link de exportação', 24, 'h', 1, 72, true],
-    ['X46', 'Estoque', 'Antecedência do alerta de validade', 30, 'dias', 7, 90, true],
+    ['X14', 'Estoque', 'Antecedência do alerta de lote próximo do vencimento', 60, 'dias', 7, 180, true],
     ['X31', 'Pagamento', 'Expiração do QR Code Pix dinâmico', 30, 'min', 5, 1440, true],
     ['X32', 'Pagamento', 'Número máximo de parcelas no cartão de crédito', 12, 'parcelas', 1, 21, true],
     ['X33', 'Pagamento', 'Valor mínimo por parcela', 50, 'R$', 0, 1000, true],
@@ -980,16 +981,20 @@ function gerarBanco({ data = DATA_PADRAO, contas = lerContas() } = {}) {
 
   // ── Estoque ──────────────────────────────────────────────────────────────
   const produtos = [
-    ['Seringa descartável 5 ml', 'MATERIAL', 'UN', 100, 0.45, 'ATIVO'],
-    ['Luva de procedimento (caixa com 100)', 'MATERIAL', 'CX', 10, 32.9, 'ATIVO'],
-    ['Gaze estéril (pacote)', 'MATERIAL', 'PCT', 50, 1.8, 'ATIVO'],
-    ['Lidocaína 2% (frasco 20 ml)', 'MEDICAMENTO', 'FR', 15, 9.5, 'ATIVO'],
-    ['Vacina contra gripe (dose)', 'MEDICAMENTO', 'DOSE', 20, 41, 'ATIVO'],
-    ['Atadura de crepe 10 cm', 'MATERIAL', 'UN', 30, 2.2, 'ATIVO'],
-    ['Antisséptico (frasco 1 L)', 'MATERIAL', 'FR', 5, 18, 'INATIVO'],
-  ].map(([descricao, tipo, unidade, estoqueMinimo, custoAquisicao, situacao]) =>
-    novo('produtos', { descricao, tipo, unidade, estoqueMinimo, controlaLote: true, custoAquisicao, situacao })
+    ['Seringa descartável 5 ml', 'MATERIAL', 'UN', 100, 0.45, 'ATIVO', false],
+    ['Luva de procedimento (caixa com 100)', 'MATERIAL', 'CX', 10, 32.9, 'ATIVO', false],
+    ['Gaze estéril (pacote)', 'MATERIAL', 'PCT', 50, 1.8, 'ATIVO', false],
+    ['Lidocaína 2% (frasco 20 ml)', 'MEDICAMENTO', 'FR', 15, 9.5, 'ATIVO', false],
+    ['Vacina contra gripe (dose)', 'MEDICAMENTO', 'DOSE', 20, 41, 'ATIVO', false],
+    ['Atadura de crepe 10 cm', 'MATERIAL', 'UN', 30, 2.2, 'ATIVO', false],
+    ['Antisséptico (frasco 1 L)', 'MATERIAL', 'FR', 5, 18, 'INATIVO', false],
+    // Controle especial (RF25): a saída pede a conferência manual (RN-37.3).
+    ['Midazolam 5 mg/ml (ampola 3 ml)', 'MEDICAMENTO', 'UN', 10, 6.8, 'ATIVO', true],
+  ].map(([descricao, tipo, unidade, estoqueMinimo, custoAquisicao, situacao, controleEspecial]) =>
+    novo('produtos', { descricao, tipo, unidade, estoqueMinimo, controlaLote: true, controleEspecial, custoAquisicao, situacao })
   );
+  // A quantidade do lote é o saldo final da demonstração; as entradas fecham
+  // a conta mais abaixo.
   const lotesDeEstoque = [];
   produtos.forEach((produto, i) => {
     lotesDeEstoque.push(novo('lotes', {
@@ -1002,39 +1007,75 @@ function gerarBanco({ data = DATA_PADRAO, contas = lerContas() } = {}) {
       }));
     }
   });
+  // Lote vencido com saldo: só sai por descarte (RN-38.1).
+  const gazeVencida = novo('lotes', { numero: 'L00006', validade: dia(-3), quantidade: 6, idProduto: produtos[2].id });
+  lotesDeEstoque.push(gazeVencida);
+
   const compra = titulosPagar[0];
-  lotesDeEstoque.forEach((lote) =>
+  const usuarioAdministrador = usuarioDe.get(administradores[0].id).id;
+  const movimento = (dados) =>
     novo('movimentacoes', {
-      dataHora: `${dia(-30)}T09:00:00`, tipo: 'ENTRADA', quantidade: lote.quantidade + 10, origem: 'COMPRA',
-      justificativa: null, idLote: lote.id, idConsulta: null, idTituloPagar: compra.id, ajusteSituacao: null,
-    })
-  );
+      justificativa: null, motivoDescarte: null, idConsulta: null, idTituloPagar: null, ajusteSituacao: null,
+      conferenciaManual: null, ...dados,
+    });
+  const entradas = new Map();
+  lotesDeEstoque.forEach((lote) => {
+    const antiga = lote.validade < data;
+    entradas.set(lote.id, movimento({
+      dataHora: `${dia(antiga ? -150 : -30)}T09:00:00`, tipo: 'ENTRADA', quantidade: 0, origem: 'COMPRA',
+      idLote: lote.id, idTituloPagar: antiga ? null : compra.id, idUsuario: usuarioAdministrador,
+    }));
+  });
   const dispensaveis = lotesDeEstoque.filter((l) => [1, 4, 5].includes(l.idProduto) && l.validade > data);
   const comDispensacao = [
     ...finalizadas.filter((c) => [demo.id, representada.id].includes(c.idPaciente)).slice(0, 3),
     ...s.embaralhar(finalizadas).slice(0, 10),
   ];
   comDispensacao.forEach((c) =>
-    novo('movimentacoes', {
+    movimento({
       dataHora: somarMinutos(c.dataHora, 20), tipo: 'SAIDA', quantidade: s.inteiro(1, 2), origem: 'DISPENSACAO',
-      justificativa: null, idLote: s.escolher(dispensaveis).id, idConsulta: c.id, idTituloPagar: null, ajusteSituacao: null,
+      idLote: s.escolher(dispensaveis).id, idConsulta: c.id, idUsuario: usuarioDe.get(c.idMedico)?.id ?? null,
     })
   );
   const vencido = lotesDeEstoque.find((l) => l.validade < data);
-  novo('movimentacoes', {
+  movimento({
     dataHora: `${dia(-4)}T17:00:00`, tipo: 'SAIDA', quantidade: vencido.quantidade, origem: 'DESCARTE',
-    justificativa: 'Lote vencido', idLote: vencido.id, idConsulta: null, idTituloPagar: null, ajusteSituacao: null,
+    motivoDescarte: 'VENCIMENTO', idLote: vencido.id, idUsuario: usuarioSecretaria,
   });
-  [['A_APROVAR', -1, -2], ['APROVADO', -9, 3]].forEach(([ajusteSituacao, d, quantidade]) =>
-    novo('movimentacoes', {
+  vencido.quantidade = 0;
+  // Ajustes de inventário pedidos pela Secretária: um esperando o
+  // Administrador e um já aprovado.
+  const luvas = lotesDeEstoque[2];
+  [['A_APROVAR', -1, -2], ['APROVADO', -9, 3]].forEach(([ajusteSituacao, d, quantidade]) => {
+    const aprovado = ajusteSituacao === 'APROVADO';
+    movimento({
       dataHora: `${dia(d)}T16:30:00`, tipo: 'AJUSTE', quantidade, origem: 'AJUSTE_INVENTARIO',
-      justificativa: 'Diferença encontrada na contagem de inventário.', idLote: lotesDeEstoque[2].id,
-      idConsulta: null, idTituloPagar: null, ajusteSituacao,
-    })
+      justificativa: 'Diferença encontrada na contagem de inventário.', idLote: luvas.id, ajusteSituacao,
+      idUsuario: usuarioSecretaria,
+      saldoNaContagem: aprovado ? luvas.quantidade - quantidade : luvas.quantidade,
+      quantidadeContada: aprovado ? luvas.quantidade : luvas.quantidade + quantidade,
+      idAprovador: aprovado ? usuarioAdministrador : null,
+      dataDecisao: aprovado ? `${dia(d)}T18:00:00` : null,
+      motivoRecusa: null,
+    });
+  });
+  // RN-36.2: o saldo do lote é a soma das movimentações; a entrada de cada
+  // lote completa a conta até o saldo da demonstração.
+  for (const lote of lotesDeEstoque) {
+    const entrada = entradas.get(lote.id);
+    const outras = db.movimentacoes.filter((m) => m.idLote === lote.id && m !== entrada);
+    entrada.quantidade = lote.quantidade - outras.reduce((soma, m) => soma + efeitoNoSaldo(m), 0);
+  }
+  // RF38: os alertas que o sistema abriria com estes saldos (X14 de 60 dias),
+  // com a data em que surgiram; o do lote descartado já está resolvido.
+  [
+    ['MINIMO', -1, 'ABERTO', 4, null, null],
+    ['VALIDADE', -39, 'ABERTO', 5, lotesDeEstoque.find((l) => l.idProduto === 5).id, null],
+    ['VALIDADE', -65, 'RESOLVIDO', 1, vencido.id, dia(-4)],
+    ['VENCIDO', -2, 'ABERTO', gazeVencida.idProduto, gazeVencida.id, null],
+  ].forEach(([tipo, d, situacao, idProduto, idLote, dataResolucao]) =>
+    novo('alertasEstoque', { tipo, dataGeracao: dia(d), situacao, idProduto, idLote, dataResolucao })
   );
-  novo('alertasEstoque', { tipo: 'MINIMO', dataGeracao: dia(-1), situacao: 'ABERTO', idProduto: 4, idLote: null });
-  novo('alertasEstoque', { tipo: 'VALIDADE', dataGeracao: dia(-2), situacao: 'ABERTO', idProduto: 5, idLote: lotesDeEstoque.find((l) => l.idProduto === 5).id });
-  novo('alertasEstoque', { tipo: 'VALIDADE', dataGeracao: dia(-6), situacao: 'RESOLVIDO', idProduto: 1, idLote: vencido.id });
 
   // ── Gestão ───────────────────────────────────────────────────────────────
   const administrador = usuarioDe.get(administradores[0].id).id;

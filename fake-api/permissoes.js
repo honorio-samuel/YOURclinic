@@ -12,6 +12,7 @@
 // - nenhum campo cujo nome comece por "senha" sai em resposta alguma.
 
 const { afetadasPeloBloqueio, conferirHorario, horasEntre, somarDias } = require('./agenda');
+const { TIPOS_COM_LOTE } = require('./estoque');
 
 const A = 'ADMINISTRADOR';
 const M = 'MEDICO';
@@ -501,6 +502,13 @@ function loteDispensadoAoTitular(idLote, ctx) {
 }
 const produtoDispensadoAoTitular = (r, ctx) =>
   ctx.db.lotes.some((l) => igual(l.idProduto, r.id) && loteDispensadoAoTitular(l.id, ctx));
+// RC08: da dispensação, Administrador e Secretária não veem o paciente nem a
+// justificativa da troca de lote, que pode falar da saúde dele.
+const ocultarNaDispensacao = (...sempre) => (r) =>
+  r.origem === 'DISPENSACAO' ? [...sempre, 'idConsulta', 'justificativa'] : sempre;
+// RN-38.2: mudar o mínimo ou a situação do produto, ou o X14, refaz os
+// alertas. Serve a aposCriar (registro, ctx) e a aposEditar (registro, antigo, ctx).
+const recalcularEstoque = (...args) => args.at(-1)?.recalcularAlertas?.();
 
 // ── Prontuário (RF06, RF23 a RF25, RF28) ─────────────────────────────────
 const CAMPOS_CLINICOS = ['queixas', 'exameFisico', 'diagnostico', 'cid', 'conduta'];
@@ -908,10 +916,18 @@ function validarBloqueio(novo, antigo, ctx) {
 const TIPOS_DE_PRODUTO = ['MEDICAMENTO', 'MATERIAL', 'AMOSTRA'];
 const UNIDADES = ['UN', 'CX', 'PCT', 'FR', 'DOSE'];
 
-function validarProduto(novo, antigo) {
+function validarProduto(novo, antigo, ctx) {
   if (mudou('descricao', novo, antigo) && !preenchido(novo.descricao, 3)) return 'Informe a descrição.';
   if (mudou('tipo', novo, antigo) && !TIPOS_DE_PRODUTO.includes(novo.tipo)) return 'Escolha o tipo.';
   if (mudou('unidade', novo, antigo) && !UNIDADES.includes(novo.unidade)) return 'Escolha a unidade.';
+  // RN-36.1: medicamento e amostra sempre têm lote e validade.
+  if (TIPOS_COM_LOTE.includes(novo.tipo) && novo.controlaLote !== true) return 'Medicamento e amostra controlam lote e validade.';
+  if (antigo && mudou('controlaLote', novo, antigo) && ctx.db.lotes.some((l) => igual(l.idProduto, antigo.id))) {
+    return 'O controle de lote não muda depois da primeira entrada.';
+  }
+  if (mudou('controleEspecial', novo, antigo) && novo.controleEspecial != null && typeof novo.controleEspecial !== 'boolean') {
+    return 'Informe se o item é de controle especial.';
+  }
   if (mudou('estoqueMinimo', novo, antigo) && !(Number.isInteger(novo.estoqueMinimo) && novo.estoqueMinimo >= 0)) {
     return 'O estoque mínimo é um número inteiro.';
   }
@@ -1023,6 +1039,7 @@ const politica = {
       editar: true,
       editaveis: ['valor'],
       podeEditar: (atual) => (atual.editavel === false ? 'Parâmetro não editável.' : null),
+      aposEditar: (p, antigo, ctx) => p.chave === 'X14' && recalcularEstoque(ctx),
     },
     [M]: { ler: todos },
     [S]: { ler: todos },
@@ -1495,36 +1512,49 @@ const politica = {
   // P-04: o titular vê o nome e o lote dos itens dispensados a ele, e nada
   // mais do estoque (RF37).
   produtos: {
-    [A]: { ler: todos, criar: true, editar: true, validar: validarProduto },
-    [S]: { ler: todos, criar: true, editar: true, ocultar: ['custoAquisicao'], validar: validarProduto },
+    [A]: { ler: todos, criar: true, editar: true, validar: validarProduto, aposCriar: recalcularEstoque, aposEditar: recalcularEstoque },
+    [S]: {
+      ler: todos,
+      criar: true,
+      editar: true,
+      ocultar: ['custoAquisicao'],
+      validar: validarProduto,
+      aposCriar: recalcularEstoque,
+      aposEditar: recalcularEstoque,
+    },
     [M]: { ler: todos, ocultar: ['custoAquisicao', 'estoqueMinimo'] },
     [P]: { ler: produtoDispensadoAoTitular, ocultar: soMostrar('id', 'descricao', 'tipo', 'unidade') },
     [R]: { ler: produtoDispensadoAoTitular, ocultar: soMostrar('id', 'descricao', 'tipo', 'unidade') },
   },
+  // O lote nasce da entrada e só muda por movimentação (/estoque): número,
+  // validade e saldo não se editam direto (RN-36.2; editar a validade
+  // contornaria o bloqueio do lote vencido, RN-38.1).
   lotes: {
-    [A]: { ler: todos, criar: true, editar: true },
-    [S]: { ler: todos, criar: true, editar: true },
+    [A]: { ler: todos },
+    [S]: { ler: todos },
     [M]: { ler: todos },
     [P]: { ler: (r, ctx) => loteDispensadoAoTitular(r.id, ctx), ocultar: soMostrar('id', 'numero', 'validade', 'idProduto') },
     [R]: { ler: (r, ctx) => loteDispensadoAoTitular(r.id, ctx), ocultar: soMostrar('id', 'numero', 'validade', 'idProduto') },
   },
   // RC08: a saída identificada não mostra o paciente ao Administrador nem à
-  // Secretária; o Médico vê só as próprias saídas.
+  // Secretária; o Médico vê só as próprias saídas. Ninguém grava aqui:
+  // entrada, saída e ajuste passam pelas rotas /estoque, que aplicam o RF37.
   movimentacoes: {
-    [A]: { ler: todos, criar: true, ocultar: ['idConsulta'] },
-    [S]: { ler: todos, criar: true, ocultar: ['idConsulta', 'idTituloPagar'], podeGravar: ['idConsulta'] },
+    [A]: { ler: todos, ocultar: ocultarNaDispensacao('idConsulta') },
+    [S]: { ler: todos, ocultar: ocultarNaDispensacao('idConsulta', 'idTituloPagar') },
     [M]: {
       ler: (r, ctx) => igual(ctx.buscar('consultas', r.idConsulta)?.idMedico, ctx.sessao.idPessoa),
-      criar: true,
       ocultar: ['idTituloPagar'],
     },
-    [P]: { ler: doPaciente('movimentacoes'), ocultar: ['idTituloPagar'] },
-    [R]: { ler: doPaciente('movimentacoes'), ocultar: ['idTituloPagar'] },
+    [P]: { ler: doPaciente('movimentacoes'), ocultar: ['idTituloPagar', 'idUsuario', 'justificativa', 'conferenciaManual'] },
+    [R]: { ler: doPaciente('movimentacoes'), ocultar: ['idTituloPagar', 'idUsuario', 'justificativa', 'conferenciaManual'] },
   },
+  // RF38: o Médico recebe o alerta de validade e o de lote vencido; o de
+  // estoque mínimo é decisão de compra e fica com Administrador e Secretária.
   alertasEstoque: {
     [A]: { ler: todos },
     [S]: { ler: todos },
-    [M]: { ler: comCampo('tipo', 'VALIDADE') },
+    [M]: { ler: (r) => ['VALIDADE', 'VENCIDO'].includes(r.tipo) },
   },
 
   // ── Gestão ───────────────────────────────────────────────────────────────
