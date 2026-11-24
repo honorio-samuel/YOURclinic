@@ -737,6 +737,9 @@ function gerarBanco({ data = DATA_PADRAO, contas = lerContas() } = {}) {
         valorBruto, valorLiquido: dinheiro(valorBruto * 0.97),
         situacaoConciliacao: s.escolher(['CONCILIADO', 'CONCILIADO', 'CONCILIADO', 'PENDENTE', 'DIVERGENTE']), dataHora,
       });
+      // A divergência do seed já veio do extrato: a adquirente creditou R$ 1,50 a menos (RF49).
+      const cartao = db.pagamentosCartao[db.pagamentosCartao.length - 1];
+      if (cartao.situacaoConciliacao === 'DIVERGENTE') cartao.valorExtrato = dinheiro(cartao.valorLiquido - 1.5);
     } else {
       const valorRecebido = Math.ceil(cobranca.valorTotal / 50) * 50;
       db.pagamentosDinheiro.push({

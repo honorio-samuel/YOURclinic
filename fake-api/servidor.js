@@ -1721,6 +1721,63 @@ function criarApi({
   // RF55: a recepção monta o lote com guias liberadas de uma operadora e o
   // envia; a operadora simulada devolve o protocolo na hora. Cada guia do
   // lote vira um título a receber da operadora (RF32).
+  // RF49: conciliação de recebíveis de cartão, só do Administrador. O extrato
+  // vem da adquirente simulada: o crédito confere com o líquido esperado, menos
+  // nas transações de NSU múltiplo de 3, em que a adquirente credita R$ 1,50
+  // a menos. A divergência é aceita (vale o extrato) ou contestada.
+  async function rotaDeConciliacao(req, res, { partes, sessao, rota }) {
+    if (sessao.papel !== ADMINISTRADOR) {
+      auditar({ acao: 'EDITAR', sessao, rota, registroAlvo: partes.join('/'), resultado: 'NEGADO', motivo: 'PAPEL' });
+      throw ACESSO_NEGADO();
+    }
+    if (req.method !== 'POST') throw NAO_ENCONTRADO();
+    const confirmado = (c) => db.pagamentos.find((p) => igual(p.id, c.id))?.situacao === 'CONFIRMADO';
+
+    if (partes.length === 3 && partes[2] === 'extrato') {
+      const corpo = await lerCorpo(req);
+      const pendentes = db.pagamentosCartao.filter((c) => c.situacaoConciliacao === 'PENDENTE' && confirmado(c) && (!corpo.adquirente || c.adquirente === corpo.adquirente));
+      let conciliadas = 0;
+      let divergentes = 0;
+      for (const c of pendentes) {
+        const valorExtrato = Number(c.nsu) % 3 === 0 ? reais(centavos(c.valorLiquido) - 150) : c.valorLiquido;
+        c.valorExtrato = valorExtrato;
+        c.extratoImportadoEm = agoraClinica();
+        if (centavos(valorExtrato) === centavos(c.valorLiquido)) {
+          c.situacaoConciliacao = 'CONCILIADO';
+          conciliadas += 1;
+        } else {
+          c.situacaoConciliacao = 'DIVERGENTE';
+          divergentes += 1;
+        }
+      }
+      auditar({ acao: 'EDITAR', sessao, rota, registroAlvo: 'pagamentosCartao', resultado: 'PERMITIDO', motivo: 'EXTRATO' });
+      salvar();
+      return enviar(res, 200, { lidas: pendentes.length, conciliadas, divergentes });
+    }
+
+    if (partes.length === 4 && partes[3] === 'tratar') {
+      const cartao = db.pagamentosCartao.find((c) => igual(c.id, partes[2]));
+      if (!cartao) throw NAO_ENCONTRADO();
+      if (cartao.situacaoConciliacao !== 'DIVERGENTE') throw new ErroHttp(409, 'Esta transação não está divergente.');
+      const corpo = await lerCorpo(req);
+      if (!['ACEITAR', 'CONTESTAR'].includes(corpo.decisao)) throw new ErroHttp(422, 'Escolha aceitar o extrato ou contestar.');
+      const observacao = typeof corpo.observacao === 'string' ? corpo.observacao.trim() : '';
+      if (observacao.length < 5) throw new ErroHttp(422, 'Escreva a observação do tratamento.');
+      cartao.tratamento = { decisao: corpo.decisao, observacao, dataHora: agoraClinica(), idUsuario: sessao.idUsuario, liquidoAnterior: cartao.valorLiquido };
+      if (corpo.decisao === 'ACEITAR') {
+        if (cartao.valorExtrato != null) cartao.valorLiquido = cartao.valorExtrato;
+        cartao.situacaoConciliacao = 'CONCILIADO';
+      } else {
+        cartao.situacaoConciliacao = 'CONTESTADO';
+      }
+      auditar({ acao: 'EDITAR', sessao, rota, registroAlvo: `pagamentosCartao/${cartao.id}`, resultado: 'PERMITIDO', motivo: corpo.decisao });
+      salvar();
+      return enviar(res, 200, cartao);
+    }
+
+    throw NAO_ENCONTRADO();
+  }
+
   async function rotaDeLote(req, res, { partes, sessao, rota }) {
     const ctx = contexto(sessao, rota);
     if (sessao.papel !== SECRETARIA) {
@@ -2035,6 +2092,7 @@ function criarApi({
       if (partes[0] === 'estoque') return await rotaDeEstoque(req, res, { partes, sessao, rota });
       if (partes[0] === 'financeiro' && partes[1] === 'estornos') return await rotaDeEstorno(req, res, { partes, sessao, rota });
       if (partes[0] === 'financeiro' && partes[1] === 'documentos') return await rotaDeDocumentoFiscal(req, res, { partes, sessao, rota });
+      if (partes[0] === 'financeiro' && partes[1] === 'conciliacao') return await rotaDeConciliacao(req, res, { partes, sessao, rota });
       if (partes[0] === 'anexos' && (partes[1] === 'envio' || partes[2] === 'arquivo')) return await rotaDeAnexo(req, res, { partes, sessao, rota });
       if (partes[0] === 'tiss' && partes[1] === 'elegibilidade') return await rotaDeElegibilidade(req, res, { partes, sessao, rota });
       if (partes[0] === 'tiss' && partes[1] === 'lotes') return await rotaDeLote(req, res, { partes, sessao, rota });
