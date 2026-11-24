@@ -1429,14 +1429,12 @@ const politica = {
     [P]: { ler: doPaciente('titulosReceber') },
     [R]: { ler: doPaciente('titulosReceber') },
   },
-  // RF48: a Secretária pede; só o Administrador aprova e estorna.
+  // RF48: a Secretária pede; só o Administrador aprova e estorna. Pedido e
+  // decisão passam pelas rotas /financeiro/estornos, que aplicam a matriz
+  // por meio e os efeitos da aprovação.
   estornos: {
-    [A]: { ler: todos, criar: true, editar: true },
-    [S]: {
-      ler: todos,
-      criar: true,
-      fixar: (ctx) => ({ idSolicitante: ctx.sessao.idUsuario, situacao: 'A_APROVAR', dataPedido: ctx.agoraTexto() }),
-    },
+    [A]: { ler: todos },
+    [S]: { ler: todos },
     [P]: { ler: doPaciente('estornos') },
     [R]: { ler: doPaciente('estornos') },
   },

@@ -5,6 +5,8 @@
 // prescrição (RN-41.2), e todo número traz a data-base do cálculo.
 
 const igual = (a, b) => a != null && b != null && String(a) === String(b);
+const { EXECUTADAS } = require('./estorno');
+
 const centavos = (v) => Math.round(Number(v ?? 0) * 100);
 const reais = (c) => c / 100;
 const somar = (lista, valor) => reais(lista.reduce((s, x) => s + centavos(valor(x)), 0));
@@ -77,7 +79,9 @@ function painelFinanceiro(db, { hoje, parametro }) {
 
   const pagar = db.titulosPagar;
   const pagarAberto = pagar.filter((t) => t.situacao === 'ABERTO');
-  const recebido = somar(db.pagamentos.filter((p) => p.situacao === 'CONFIRMADO'), (p) => p.valor);
+  // RF48: o que voltou ao pagador por cancelamento ou estorno sai do recebido.
+  const devolvido = somar(db.estornos.filter((e) => e.tipo !== 'CHARGEBACK' && EXECUTADAS.includes(e.situacao)), (e) => e.valor);
+  const recebido = reais(centavos(somar(db.pagamentos.filter((p) => p.situacao === 'CONFIRMADO'), (p) => p.valor)) - centavos(devolvido));
   const pago = somar(pagar.filter((t) => t.situacao === 'PAGO'), (t) => t.valor);
   const realizado = reais(centavos(recebido) - centavos(pago));
   const aReceber =

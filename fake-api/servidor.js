@@ -27,6 +27,7 @@ const {
   ORIGENS_DE_ENTRADA, DESTINOS_DE_SAIDA, MOTIVOS_DE_DESCARTE, TIPOS_COM_LOTE, STATUS_DE_ENTREGA, atualizarSaldo, vencido,
   lotesParaSaida, recalcularAlertas, inteiroPositivo, dataValida: ehDataValida, texto: textoLimpo, dataBr,
 } = require('./estoque');
+const { MEIOS_DE_DEVOLUCAO, avaliarReversao } = require('./estorno');
 const { DATA_PADRAO } = require('./seed');
 const { Sessoes, conferirSenha, gerarHash, HASH_DE_ENGANO } = require('./sessao');
 const { filtrar, ordenar, paginar, escolherCampos } = require('./consulta');
@@ -1285,6 +1286,129 @@ function criarApi({
     if (recalcularAlertas(db, { hoje, antecedencia: parametro('X14', 60), inserir })) salvar();
   }
 
+  // Cancelamento e estorno (RF48). A Secretária localiza o pagamento, vê o que
+  // o meio permite e pede, com motivo; o Administrador aprova ou recusa: nenhum
+  // estorno acontece com um só par de olhos. Aprovado, o pedido é o lançamento
+  // de sinal oposto (o pagamento original não muda), o título reabre e o
+  // recibo e a NFS-e são cancelados. Chargeback a clínica só registra.
+  async function rotaDeEstorno(req, res, { partes, sessao, rota }) {
+    const ctx = contexto(sessao, rota);
+    const exigirPapel = (...papeis) => {
+      if (papeis.includes(sessao.papel)) return;
+      auditar({ acao: ACOES[req.method] ?? req.method, sessao, rota, registroAlvo: partes.join('/'), resultado: 'NEGADO', motivo: 'PAPEL' });
+      throw ACESSO_NEGADO();
+    };
+    const hoje = hojeClinica();
+    const avaliar = (pagamento, ignorar = null) => avaliarReversao(db, pagamento, { hoje, prazoCredito: parametro('X34', 30), ignorar });
+    const emReais = (valor) => Math.round(Number(valor) * 100) / 100;
+    const brl = (valor) => `R$ ${Number(valor).toFixed(2).replace('.', ',')}`;
+    const registrar = (estorno, acao) => {
+      auditar({ acao, sessao, rota, registroAlvo: `estornos/${estorno.id}`, resultado: 'PERMITIDO', motivo: estorno.situacao });
+      salvar();
+    };
+
+    if (req.method === 'GET' && partes[2] === 'avaliar' && partes.length === 4) {
+      exigirPapel(SECRETARIA, ADMINISTRADOR);
+      const pagamento = ctx.buscar('pagamentos', partes[3]);
+      if (!pagamento) throw NAO_ENCONTRADO();
+      return enviar(res, 200, avaliar(pagamento));
+    }
+    if (req.method !== 'POST') throw NAO_ENCONTRADO();
+    const corpo = await lerCorpo(req);
+
+    // Pedido da Secretária, ou registro de chargeback.
+    if (partes.length === 2) {
+      exigirPapel(SECRETARIA);
+      const pagamento = ctx.buscar('pagamentos', corpo.idPagamento);
+      if (!pagamento) throw new ErroHttp(422, 'Escolha o pagamento.');
+      const motivo = textoLimpo(corpo.motivo);
+      if (motivo.length < 5) throw new ErroHttp(422, 'Informe o motivo.');
+      const valor = emReais(corpo.valor);
+      const titulo = db.titulosReceber.find((t) => igual(t.idCobranca, pagamento.idCobranca));
+      const pedido = {
+        valor, motivo, idPagamento: pagamento.id, idTituloReceber: titulo?.id ?? null, idSolicitante: sessao.idUsuario,
+        dataPedido: agoraClinica(), dataHora: null, protocolo: null, forma: null, meioDevolucao: null,
+        idAprovador: null, dataDecisao: null, motivoRecusa: null,
+      };
+      if (corpo.chargeback === true) {
+        // RN-48.3: a contestação parte do portador; a clínica não a controla.
+        if (pagamento.meio !== 'CARTAO' || pagamento.situacao !== 'CONFIRMADO') throw new ErroHttp(422, 'Chargeback só existe em pagamento confirmado com cartão.');
+        if (!(valor > 0) || centavos(valor) > centavos(pagamento.valor)) throw new ErroHttp(422, `Informe o valor contestado, até ${brl(pagamento.valor)}.`);
+        const estorno = ctx.inserir('estornos', { ...pedido, tipo: 'CHARGEBACK', situacao: 'REGISTRADO' });
+        registrar(estorno, 'CRIAR');
+        return enviar(res, 201, estorno);
+      }
+      const avaliacao = avaliar(pagamento);
+      if (!avaliacao.possivel) throw new ErroHttp(409, avaliacao.orientacao);
+      if (avaliacao.pedidoAberto) throw new ErroHttp(409, 'Já há um pedido deste pagamento esperando o Administrador.');
+      if (!(valor > 0)) throw new ErroHttp(422, 'Informe o valor a devolver.');
+      if (centavos(valor) > centavos(avaliacao.disponivel)) throw new ErroHttp(422, `O valor passa do que ainda pode ser devolvido (${brl(avaliacao.disponivel)}).`);
+      // RN-48.2: parcial no crédito e no Pix; no débito, só o total.
+      if (!avaliacao.parcial && centavos(valor) !== centavos(avaliacao.disponivel)) throw new ErroHttp(422, 'Neste meio a devolução é só pelo valor total.');
+      if (avaliacao.exigeMeio && !MEIOS_DE_DEVOLUCAO.includes(corpo.meioDevolucao)) throw new ErroHttp(422, 'Escolha como devolver: Pix ou dinheiro.');
+      const estorno = ctx.inserir('estornos', {
+        ...pedido, tipo: avaliacao.tipo, situacao: 'A_APROVAR', forma: avaliacao.forma,
+        meioDevolucao: avaliacao.exigeMeio ? corpo.meioDevolucao : null,
+      });
+      registrar(estorno, 'CRIAR');
+      return enviar(res, 201, estorno);
+    }
+
+    // Decisão do Administrador.
+    if (partes.length === 4 && ['aprovar', 'recusar'].includes(partes[3])) {
+      exigirPapel(ADMINISTRADOR);
+      const estorno = ctx.buscar('estornos', partes[2]);
+      if (!estorno) throw NAO_ENCONTRADO();
+      if (estorno.situacao !== 'A_APROVAR') throw new ErroHttp(409, 'Este pedido já foi decidido.');
+      const agora = agoraClinica();
+      if (partes[3] === 'recusar') {
+        const motivo = textoLimpo(corpo.motivo);
+        if (motivo.length < 5) throw new ErroHttp(422, 'Informe o motivo da recusa.');
+        Object.assign(estorno, { situacao: 'RECUSADO', motivoRecusa: motivo, idAprovador: sessao.idUsuario, dataDecisao: agora });
+        registrar(estorno, 'EDITAR');
+        return enviar(res, 200, estorno);
+      }
+      const pagamento = ctx.buscar('pagamentos', estorno.idPagamento);
+      // O prazo do meio pode ter passado desde o pedido: a forma precisa valer hoje.
+      const avaliacao = avaliar(pagamento, estorno.id);
+      if (!avaliacao.possivel || avaliacao.forma !== estorno.forma) {
+        throw new ErroHttp(409, `O que o meio permite mudou desde o pedido: ${avaliacao.orientacao} Recuse este pedido e peça um novo.`);
+      }
+      // A devolução em dinheiro sai de um caixa aberto: o do recebimento ou o de quem pediu.
+      let caixa = null;
+      if (pagamento.meio === 'DINHEIRO' || estorno.meioDevolucao === 'DINHEIRO') {
+        const original = db.caixas.find((c) => igual(c.id, db.pagamentosDinheiro.find((d) => igual(d.id, pagamento.id))?.idCaixa));
+        const solicitante = db.usuarios.find((u) => igual(u.id, estorno.idSolicitante));
+        caixa = original?.situacao === 'ABERTO' ? original : db.caixas.find((c) => c.situacao === 'ABERTO' && igual(c.idSecretaria, solicitante?.idPessoa));
+        if (!caixa) throw new ErroHttp(409, 'A devolução em dinheiro sai de um caixa aberto. Peça a quem fez o pedido que abra o caixa e aprove de novo.');
+      }
+      Object.assign(estorno, {
+        situacao: estorno.tipo === 'CANCELAMENTO' ? 'CANCELADO' : 'ESTORNADO',
+        dataHora: agora, protocolo: `EST-${String(estorno.id).padStart(6, '0')}`, idAprovador: sessao.idUsuario, dataDecisao: agora,
+      });
+      if (caixa) {
+        ctx.inserir('movimentosCaixa', {
+          tipo: 'DEVOLUCAO', valor: estorno.valor, motivo: `Devolução ${estorno.protocolo}`, dataHora: agora, idUsuario: sessao.idUsuario,
+          idCaixa: caixa.id, idEstorno: estorno.id,
+        });
+      }
+      // RF48, passo 5: título reaberto (RF32), recibo (RF33) e NFS-e (RF34) cancelados.
+      const cobranca = ctx.buscar('cobrancas', pagamento.idCobranca);
+      if (cobranca && resumoDaCobranca(db, cobranca).saldo > 0) {
+        cobranca.situacao = 'ABERTA';
+        for (const t of db.titulosReceber.filter((x) => igual(x.idCobranca, cobranca.id) && x.situacao === 'PAGO')) t.situacao = 'ABERTO';
+      }
+      const titulos = db.titulosReceber.filter((t) => igual(t.idCobranca, pagamento.idCobranca));
+      for (const d of db.documentosFiscais.filter((x) => x.situacao === 'EMITIDO' && titulos.some((t) => igual(t.id, x.idTituloReceber)))) {
+        d.situacao = 'CANCELADO';
+      }
+      registrar(estorno, 'EDITAR');
+      return enviar(res, 200, estorno);
+    }
+
+    throw NAO_ENCONTRADO();
+  }
+
   // A-12 e A-29: painel financeiro (RF35) e dashboard gerencial (RF41), só
   // do Administrador (RC06, nível 3). O período do dashboard vem em ?de&ate;
   // sem ele, os últimos 30 dias até hoje.
@@ -1481,6 +1605,7 @@ function criarApi({
       if (partes[0] === 'checkout') return await rotaDeCheckout(req, res, { partes, sessao, rota });
       if (partes[0] === 'indicadores') return rotaDeIndicadores(req, res, { url, partes, sessao, rota });
       if (partes[0] === 'estoque') return await rotaDeEstoque(req, res, { partes, sessao, rota });
+      if (partes[0] === 'financeiro' && partes[1] === 'estornos') return await rotaDeEstorno(req, res, { partes, sessao, rota });
       if (partes[0] === 'usuarios' && partes[2] === 'convite' && partes.length === 3) {
         return await reenviarConvite(req, res, { partes, sessao, rota });
       }

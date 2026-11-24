@@ -14,6 +14,7 @@ const path = require('node:path');
 const { COLECOES, ADMINISTRADOR, MEDICO, SECRETARIA, PACIENTE, RESPONSAVEL_LEGAL } = require('./permissoes');
 const { gerarHash } = require('./sessao');
 const { efeitoNoSaldo } = require('./estoque');
+const { avaliarReversao } = require('./estorno');
 
 // O app trata 28/09/2026 como "hoje" (src/config/axios.js).
 const DATA_PADRAO = '2026-09-28';
@@ -782,24 +783,40 @@ function gerarBanco({ data = DATA_PADRAO, contas = lerContas() } = {}) {
       return cobranca.idConsulta && db.consultas[cobranca.idConsulta - 1].idPaciente === paciente.id;
     });
   const usuarioSecretaria = usuarioDe.get(secretarias[0].id).id;
+  const usuarioAdministrador = usuarioDe.get(administradores[0].id).id;
+  // RF48: um estorno feito, um pedido esperando o Administrador e um
+  // recusado. Tipo e forma saem da matriz por meio, no dia do pedido.
   [
-    [pagamentoDoPaciente(demo), 'ESTORNO', 'ESTORNADO', -4],
-    [db.pagamentos[db.pagamentos.length - 3], 'CANCELAMENTO', 'A_APROVAR', -1],
-    [db.pagamentos[db.pagamentos.length - 8], 'ESTORNO', 'RECUSADO', -7],
-  ].forEach(([pagamento, tipo, situacao, d], i) => {
+    [pagamentoDoPaciente(demo), 'ESTORNADO', -6, 'Pago com cartão de terceiro; o paciente paga de novo'],
+    [db.pagamentos[db.pagamentos.length - 3], 'A_APROVAR', -1, 'Paciente desistiu do procedimento'],
+    [db.pagamentos[db.pagamentos.length - 8], 'RECUSADO', -5, 'Valor cobrado diferente do combinado'],
+  ].forEach(([pagamento, situacao, d, motivo], i) => {
     if (!pagamento) return;
+    const avaliacao = avaliarReversao(db, pagamento, { hoje: dia(d), prazoCredito: 30 });
+    const decidido = situacao === 'A_APROVAR' ? null : `${dia(d + 1)}T11:00:00`;
     novo('estornos', {
-      dataHora: situacao === 'ESTORNADO' ? `${dia(d + 1)}T11:00:00` : null,
+      dataHora: situacao === 'ESTORNADO' ? decidido : null,
       valor: pagamento.valor,
-      motivo: ['Cobrança em duplicidade', 'Paciente desistiu do procedimento', 'Valor cobrado diferente do combinado'][i],
+      motivo,
       protocolo: situacao === 'ESTORNADO' ? `EST-${zeros(i + 1, 6)}` : null,
       idPagamento: pagamento.id,
       idTituloReceber: titulosDaCobranca.get(pagamento.idCobranca)?.id ?? null,
-      tipo,
+      tipo: avaliacao.tipo,
       situacao,
+      forma: avaliacao.forma,
+      meioDevolucao: avaliacao.exigeMeio ? 'PIX' : null,
       idSolicitante: usuarioSecretaria,
       dataPedido: `${dia(d)}T14:00:00`,
+      idAprovador: decidido ? usuarioAdministrador : null,
+      dataDecisao: decidido,
+      motivoRecusa: situacao === 'RECUSADO' ? 'O valor confere com o orçamento aceito pelo paciente.' : null,
     });
+    // O estorno feito reabre o título (RF48, passo 5).
+    if (situacao === 'ESTORNADO') {
+      db.cobrancas[pagamento.idCobranca - 1].situacao = 'ABERTA';
+      const titulo = titulosDaCobranca.get(pagamento.idCobranca);
+      if (titulo) titulo.situacao = 'ABERTO';
+    }
   });
 
   // Recibo para os pagamentos dos últimos dez dias; NFS-e para metade deles.
@@ -1012,7 +1029,6 @@ function gerarBanco({ data = DATA_PADRAO, contas = lerContas() } = {}) {
   lotesDeEstoque.push(gazeVencida);
 
   const compra = titulosPagar[0];
-  const usuarioAdministrador = usuarioDe.get(administradores[0].id).id;
   const movimento = (dados) =>
     novo('movimentacoes', {
       justificativa: null, motivoDescarte: null, idConsulta: null, idTituloPagar: null, ajusteSituacao: null,

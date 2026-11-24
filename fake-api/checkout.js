@@ -4,6 +4,8 @@
 // TEF não existem na API local: são simulados aqui, com resultados previsíveis
 // para a demonstração (README, "Checkout simulado").
 
+const { estornadoDaCobranca } = require('./estorno');
+
 const igual = (a, b) => a != null && b != null && String(a) === String(b);
 const centavos = (valor) => Math.round(Number(valor) * 100);
 const reais = (c) => c / 100;
@@ -20,10 +22,13 @@ const LIMITE_DO_ADQUIRENTE = 12;
 const TAXA = { DEBITO: 0.015, CREDITO: 0.03, CREDITO_PARCELADO_LOJISTA: 0.045, CREDITO_PARCELADO_EMISSOR: 0.03 };
 
 // Só pagamento confirmado conta para quitar. O lançamento da maquininha avulsa
-// acima do limite espera a conferência de outro usuário (RN-46.3).
+// acima do limite espera a conferência de outro usuário (RN-46.3). O que foi
+// devolvido por cancelamento ou estorno sai do pago (RF48).
 function resumoDaCobranca(db, cobranca) {
   const pagamentos = db.pagamentos.filter((p) => igual(p.idCobranca, cobranca.id));
-  const pago = pagamentos.filter((p) => p.situacao === 'CONFIRMADO').reduce((soma, p) => soma + centavos(p.valor), 0);
+  const pago =
+    pagamentos.filter((p) => p.situacao === 'CONFIRMADO').reduce((soma, p) => soma + centavos(p.valor), 0) -
+    estornadoDaCobranca(db, pagamentos.map((p) => p.id));
   const emAndamento = pagamentos
     .filter((p) => ['PENDENTE', 'INDEFINIDO', 'AGUARDANDO_CONFERENCIA'].includes(p.situacao))
     .reduce((soma, p) => soma + centavos(p.valor), 0);
