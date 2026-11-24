@@ -4,11 +4,12 @@ import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
 import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
-import { emBreve } from '../../components/confirmacao';
-import { DATA_DE_HOJE } from '../../config/axios';
+import { mensagemDeErro } from '../../components/confirmacao';
+import { mensagemErro, mensagemSucesso, mostrarMensagem } from '../../components/toastr';
+import { api, DATA_DE_HOJE } from '../../config/axios';
 import { listar, pessoasPorId, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
-import { corresponde } from '../../utils/formatos';
+import { corresponde, data } from '../../utils/formatos';
 import { rotuloDe } from '../../utils/rotulos';
 import { nomeOperadora, opcoesOperadora, useEhAdmin } from './comum';
 
@@ -45,7 +46,8 @@ function Elegibilidade() {
     const convenio = porId(convenios);
     const proc = porId(procedimentos);
     return comConvenio.map((c) => {
-      const eleg = elegibilidades.find((e) => e.idPaciente === c.idPaciente && e.idConvenio === c.idConvenio);
+      // A consulta mais recente à operadora vale.
+      const eleg = elegibilidades.filter((e) => e.idPaciente === c.idPaciente && e.idConvenio === c.idConvenio).sort((a, b) => b.id - a.id)[0];
       const aut = autorizacoes.find((a) => a.idConsulta === c.id);
       return {
         ...c,
@@ -62,6 +64,17 @@ function Elegibilidade() {
   const [busca, setBusca] = React.useState('');
   const [operadora, setOperadora] = React.useState('');
   const [situacao, setSituacao] = React.useState('');
+  // RF52: a resposta vem da operadora (simulada na API) e fica registrada.
+  const verificar = async (l) => {
+    try {
+      const { data: r } = await api.post('/tiss/elegibilidade', { idConsulta: l.id });
+      if (r.situacao === 'ELEGIVEL') mensagemSucesso(`${l.paciente}: elegível até ${data(r.validade)}. Protocolo ${r.protocolo}.`);
+      else mostrarMensagem('Inelegível', `${l.paciente}: ${r.motivo ?? 'a operadora recusou.'} Combine o atendimento particular ou a atualização do plano.`, 'warning');
+      recarregar();
+    } catch (e) {
+      mensagemErro(mensagemDeErro(e));
+    }
+  };
   const linhas = (dados ?? []).filter(
     (l) => corresponde(busca, l.paciente) && (!operadora || l.operadora === operadora) && (!situacao || l.elegibilidade === situacao)
   );
@@ -95,7 +108,7 @@ function Elegibilidade() {
             render: (l) => (
               <PilulaStatus
                 {...rotuloDe(ELEGIBILIDADE, l.elegibilidade)}
-                transicoes={!ehAdmin && l.elegibilidade === 'A_VERIFICAR' ? [{ rotulo: 'Verificar na operadora', aoEscolher: () => emBreve('A consulta de elegibilidade') }] : null}
+                transicoes={!ehAdmin && l.elegibilidade !== 'ELEGIVEL' ? [{ rotulo: 'Verificar na operadora', aoEscolher: () => verificar(l) }] : null}
               />
             ),
           },

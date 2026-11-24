@@ -1705,6 +1705,43 @@ function criarApi({
     return enviar(res, 200, notificacao);
   }
 
+  // RF52: a recepção consulta a elegibilidade do beneficiário na operadora,
+  // aqui simulada: carteirinha terminada em 9 está inativa; as demais valem
+  // até o fim do ano seguinte. A resposta fica registrada na consulta.
+  async function rotaDeElegibilidade(req, res, { partes, sessao, rota }) {
+    const ctx = contexto(sessao, rota);
+    if (sessao.papel !== SECRETARIA) {
+      auditar({ acao: 'CRIAR', sessao, rota, registroAlvo: partes.join('/'), resultado: 'NEGADO', motivo: 'PAPEL' });
+      throw ACESSO_NEGADO();
+    }
+    if (req.method !== 'POST' || partes.length !== 2) throw NAO_ENCONTRADO();
+    const corpo = await lerCorpo(req);
+    const consulta = ctx.buscar('consultas', corpo.idConsulta);
+    if (!consulta || consulta.idConvenio == null) throw new ErroHttp(422, 'Escolha uma consulta por convênio.');
+    // A carteirinha vem do agendamento ou da última consulta à operadora.
+    const anterior = db.elegibilidades
+      .filter((e) => igual(e.idPaciente, consulta.idPaciente) && igual(e.idConvenio, consulta.idConvenio))
+      .sort((a, b) => b.id - a.id)[0];
+    const carteirinha = String(consulta.numeroCarteirinha ?? anterior?.carteirinha ?? '').trim();
+    if (!carteirinha) throw new ErroHttp(422, 'A consulta não tem o número da carteirinha.');
+    const hoje = hojeClinica();
+    const inativa = carteirinha.endsWith('9');
+    const elegibilidade = ctx.inserir('elegibilidades', {
+      dataConsulta: hoje,
+      carteirinha,
+      situacao: inativa ? 'NAO_ELEGIVEL' : 'ELEGIVEL',
+      validade: inativa ? null : `${Number(hoje.slice(0, 4)) + 1}-12-31`,
+      motivo: inativa ? 'Carteirinha inativa na operadora.' : null,
+      protocolo: `ELG-${String(Date.now()).slice(-8)}`,
+      idPaciente: consulta.idPaciente,
+      idConvenio: consulta.idConvenio,
+    });
+    consulta.convenioConferido = !inativa;
+    auditar({ acao: 'CRIAR', sessao, rota, registroAlvo: `elegibilidades/${elegibilidade.id}`, resultado: 'PERMITIDO', motivo: elegibilidade.situacao });
+    salvar();
+    return enviar(res, 201, elegibilidade);
+  }
+
   // A-12 e A-29: painel financeiro (RF35) e dashboard gerencial (RF41), só
   // do Administrador (RC06, nível 3). O período do dashboard vem em ?de&ate;
   // sem ele, os últimos 30 dias até hoje.
@@ -1906,6 +1943,7 @@ function criarApi({
       if (partes[0] === 'financeiro' && partes[1] === 'estornos') return await rotaDeEstorno(req, res, { partes, sessao, rota });
       if (partes[0] === 'financeiro' && partes[1] === 'documentos') return await rotaDeDocumentoFiscal(req, res, { partes, sessao, rota });
       if (partes[0] === 'anexos' && (partes[1] === 'envio' || partes[2] === 'arquivo')) return await rotaDeAnexo(req, res, { partes, sessao, rota });
+      if (partes[0] === 'tiss' && partes[1] === 'elegibilidade') return await rotaDeElegibilidade(req, res, { partes, sessao, rota });
       if ((partes[0] === 'notificacoes' && partes.length === 3) || (partes[0] === 'portal' && partes[1] === 'preferencias')) {
         return await rotaDeNotificacao(req, res, { partes, sessao, rota });
       }

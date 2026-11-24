@@ -1505,9 +1505,10 @@ const politica = {
     [A]: { ler: todos, criar: true, editar: true },
     [S]: { ler: todos },
   },
+  // RF52: a consulta à operadora passa por POST /tiss/elegibilidade.
   elegibilidades: {
     [A]: { ler: todos },
-    [S]: { ler: todos, criar: true },
+    [S]: { ler: todos },
     [M]: { ler: doPaciente('elegibilidades') },
     [P]: { ler: doPaciente('elegibilidades') },
     [R]: { ler: doPaciente('elegibilidades') },
