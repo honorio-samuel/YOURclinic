@@ -104,6 +104,8 @@ Só a Secretária executa o checkout; o Administrador cria e edita a cobrança p
 | `POST /checkout/:idCobranca/tef` `{valor, modalidade, parcelas?, chave}` | Secretária | Envia ao terminal. A `chave` torna o pedido idempotente (RN-43.5): repetida, devolve a mesma transação. Resultado `CONFIRMADO`, `NEGADO` (sem o motivo do emissor) ou `INDEFINIDO` |
 | `POST /checkout/tef/:idPagamento/confirmar` | Secretária | Consulta de confirmação da transação `INDEFINIDO`: aprovada depois do tempo (E3) ou não realizada (E4) |
 | `POST /checkout/:idCobranca/pos` `{valor, modalidade, parcelas?, bandeira, ultimosDigitos, nsu, codigoAutorizacao, adquirente}` | Secretária | Lançamento do comprovante da maquininha avulsa, com conciliação pendente. NSU e autorização obrigatórios (RN-46.1); NSU repetido no dia e no adquirente é recusado (RN-46.2); acima do X52, fica `AGUARDANDO_CONFERENCIA` (RN-46.3) |
+| `POST /checkout/:idCobranca/pix-portal` | Paciente, Responsável | O titular paga a própria cobrança aberta pelo valor que falta, com o mesmo Pix simulado. Pedir de novo devolve o QR que ainda espera. Responde só o pagamento e a situação da cobrança |
+| `POST /checkout/pix/:idPagamento/verificar` | Secretária, Paciente e Responsável (o titular, só o próprio) | Consulta o PSP pelo txid, como acima |
 | `GET /checkout/conferencias` | Administrador, Secretária | Lançamentos que esperam conferência, com o paciente e quem lançou |
 | `POST /checkout/pagamentos/:idPagamento/conferir` `{aprovar, motivo?}` | Administrador, Secretária | Outro usuário confirma ou recusa (com motivo). Quem lançou não confere |
 
