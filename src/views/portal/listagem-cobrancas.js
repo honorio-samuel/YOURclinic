@@ -56,17 +56,17 @@ function CobrancasPortal() {
                     </button>
                   ) : (
                     <span className='d-flex gap-3'>
-                      {c.recibo && (
-                        <button type='button' className='btn btn-link btn-sm p-0' onClick={() => emBreve('O download do recibo')}>
+                      {c.idRecibo && (
+                        <button type='button' className='btn btn-link btn-sm p-0' onClick={() => navigate(`/portal/documentos-fiscais/${c.idRecibo}`)}>
                           Recibo
                         </button>
                       )}
-                      {c.nfse && (
-                        <button type='button' className='btn btn-link btn-sm p-0' onClick={() => emBreve('O download da NFS-e')}>
+                      {c.idNfse && (
+                        <button type='button' className='btn btn-link btn-sm p-0' onClick={() => navigate(`/portal/documentos-fiscais/${c.idNfse}`)}>
                           NFS-e
                         </button>
                       )}
-                      {!c.recibo && !c.nfse && '—'}
+                      {!c.idRecibo && !c.idNfse && (c.situacao === 'PAGA' ? 'Recibo a emitir na recepção' : '—')}
                     </span>
                   ),
               },

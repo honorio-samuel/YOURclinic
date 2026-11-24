@@ -39,6 +39,7 @@ import Conciliacao from './views/financeiro/listagem-conciliacao';
 import Caixas from './views/financeiro/listagem-caixas';
 import Estornos from './views/financeiro/listagem-estornos';
 import DocumentosFiscais from './views/financeiro/listagem-documentos-fiscais';
+import DocumentoFiscal from './views/financeiro/documento-fiscal';
 import CobrancasDoDia from './views/financeiro/listagem-cobrancas';
 import OrcamentosAprovacao from './views/financeiro/listagem-orcamentos-aprovacao';
 import OrcamentosValores from './views/financeiro/listagem-orcamentos-valores';
@@ -112,6 +113,7 @@ const TELAS = [
   ['/admin/listagem-estornos', A, <Estornos />],
   ['/admin/listagem-orcamentos', A, <OrcamentosAprovacao />],
   ['/admin/listagem-recibos-nfse', A, <DocumentosFiscais />],
+  ['/admin/documentos-fiscais/:id', A, <DocumentoFiscal />],
   ['/admin/listagem-contratos', A, <Contratos />],
   ['/admin/listagem-elegibilidades', A, <Elegibilidade />],
   ['/admin/listagem-guias', A, <Guias />],
@@ -157,6 +159,7 @@ const TELAS = [
   ['/secretaria/caixa', S, <MeuCaixa />],
   ['/secretaria/listagem-orcamentos', S, <OrcamentosValores />],
   ['/secretaria/listagem-recibos', S, <DocumentosFiscais />],
+  ['/secretaria/documentos-fiscais/:id', S, <DocumentoFiscal />],
   ['/secretaria/listagem-estornos', S, <Estornos />],
   ['/secretaria/listagem-elegibilidades', S, <Elegibilidade />],
   ['/secretaria/listagem-guias', S, <Guias />],
@@ -172,6 +175,7 @@ const TELAS = [
   ['/portal/listagem-agendamentos', PORTAL, <AgendamentosPortal />],
   ['/portal/listagem-documentos', PORTAL, <DocumentosPortal />],
   ['/portal/listagem-cobrancas', PORTAL, <CobrancasPortal />],
+  ['/portal/documentos-fiscais/:id', PORTAL, <DocumentoFiscal />],
   ['/portal/orcamentos/:id', PORTAL, <OrcamentoPortal />],
   ['/portal/dados', PORTAL, <DadosPortal />],
   ['/portal/representado', ['RESPONSAVEL_LEGAL'], <SelecionarRepresentado />],

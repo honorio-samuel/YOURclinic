@@ -37,7 +37,7 @@ export async function carregarCobrancasDoTitular(idPaciente) {
   ]);
   const cobrancas = [...new Map([...porConsulta, ...porOrcamento].map((c) => [c.id, c])).values()];
   // Títulos e documentos completam a linha; se a API não os entregar ao titular,
-  // a cobrança aparece mesmo assim.
+  // a cobrança aparece mesmo assim. O recibo e a NFS-e abrem no próprio portal.
   const titulos = cobrancas.length ? await listar('titulosReceber', { idCobranca: cobrancas.map((c) => c.id) }).catch(() => []) : [];
   const documentos = await listar('documentosFiscais').catch(() => []);
   const consulta = porId(consultas);
@@ -51,8 +51,8 @@ export async function carregarCobrancasDoTitular(idPaciente) {
         descricao: `${titulo?.origem === 'COPARTICIPACAO' ? 'Coparticipação' : 'Consulta'} · ${diaMes(quando)}`,
         vencimento: titulo?.vencimento ?? c.dataEmissao,
         // Sem o título, o recibo da cobrança paga ainda pode ser pedido.
-        recibo: docs.some((d) => d.tipo === 'RECIBO') || (!titulo && c.situacao === 'PAGA'),
-        nfse: docs.some((d) => d.tipo === 'NFSE'),
+        idRecibo: docs.find((d) => d.tipo === 'RECIBO')?.id ?? null,
+        idNfse: docs.find((d) => d.tipo === 'NFSE')?.id ?? null,
       };
     })
     .sort((a, b) => b.vencimento.localeCompare(a.vencimento));
