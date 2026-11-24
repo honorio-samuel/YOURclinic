@@ -1778,6 +1778,56 @@ function criarApi({
     throw NAO_ENCONTRADO();
   }
 
+  // RF56: o demonstrativo de retorno da operadora simulada para um lote
+  // protocolado. A guia de número múltiplo de 4 volta glosada, com um motivo
+  // da lista; as outras, pagas. Cada glosa nova pode ir a recurso (RF57).
+  const MOTIVOS_DE_GLOSA = [
+    'Carteirinha vencida na data do atendimento',
+    'Procedimento sem autorização prévia',
+    'Divergência no código do procedimento',
+    'Guia sem assinatura do beneficiário',
+  ];
+  async function rotaDeDemonstrativo(req, res, { partes, sessao, rota }) {
+    if (sessao.papel !== SECRETARIA) {
+      auditar({ acao: 'CRIAR', sessao, rota, registroAlvo: partes.join('/'), resultado: 'NEGADO', motivo: 'PAPEL' });
+      throw ACESSO_NEGADO();
+    }
+    if (req.method !== 'POST' || partes.length !== 2) throw NAO_ENCONTRADO();
+    const corpo = await lerCorpo(req);
+    const lote = db.lotesCobranca.find((l) => igual(l.id, corpo.idLoteCobranca));
+    if (!lote) throw new ErroHttp(422, 'Escolha o lote.');
+    if (lote.situacao !== 'PROTOCOLADO') throw new ErroHttp(409, 'O demonstrativo vem depois do protocolo do lote.');
+    if (lote.demonstradoEm) throw new ErroHttp(409, 'O demonstrativo deste lote já foi importado.');
+    const hoje = hojeClinica();
+    let pagas = 0;
+    let glosadas = 0;
+    let maior = db.glosas.reduce((m, g) => Math.max(m, Number(String(g.codigo).replace(/\D/g, '')) || 0), 0);
+    for (const guia of db.guiasTiss.filter((g) => igual(g.idLoteCobranca, lote.id) && g.situacao === 'ENVIADA')) {
+      if (db.glosas.some((x) => igual(x.idGuiaTiss, guia.id))) continue;
+      const numero = Number(String(guia.numero).replace(/\D/g, '')) || 0;
+      if (numero % 4 === 0) {
+        maior += 1;
+        inserir('glosas', {
+          codigo: `GT-${String(maior).padStart(4, '0')}`,
+          motivo: MOTIVOS_DE_GLOSA[Math.floor(numero / 4) % MOTIVOS_DE_GLOSA.length],
+          valorGlosado: guia.valor,
+          dataDemonstrativo: hoje,
+          idGuiaTiss: guia.id,
+          situacao: 'GLOSADO',
+        });
+        guia.situacao = 'GLOSADA';
+        glosadas += 1;
+      } else {
+        guia.situacao = 'PAGA';
+        pagas += 1;
+      }
+    }
+    lote.demonstradoEm = agoraClinica();
+    auditar({ acao: 'CRIAR', sessao, rota, registroAlvo: `lotesCobranca/${lote.id}`, resultado: 'PERMITIDO', motivo: 'DEMONSTRATIVO' });
+    salvar();
+    return enviar(res, 200, { lote: lote.numero, pagas, glosadas });
+  }
+
   async function rotaDeLote(req, res, { partes, sessao, rota }) {
     const ctx = contexto(sessao, rota);
     if (sessao.papel !== SECRETARIA) {
@@ -2096,6 +2146,7 @@ function criarApi({
       if (partes[0] === 'anexos' && (partes[1] === 'envio' || partes[2] === 'arquivo')) return await rotaDeAnexo(req, res, { partes, sessao, rota });
       if (partes[0] === 'tiss' && partes[1] === 'elegibilidade') return await rotaDeElegibilidade(req, res, { partes, sessao, rota });
       if (partes[0] === 'tiss' && partes[1] === 'lotes') return await rotaDeLote(req, res, { partes, sessao, rota });
+      if (partes[0] === 'tiss' && partes[1] === 'demonstrativo') return await rotaDeDemonstrativo(req, res, { partes, sessao, rota });
       if (partes[0] === 'relatorios' && partes.length === 3 && ['dados', 'arquivo'].includes(partes[2])) return rotaDeRelatorio(req, res, { partes, sessao, rota });
       if ((partes[0] === 'notificacoes' && partes.length === 3) || (partes[0] === 'portal' && partes[1] === 'preferencias')) {
         return await rotaDeNotificacao(req, res, { partes, sessao, rota });
