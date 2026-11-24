@@ -387,6 +387,31 @@ function podeEditarOrcamento(atual, ctx) {
     : 'O orçamento não está na sua etapa.';
 }
 
+// RF31, etapa 1: o orçamento nasce de um paciente do médico e só segue para
+// os valores com ao menos um procedimento e a justificativa clínica.
+function validarEscopo(novo, antigo, ctx, mudancas) {
+  if (!antigo && novo.idPaciente == null) return 'Escolha o paciente.';
+  if (antigo && novo.etapa === 'VALORES' && antigo.etapa !== 'VALORES') {
+    if (!ctx.db.itensOrcamento.some((i) => igual(i.idOrcamento, antigo.id))) return 'Inclua ao menos um procedimento.';
+    if (!preenchido(novo.justificativaClinica, 10)) return 'Escreva a justificativa clínica.';
+  }
+  return validarOrcamento(novo, antigo, ctx, mudancas);
+}
+
+// Item do escopo: procedimento ativo do catálogo (RF12) e quantidade de 1 a 99.
+function validarItemDoEscopo(novo, antigo, ctx) {
+  if (!antigo) {
+    const impedimento = podeEditarItem(novo, ctx);
+    if (impedimento) return impedimento;
+    const procedimento = ctx.buscar('procedimentos', novo.idProcedimento);
+    if (!procedimento || procedimento.situacao === 'INATIVO') return 'Escolha um procedimento ativo do catálogo.';
+  }
+  if (mudou('quantidade', novo, antigo) && !(Number.isInteger(novo.quantidade) && novo.quantidade >= 1 && novo.quantidade <= 99)) {
+    return 'A quantidade vai de 1 a 99.';
+  }
+  return null;
+}
+
 // Devolver o orçamento pede uma observação para quem o recebe (RF31, D32).
 const DEVOLUCOES = new Set(['VALORES>DEVOLVIDO', 'APROVACAO>VALORES']);
 
@@ -1295,6 +1320,8 @@ const politica = {
     // RC09: o Administrador só vê os que estão na etapa de aprovação.
     [A]: {
       ler: comCampo('etapa', 'APROVACAO'),
+      // RC09: o escopo chega ao Administrador sem a justificativa clínica.
+      ocultar: ['justificativaClinica'],
       // Ao aprovar ou devolver, o orçamento sai da fila do Administrador.
       alcanceDeEscrita: todos,
       editar: true,
@@ -1304,6 +1331,7 @@ const politica = {
     },
     [S]: {
       ler: todos,
+      ocultar: ['justificativaClinica'],
       editar: true,
       editaveis: ['etapa', 'valorTotal', 'validade', 'observacaoDevolucao'],
       podeEditar: podeEditarOrcamento,
@@ -1313,16 +1341,19 @@ const politica = {
       ler: e(doMedico, doPaciente('orcamentos')),
       criar: true,
       editar: true,
-      editaveis: ['etapa', 'validade', 'idPaciente'],
+      editaveis: ['etapa', 'idPaciente', 'justificativaClinica'],
       ocultar: ['valorTotal'],
-      fixar: (ctx) => ({ idMedico: ctx.sessao.idPessoa, etapa: 'ESCOPO', valorTotal: null }),
+      fixar: (ctx) => ({
+        idMedico: ctx.sessao.idPessoa, etapa: 'ESCOPO', valorTotal: null, validade: null, situacao: 'ABERTO',
+        dataEmissao: ctx.hojeClinica(), observacaoDevolucao: null,
+      }),
       podeEditar: podeEditarOrcamento,
-      validar: validarOrcamento,
+      validar: validarEscopo,
     },
     // As etapas internas não aparecem ao titular.
     [P]: {
       ler: e(doPaciente('orcamentos'), (r) => ETAPAS_DO_TITULAR.includes(r.etapa)),
-      ocultar: ['observacaoDevolucao'],
+      ocultar: ['observacaoDevolucao', 'justificativaClinica'],
       editar: true,
       editaveis: ['etapa'],
       podeEditar: podeEditarOrcamento,
@@ -1330,7 +1361,7 @@ const politica = {
     },
     [R]: {
       ler: e(doPaciente('orcamentos'), (r) => ETAPAS_DO_TITULAR.includes(r.etapa)),
-      ocultar: ['observacaoDevolucao'],
+      ocultar: ['observacaoDevolucao', 'justificativaClinica'],
       editar: true,
       editaveis: ['etapa'],
       podeEditar: podeEditarOrcamento,
@@ -1347,10 +1378,16 @@ const politica = {
       },
       criar: true,
       editar: true,
+      // O item sai do escopo enquanto ele está com o Médico.
+      excluir: true,
+      editaveis: ['quantidade'],
       ocultar: ['valorUnitario'],
       fixar: () => ({ valorUnitario: null }),
+      completar: (novo, ctx) => {
+        novo.descricao = ctx.buscar('procedimentos', novo.idProcedimento)?.nome ?? null;
+      },
       podeEditar: podeEditarItem,
-      validar: (novo, antigo, ctx) => (antigo ? null : podeEditarItem(novo, ctx)),
+      validar: validarItemDoEscopo,
     },
     [P]: { ler: (r, ctx) => ETAPAS_DO_TITULAR.includes(orcamentoDoItem(r, ctx)?.etapa) && doPaciente('itensOrcamento')(r, ctx) },
     [R]: { ler: (r, ctx) => ETAPAS_DO_TITULAR.includes(orcamentoDoItem(r, ctx)?.etapa) && doPaciente('itensOrcamento')(r, ctx) },

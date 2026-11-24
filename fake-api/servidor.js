@@ -1536,8 +1536,10 @@ function criarApi({
       return enviar(res, 200, projetar(regra, atual, ctx));
     }
 
-    // excluir
+    // excluir: a mesma trava da edição vale para apagar.
     const atual = buscarNoAlcance();
+    const impedimento = regra.podeEditar?.(atual, ctx);
+    if (impedimento) throw new ErroHttp(409, impedimento);
     db[colecao] = db[colecao].filter((r) => r !== atual);
     salvar();
     auditar({ acao: 'EXCLUIR', sessao, rota, registroAlvo: alvo, resultado: 'PERMITIDO' });

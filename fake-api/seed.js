@@ -667,6 +667,13 @@ function gerarBanco({ data = DATA_PADRAO, contas = lerContas() } = {}) {
     [comVinculo(ativos[4], 2), ativos[4], 'RECUSADO', [[infiltracao, 1]], -25],
   ].map(([paciente, medico, etapa, itens, d]) => {
     const comValores = !['ESCOPO', 'VALORES', 'DEVOLVIDO'].includes(etapa);
+    // Texto fictício da etapa 1 (RF31), visto só pelo médico.
+    const justificativa = new Map([
+      [cirurgia, 'Lesão com indicação de retirada e exame da peça.'],
+      [dermatoscopia, 'Acompanhamento de lesões pigmentadas.'],
+      [ecg, 'Avaliação cardiológica antes do procedimento.'],
+      [infiltracao, 'Dor articular sem melhora com o tratamento clínico.'],
+    ]);
     const orcamento = novo('orcamentos', {
       dataEmissao: dia(d),
       validade: dia(d + 30),
@@ -676,6 +683,7 @@ function gerarBanco({ data = DATA_PADRAO, contas = lerContas() } = {}) {
       idMedico: medico.id,
       etapa,
       observacaoDevolucao: etapa === 'DEVOLVIDO' ? 'Confirmar se o eletrocardiograma entra neste orçamento ou em outro.' : null,
+      justificativaClinica: justificativa.get(itens[0][0]) ?? null,
     });
     itens.forEach(([procedimento, quantidade]) =>
       novo('itensOrcamento', {
