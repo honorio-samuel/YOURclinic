@@ -5,7 +5,7 @@ import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
 import { CampoSelect, Filtros } from '../../components/campos';
-import { emBreve } from '../../components/confirmacao';
+import NotificacoesComFalha, { FALHAS } from '../../components/notificacoes-com-falha';
 import { DATA_DE_HOJE } from '../../config/axios';
 import { listar, pessoasPorId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -27,7 +27,7 @@ function espera(c, agora) {
 
 async function carregarPendenciasRecepcao(consultasDoDia) {
   const [notificacoes, alertas, representacoes] = await Promise.all([
-    listar('notificacoes', { situacao: 'FALHOU' }),
+    listar('notificacoes', { situacao: FALHAS }),
     listar('alertasEstoque', { situacao: 'ABERTO' }),
     listar('representacoes'),
   ]);
@@ -58,6 +58,7 @@ function FilaDoDia() {
   const pend = useCarregar(() => (ehSecretaria && dados ? carregarPendenciasRecepcao(dados) : Promise.resolve(null)), [dados]);
   const [modal, mudar] = useMudarStatus(recarregar);
   const [medico, setMedico] = React.useState('');
+  const [tratando, setTratando] = React.useState(false);
   const linhas = (dados ?? []).filter((c) => !medico || String(c.idMedico) === medico);
   const agora = `${agoraDaClinica()}:00`;
 
@@ -149,7 +150,7 @@ function FilaDoDia() {
                 p.rota ? (
                   <Link to={p.rota}>{p.acao}</Link>
                 ) : (
-                  <button type='button' className='btn btn-link btn-sm p-0' onClick={() => emBreve('O reenvio de notificações')}>
+                  <button type='button' className='btn btn-link btn-sm p-0' onClick={() => setTratando(true)}>
                     {p.acao}
                   </button>
                 ),
@@ -157,6 +158,7 @@ function FilaDoDia() {
           ]}
         />
       )}
+      {tratando && <NotificacoesComFalha aoFechar={() => setTratando(false)} aoMudar={pend.recarregar} />}
       {modal}
     </Pagina>
   );

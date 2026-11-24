@@ -2,14 +2,19 @@ import React from 'react';
 
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
-import { emBreve, useConfirmacao } from '../../components/confirmacao';
+import Modal from '../../components/modal';
+import { useConfirmacao } from '../../components/confirmacao';
 import { mensagemErro, mensagemSucesso } from '../../components/toastr';
 import { api, DATA_DE_HOJE } from '../../config/axios';
 import { buscar, listar } from '../../servicos/dados';
+import { carregarPreferencias, salvarPreferencias } from '../../servicos/notificacoes';
 import { useCarregar } from '../../hooks/use-carregar';
-import { diaMesHora } from '../../utils/formatos';
-import { CANAL, EVENTO_NOTIFICACAO } from '../../utils/rotulos';
+import { data, diaMesHora } from '../../utils/formatos';
+import { CANAL, EVENTO_NOTIFICACAO, TIPO_SOLICITACAO } from '../../utils/rotulos';
 import { ExigeRepresentado, useTitular } from './comum';
+import { somarDias } from '../agenda/comum';
+
+const SITUACAO_PEDIDO = { ABERTA: 'Recebido', EM_ANALISE: 'Em análise', RESPONDIDA: 'Respondido', RECUSADA: 'Recusado' };
 
 const DIREITOS = [
   ['ACESSO', 'Acesso aos dados', 'Declaração e exportações'],
@@ -32,6 +37,26 @@ function DadosPortal() {
   }, [id]);
   const [modal, confirmar] = useConfirmacao();
   const [avisos, setAvisos] = React.useState({ lembretes: true, cobrancas: true });
+  const [vendoPedidos, setVendoPedidos] = React.useState(false);
+  // RF39: a preferência vem da API e vale na hora em que muda.
+  React.useEffect(() => {
+    if (!id) return;
+    carregarPreferencias()
+      .then(setAvisos)
+      .catch(() => {});
+  }, [id]);
+  const mudarAviso = async (chave, ligado) => {
+    const antes = avisos;
+    const novos = { ...avisos, [chave]: ligado };
+    setAvisos(novos);
+    try {
+      await salvarPreferencias(novos);
+      mensagemSucesso(ligado ? 'Aviso ligado.' : 'Aviso desligado. Avisos de cancelamento pela clínica continuam.');
+    } catch {
+      setAvisos(antes);
+      mensagemErro('Não foi possível salvar a preferência agora.');
+    }
+  };
 
   const solicitar = async (tipo, rotulo) => {
     const ok = await confirmar({ titulo: `Pedir: ${rotulo.toLowerCase()}?`, texto: 'A clínica responde em até 15 dias. O andamento aparece em Pedidos em andamento.', rotuloConfirmar: 'Enviar pedido' });
@@ -48,7 +73,7 @@ function DadosPortal() {
   const andamento = (dados?.solicitacoes ?? []).filter((s) => ['ABERTA', 'EM_ANALISE'].includes(s.situacao));
   const linhasDireitos = [
     ...DIREITOS.map(([tipo, direito, entrega]) => ({ id: tipo, direito, entrega, acao: 'Solicitar', aoClicar: () => solicitar(tipo, direito) })),
-    { id: 'andamento', direito: 'Pedidos em andamento', entrega: andamento.length ? `${andamento.length} em análise · resposta em até 15 dias` : 'Nenhum', acao: andamento.length ? 'Ver' : null, aoClicar: () => emBreve('O acompanhamento dos pedidos') },
+    { id: 'andamento', direito: 'Pedidos em andamento', entrega: andamento.length ? `${andamento.length} em análise · resposta em até 15 dias` : 'Nenhum', acao: andamento.length ? 'Ver' : null, aoClicar: () => setVendoPedidos(true) },
   ];
   const campo = (rotulo, valor, chave) => (
     <div className='col-md-6' key={chave}>
@@ -116,10 +141,7 @@ function DadosPortal() {
                   type='checkbox'
                   className='form-check-input'
                   checked={avisos[chave]}
-                  onChange={(e) => {
-                    setAvisos((a) => ({ ...a, [chave]: e.target.checked }));
-                    emBreve('Salvar a preferência de aviso');
-                  }}
+                  onChange={(e) => mudarAviso(chave, e.target.checked)}
                 />
                 <label htmlFor={`aviso-${chave}`} className='form-check-label'>
                   {rotulo}
@@ -140,6 +162,31 @@ function DadosPortal() {
             { titulo: 'Canal', render: (n) => CANAL[n.canal] ?? n.canal },
           ]}
         />
+        {vendoPedidos && (
+          <Modal
+            titulo='Pedidos à clínica'
+            aoFechar={() => setVendoPedidos(false)}
+            rodape={
+              <button type='button' className='btn btn-outline-secondary' onClick={() => setVendoPedidos(false)}>
+                Fechar
+              </button>
+            }
+          >
+            <Listagem
+              linhas={[...(dados?.solicitacoes ?? [])].sort((a, b) => b.dataSolicitacao.localeCompare(a.dataSolicitacao))}
+              vazio='Nenhum pedido feito.'
+              colunas={[
+                { titulo: 'Pedido', render: (p) => TIPO_SOLICITACAO[p.tipo] ?? p.tipo },
+                { titulo: 'Feito em', render: (p) => data(p.dataSolicitacao) },
+                { titulo: 'Situação', render: (p) => SITUACAO_PEDIDO[p.situacao] ?? p.situacao },
+                {
+                  titulo: 'Resposta',
+                  render: (p) => (p.dataResposta ? `Em ${data(p.dataResposta)}` : `Prevista até ${data(somarDias(p.dataSolicitacao.slice(0, 10), 15))}`),
+                },
+              ]}
+            />
+          </Modal>
+        )}
         {modal}
       </Pagina>
     </ExigeRepresentado>

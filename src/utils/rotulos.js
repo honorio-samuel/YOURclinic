@@ -150,6 +150,7 @@ export const SITUACAO_NOTIFICACAO = {
   FALHA: { rotulo: 'Falhou', tom: 'perigo' },
   AGENDADA: { rotulo: 'Agendada', tom: 'neutro' },
   ENVIADA: { rotulo: 'Enviada', tom: 'info' },
+  AVISADO_POR_TELEFONE: { rotulo: 'Avisado por telefone', tom: 'sucesso' },
 };
 
 export const EVENTO_NOTIFICACAO = {
