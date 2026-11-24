@@ -412,6 +412,16 @@ function validarItemDoEscopo(novo, antigo, ctx) {
   return null;
 }
 
+// RN-26.6: o exame do titular espera o aceite do médico; a recusa pede um
+// motivo, que o titular vê no portal.
+function validarDecisaoDoExame(novo, antigo) {
+  if (!antigo) return null;
+  if (antigo.situacao !== 'A_ACEITAR') return 'Só o exame que espera o aceite muda de situação.';
+  if (!['ACEITO', 'RECUSADO'].includes(novo.situacao)) return 'Aceite ou recuse o exame.';
+  if (novo.situacao === 'RECUSADO' && !preenchido(novo.motivoRecusa, 5)) return 'Escreva o motivo da recusa; o titular vê no portal.';
+  return null;
+}
+
 // Devolver o orçamento pede uma observação para quem o recebe (RF31, D32).
 const DEVOLUCOES = new Set(['VALORES>DEVOLVIDO', 'APROVACAO>VALORES']);
 
@@ -1247,19 +1257,15 @@ const politica = {
   prontuarios: {
     [M]: { ler: doPaciente('prontuarios'), criar: true },
   },
+  // O envio passa por POST /anexos/envio, que confere tipo, tamanho e
+  // varredura e guarda o arquivo (RF26); a coleção traz só os metadados.
   anexos: {
-    // A5-R10: o Médico aceita ou recusa o exame enviado pelo titular.
-    [M]: {
-      ler: doPaciente('anexos'),
-      criar: true,
-      editar: true,
-      editaveis: ['situacao'],
-      fixar: (ctx) => ({ enviadoPor: M, situacao: 'DISPONIVEL' }),
-    },
-    // RF27: a Secretária vê só metadados; este registro não guarda o conteúdo.
-    [S]: { ler: todos, criar: true, fixar: () => ({ enviadoPor: S, situacao: 'DISPONIVEL' }) },
-    [P]: { ler: doPaciente('anexos'), criar: true, fixar: () => ({ enviadoPor: P, situacao: 'A_ACEITAR' }) },
-    [R]: { ler: doPaciente('anexos'), criar: true, fixar: () => ({ enviadoPor: R, situacao: 'A_ACEITAR' }) },
+    // A5-R10 e RN-26.6: o Médico aceita ou recusa o exame enviado pelo titular.
+    [M]: { ler: doPaciente('anexos'), editar: true, editaveis: ['situacao', 'motivoRecusa'], validar: validarDecisaoDoExame },
+    // RF27: a Secretária vê só nome, data e situação, nunca o conteúdo.
+    [S]: { ler: todos, ocultar: ['motivoRecusa'] },
+    [P]: { ler: doPaciente('anexos') },
+    [R]: { ler: doPaciente('anexos') },
   },
   registrosClinicos: {
     [M]: {

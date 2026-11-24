@@ -1,3 +1,5 @@
 # Banco gerado por seed.js e alterado pela API em execução
 db.json
 db.json.tmp
+# Arquivos anexados pela API em execução (RF26)
+anexos/

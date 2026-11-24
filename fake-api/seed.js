@@ -291,6 +291,7 @@ function gerarBanco({ data = DATA_PADRAO, contas = lerContas() } = {}) {
     // Sem código na especificação; a proposta PR-10 cria o X52 (D18). Valor
     // inicial escolhido pela equipe em 22/11/2026.
     ['X52', 'Pagamento', 'Valor do POS avulso acima do qual outro usuário confere', 500, 'R$', 0, 10000, true],
+    ['X13', 'Prontuário', 'Tamanho máximo por arquivo anexado', 5, 'MB', 1, 50, true],
   ].forEach(([chave, grupo, descricao, valor, unidade, faixaMinima, faixaMaxima, editavel]) =>
     novo('parametros', {
       chave, grupo, descricao, valor, valorSugerido: valor, unidade, faixaMinima, faixaMaxima, editavel,
@@ -563,23 +564,24 @@ function gerarBanco({ data = DATA_PADRAO, contas = lerContas() } = {}) {
   [
     [demo, 'hemograma-2026-09.pdf', MEDICO, 'DISPONIVEL', -20],
     [demo, 'exame-enviado-pelo-paciente.pdf', PACIENTE, 'A_ACEITAR', -1],
-    [demo, 'raio-x-torax.jpg', SECRETARIA, 'DISPONIVEL', -6],
+    [demo, 'raio-x-torax.png', SECRETARIA, 'DISPONIVEL', -6],
     [representada, 'carteira-de-vacinacao.pdf', RESPONSAVEL_LEGAL, 'A_ACEITAR', -2],
     [representada, 'hemograma-infantil.pdf', RESPONSAVEL_LEGAL, 'ACEITO', -14],
     [adultos[5], 'eletrocardiograma.pdf', MEDICO, 'DISPONIVEL', -9],
-    [adultos[12], 'foto-da-lesao.jpg', PACIENTE, 'ACEITO', -11],
+    [adultos[12], 'foto-da-lesao.png', PACIENTE, 'ACEITO', -11],
     [adultos[16], 'ressonancia-joelho.pdf', SECRETARIA, 'DISPONIVEL', -4],
   ].forEach(([paciente, nomeArquivo, enviadoPor, situacao, d]) => {
     const prontuario = prontuarioDe.get(paciente.id);
     if (!prontuario) return;
     novo('anexos', {
       nomeArquivo,
-      tipoMime: nomeArquivo.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
+      tipoMime: nomeArquivo.endsWith('.pdf') ? 'application/pdf' : 'image/png',
       tamanho: s.inteiro(80, 2400) * 1024,
       dataEnvio: `${dia(d)}T${zeros(s.inteiro(8, 18), 2)}:15:00`,
       statusVarredura: 'LIMPO',
       enviadoPor,
       situacao,
+      motivoRecusa: null,
       idPaciente: paciente.id,
       idProntuario: prontuario.id,
     });

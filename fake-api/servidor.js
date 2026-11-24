@@ -29,6 +29,7 @@ const {
 } = require('./estoque');
 const { MEIOS_DE_DEVOLUCAO, avaliarReversao } = require('./estorno');
 const { aliquotasEm, imposto, proximoNumero, origemDoTitulo, pagadoresPossiveis, montarDocumentoFiscal } = require('./fiscal');
+const { detectarTipo, tipoPelaExtensao, reprovadoNaVarredura, nomeSeguro, arquivoDeDemonstracao } = require('./anexo');
 const { DATA_PADRAO } = require('./seed');
 const { Sessoes, conferirSenha, gerarHash, HASH_DE_ENGANO } = require('./sessao');
 const { filtrar, ordenar, paginar, escolherCampos } = require('./consulta');
@@ -73,12 +74,12 @@ function enviar(res, status, corpo) {
   res.end(JSON.stringify(corpo));
 }
 
-async function lerCorpo(req) {
+async function lerCorpo(req, limite = TAMANHO_MAXIMO_CORPO) {
   let tamanho = 0;
   const pedacos = [];
   for await (const pedaco of req) {
     tamanho += pedaco.length;
-    if (tamanho > TAMANHO_MAXIMO_CORPO) throw new ErroHttp(413, 'Corpo grande demais.');
+    if (tamanho > limite) throw new ErroHttp(413, 'Corpo grande demais.');
     pedacos.push(pedaco);
   }
   let corpo;
@@ -118,6 +119,8 @@ function criarApi({
   // Provedores simulados do checkout: segundos até o Pix ser pago e espera
   // do terminal TEF (README, "Checkout simulado").
   simulacao = { pixSegundos: 8, tefEsperaMs: 0, exportacaoSegundos: 3 },
+  // Pasta dos arquivos anexados; sem ela (testes), ficam só na memória.
+  pastaDeAnexos = null,
   // E-mail simulado (convite e redefinição de senha): sai no terminal.
   enviarEmail = (email) =>
     console.log(
@@ -141,6 +144,20 @@ function criarApi({
   };
 
   const sessoes = new Sessoes({ minutos: minutosSessao ?? parametro('X15', 30), relogio });
+
+  // RF26: o arquivo fica fora do banco e de qualquer pasta servida, com chave
+  // aleatória; o banco guarda só a ligação entre o anexo e a chave.
+  const arquivosEmMemoria = new Map();
+  function guardarArquivo(chave, conteudo) {
+    if (!pastaDeAnexos) return arquivosEmMemoria.set(chave, conteudo);
+    fs.mkdirSync(pastaDeAnexos, { recursive: true });
+    return fs.writeFileSync(path.join(pastaDeAnexos, chave), conteudo);
+  }
+  function lerArquivo(chave) {
+    if (!pastaDeAnexos) return arquivosEmMemoria.get(chave) ?? null;
+    const caminho = path.join(pastaDeAnexos, chave);
+    return fs.existsSync(caminho) ? fs.readFileSync(caminho) : null;
+  }
 
   function inserir(colecao, dados) {
     const id = db[colecao].reduce((maior, r) => Math.max(maior, Number(r.id) || 0), 0) + 1;
@@ -1513,6 +1530,85 @@ function criarApi({
     throw NAO_ENCONTRADO();
   }
 
+  // Anexos de exame (RF26, RF27). O envio confere o tipo real, o tamanho (X13)
+  // e a varredura, e guarda o arquivo fora do banco, com chave imprevisível.
+  // O conteúdo só sai para o Médico com o paciente no alcance e para o
+  // titular; a Secretária nunca o abre, nem o que ela mesma enviou (RN-26.1).
+  async function rotaDeAnexo(req, res, { partes, sessao, rota }) {
+    const ctx = contexto(sessao, rota);
+    const negar = (motivo, alvo = partes.join('/')) => {
+      auditar({ acao: ACOES[req.method] ?? req.method, sessao, rota, registroAlvo: alvo, resultado: 'NEGADO', motivo });
+      throw ACESSO_NEGADO();
+    };
+    const limiteMb = parametro('X13', 5);
+
+    if (req.method === 'POST' && partes[1] === 'envio' && partes.length === 2) {
+      if (![SECRETARIA, MEDICO, PACIENTE, RESPONSAVEL_LEGAL].includes(sessao.papel)) negar('PAPEL');
+      // E2: recusa antes de receber tudo, pelo tamanho anunciado.
+      const limiteBytes = limiteMb * 1024 * 1024;
+      const limiteCorpo = Math.ceil(limiteBytes * 1.4) + 64 * 1024;
+      if (Number(req.headers['content-length']) > limiteCorpo) throw new ErroHttp(413, `O arquivo passa de ${limiteMb} MB.`);
+      const corpo = await lerCorpo(req, limiteCorpo);
+      const doPortal = [PACIENTE, RESPONSAVEL_LEGAL].includes(sessao.papel);
+      const idPaciente = doPortal ? ctx.titular() : Number(corpo.idPaciente);
+      if (idPaciente == null || !ctx.buscar('pacientes', idPaciente)) throw new ErroHttp(422, 'Escolha o paciente.');
+      if (sessao.papel === MEDICO && !ctx.alcance().has(String(idPaciente))) negar('FORA_DO_ALCANCE', `pacientes/${idPaciente}`);
+      const nomeArquivo = nomeSeguro(corpo.nomeArquivo);
+      const conteudo = typeof corpo.conteudo === 'string' ? Buffer.from(corpo.conteudo, 'base64') : Buffer.alloc(0);
+      if (conteudo.length === 0) throw new ErroHttp(422, 'Escolha o arquivo.');
+      if (conteudo.length > limiteBytes) throw new ErroHttp(413, `O arquivo passa de ${limiteMb} MB.`);
+      // E1: o tipo vale pelo conteúdo; a tentativa com tipo trocado vai ao log.
+      const tipoReal = detectarTipo(conteudo);
+      if (!tipoReal || tipoPelaExtensao(nomeArquivo) !== tipoReal) {
+        auditar({ acao: 'CRIAR', sessao, rota, registroAlvo: `pacientes/${idPaciente}`, resultado: 'NEGADO', motivo: 'TIPO_DO_ARQUIVO' });
+        throw new ErroHttp(422, tipoReal ? 'A extensão não confere com o conteúdo do arquivo.' : 'Envie um PDF, JPG ou PNG.');
+      }
+      // E3: a varredura reprovou: o arquivo é descartado e o evento, registrado.
+      if (reprovadoNaVarredura(conteudo)) {
+        auditar({ acao: 'CRIAR', sessao, rota, registroAlvo: `pacientes/${idPaciente}`, resultado: 'NEGADO', motivo: 'VARREDURA_REPROVOU' });
+        throw new ErroHttp(422, 'A varredura antivírus reprovou o arquivo, que foi descartado.');
+      }
+      const prontuario = db.prontuarios.find((p) => igual(p.idPaciente, idPaciente));
+      const anexo = ctx.inserir('anexos', {
+        nomeArquivo, tipoMime: tipoReal, tamanho: conteudo.length, dataEnvio: agoraClinica(), statusVarredura: 'LIMPO',
+        enviadoPor: sessao.papel, situacao: doPortal ? 'A_ACEITAR' : 'DISPONIVEL', motivoRecusa: null,
+        idPaciente, idProntuario: prontuario?.id ?? null,
+      });
+      const chave = crypto.randomUUID();
+      guardarArquivo(chave, conteudo);
+      db.arquivosDeAnexo = { ...(db.arquivosDeAnexo ?? {}), [anexo.id]: chave };
+      auditar({ acao: 'CRIAR', sessao, rota, registroAlvo: `anexos/${anexo.id}`, resultado: 'PERMITIDO' });
+      salvar();
+      // RF26: quem enviou recebe só os metadados.
+      return enviar(res, 201, projetar(regraPara('anexos', sessao.papel), anexo, ctx));
+    }
+
+    if (req.method === 'GET' && partes[2] === 'arquivo' && partes.length === 3) {
+      const anexo = ctx.buscar('anexos', partes[1]);
+      const alvo = `anexos/${partes[1]}`;
+      if (![MEDICO, PACIENTE, RESPONSAVEL_LEGAL].includes(sessao.papel)) negar('PAPEL', alvo);
+      const regra = regraPara('anexos', sessao.papel);
+      if (!anexo || !regra?.ler(anexo, ctx)) {
+        auditar({ acao: 'LER', sessao, rota, registroAlvo: alvo, resultado: 'NEGADO', motivo: 'FORA_DO_ALCANCE' });
+        throw NAO_ENCONTRADO();
+      }
+      if (anexo.statusVarredura !== 'LIMPO') throw new ErroHttp(409, 'O arquivo ainda não passou pela varredura.');
+      const chave = db.arquivosDeAnexo?.[anexo.id];
+      const conteudo = (chave && lerArquivo(chave)) || arquivoDeDemonstracao(anexo);
+      const baixar = new URL(req.url, 'http://localhost').searchParams.has('baixar');
+      // RF27: cada visualização e cada download vão ao log.
+      auditar({ acao: baixar ? 'BAIXAR' : 'LER', sessao, rota, registroAlvo: alvo, resultado: 'PERMITIDO' });
+      res.writeHead(200, {
+        'Content-Type': detectarTipo(conteudo) ?? anexo.tipoMime,
+        'Content-Length': conteudo.length,
+        'Content-Disposition': `${baixar ? 'attachment' : 'inline'}; filename*=UTF-8''${encodeURIComponent(anexo.nomeArquivo)}`,
+      });
+      return res.end(conteudo);
+    }
+
+    throw NAO_ENCONTRADO();
+  }
+
   // A-12 e A-29: painel financeiro (RF35) e dashboard gerencial (RF41), só
   // do Administrador (RC06, nível 3). O período do dashboard vem em ?de&ate;
   // sem ele, os últimos 30 dias até hoje.
@@ -1713,6 +1809,7 @@ function criarApi({
       if (partes[0] === 'estoque') return await rotaDeEstoque(req, res, { partes, sessao, rota });
       if (partes[0] === 'financeiro' && partes[1] === 'estornos') return await rotaDeEstorno(req, res, { partes, sessao, rota });
       if (partes[0] === 'financeiro' && partes[1] === 'documentos') return await rotaDeDocumentoFiscal(req, res, { partes, sessao, rota });
+      if (partes[0] === 'anexos' && (partes[1] === 'envio' || partes[2] === 'arquivo')) return await rotaDeAnexo(req, res, { partes, sessao, rota });
       if (partes[0] === 'usuarios' && partes[2] === 'convite' && partes.length === 3) {
         return await reenviarConvite(req, res, { partes, sessao, rota });
       }
@@ -1752,6 +1849,7 @@ function iniciar() {
     .createServer(criarApi({
       db,
       salvar,
+      pastaDeAnexos: path.join(path.dirname(caminho), 'anexos'),
       origens,
       minutosSessao,
       dataDeReferencia: process.env.DATA_DE_HOJE || DATA_PADRAO,
