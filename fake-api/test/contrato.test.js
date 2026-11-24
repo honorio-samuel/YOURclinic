@@ -1,6 +1,6 @@
 'use strict';
 
-// RF54: contrato com a operadora e tabela de preços, só do Administrador.
+// RF51: contrato com a operadora e tabela de preços, só do Administrador.
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');

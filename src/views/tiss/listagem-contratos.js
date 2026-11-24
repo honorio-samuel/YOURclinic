@@ -24,7 +24,7 @@ const PRAZOS = [
   ['prazoRecurso', 'Recurso de glosa (dias)'],
 ];
 
-// RF54: cadastro e edição do contrato com a operadora. A API confere a
+// RF51: cadastro e edição do contrato com a operadora. A API confere a
 // operadora, o número único, a vigência e os prazos.
 function JanelaContrato({ contrato, convenios, aoFechar, aoSalvar }) {
   const novo = !contrato;
@@ -130,7 +130,7 @@ function JanelaContrato({ contrato, convenios, aoFechar, aoSalvar }) {
   );
 }
 
-// RF54: a tabela de preços negociada com a operadora. Cada procedimento aparece
+// RF51: a tabela de preços negociada com a operadora. Cada procedimento aparece
 // uma vez por contrato; o valor vale para as guias do contrato.
 function JanelaTabela({ contrato, aoFechar }) {
   const carregar = async () => {

@@ -332,6 +332,46 @@ Recibo e NFS-e têm cada um a própria sequência, sem lacunas (RN-33.1); o banc
 
 O arquivo viaja em base64 e fica numa pasta ao lado do banco, com nome aleatório, fora de qualquer pasta servida. O conteúdo volta só com a sessão de quem pode vê-lo, que o navegador abre na própria tela; a sessão faz o papel da URL assinada e expirável (RNF09). A varredura antivírus é simulada: reprova o arquivo de teste EICAR. Os exames do banco sintético abrem com um arquivo de demonstração gerado pela API, e os dois de imagem passaram a PNG.
 
+### B34 · Elegibilidade pela operadora simulada
+
+"Verificar na operadora" usa a carteirinha do atendimento ou, sem ela, a última conhecida do paciente; a resposta fica registrada com protocolo (RF52). Carteirinha terminada em 9 volta inelegível, com o motivo, para a demonstração ter os dois desfechos.
+
+### B35 · Textos clínicos do Médico
+
+A justificativa da autorização (com o CID) e a fundamentação do recurso de glosa são escritas em Pendências clínicas e nunca voltam para Secretária ou Administrador (RC10). Preenchida a justificativa, a autorização segue para a operadora; fundamentado, o recurso volta para a recepção enviar.
+
+### B36 · Recurso de glosa
+
+A recepção abre o recurso da glosa ainda sem recurso, com justificativa e prazo de 30 dias; se o motivo é clínico, o recurso espera antes a fundamentação do médico da consulta (RF57).
+
+### B37 · Relatórios
+
+Sete dimensões fechadas, período de até um ano, pronto no mesmo prazo das exportações (RNF13). Só dados agregados; recorte com menos de 5 registros fica de fora, e a tela diz quantos.
+
+### B38 · Lote montado pela recepção
+
+O fechamento X50 não tem parâmetro na tabela; a Secretária monta o lote escolhendo a operadora e as guias liberadas (RF55). O título a receber da operadora nasce na montagem, um por guia, com vencimento em 60 dias, como no banco sintético; o envio devolve o protocolo na hora. As guias liberadas dos últimos cinco dias ficam fora de lote no seed, para a montagem ter o que mostrar.
+
+### B39 · Demonstrativo de retorno simulado
+
+A operadora simulada devolve o demonstrativo do lote protocolado uma vez: a guia de número múltiplo de 4 volta glosada, com um motivo da lista do seed, e as outras, pagas (RF56). A glosa nova já pode ir a recurso. O arquivo XML do padrão TISS fica fora desta versão.
+
+### B40 · Guia TISS e crítica prévia
+
+A guia nasce em rascunho quando o atendimento de convênio é finalizado, preenchida pelo sistema, com o CID do prontuário só como código (RF54, RN-54.3). Como os campos clínicos são do Médico, a "edição" da Secretária é a revisão: ver a crítica prévia e atualizar os dados que o sistema preenche. Os oito bloqueios seguem a lista do RF54 e cada um diz o item e a correção (RN-54.1); o de quantidade nunca dispara, porque a guia tem uma unidade, e o prazo X37, sem parâmetro, vem do prazo de apresentação do contrato. Liberada, a guia não muda: cancela-se, com motivo e antes do lote, e a nova sai em "+ Nova guia". Um rascunho do seed fica com o valor anterior à tabela, para a demonstração mostrar um bloqueio.
+
+### B41 · Contratos e tabela de preços
+
+Só o Administrador cadastra e edita contrato e tabela (RF51, RF54): número único, vigência, versão TISS, meio de transmissão e prazos de 1 a 365 dias; cada procedimento aparece uma vez por contrato, com preço positivo.
+
+### B42 · Conciliação com extrato simulado
+
+O extrato vem da adquirente simulada, sem arquivo: a transação de NSU múltiplo de 3 vem com R$ 1,50 a menos e fica divergente (RF49). A divergência é aceita (vale o valor do extrato) ou contestada, sempre com observação; a contestada ganha a situação própria "Contestado".
+
+### B43 · Modelos e canais de notificação
+
+Nova coleção, um modelo por evento, com texto, canal preferido e se o aviso sai (RF59). O texto aceita só {paciente}, {data}, {hora}, {medico} e {local}, sem conteúdo clínico (RF21). Sem o contato do canal preferido, o aviso vai pelo outro. Um banco anterior recebe os modelos padrão ao subir a API.
+
 ## Estado das telas
 
 Das 112 telas, 108 estão `ok`, 2 em `conflito` e 2 em `lacuna`. S-07d saiu da lista com a decisão B8 e G-04b, com a B16.

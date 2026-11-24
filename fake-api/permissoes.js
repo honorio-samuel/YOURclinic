@@ -466,7 +466,7 @@ function validarCancelamentoDeGuia(novo, antigo) {
   return null;
 }
 
-// RF54: operadora conhecida, vigência coerente e prazos em dias.
+// RF51: operadora conhecida, vigência coerente e prazos em dias.
 function validarContrato(novo, antigo, ctx) {
   if (!ctx.buscar('convenios', novo.idConvenio)) return 'Escolha a operadora.';
   if (!preenchido(novo.numero, 3)) return 'Informe o número do contrato.';
@@ -1612,7 +1612,7 @@ const politica = {
   },
 
   // ── Convênio, TISS e estoque ─────────────────────────────────────────────
-  // RF54: o contrato com a operadora e a tabela de preços negociada.
+  // RF51: o contrato com a operadora e a tabela de preços negociada.
   contratosOperadora: {
     [A]: { ler: todos, criar: true, editar: true, validar: validarContrato },
     [S]: { ler: todos },

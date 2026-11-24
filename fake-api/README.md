@@ -145,7 +145,7 @@ O pedido e a decisão passam por estas rotas; a coleção `estornos` é só de l
 | `POST /notificacoes/:id/aviso-por-telefone` | Secretária, Administrador | Registra que a recepção avisou por telefone |
 | `GET` e `PUT /portal/preferencias` `{lembretes, cobrancas}` | Paciente, Responsável | Preferência de aviso do titular, guardada no cadastro do paciente (RF39, RN-59.2) |
 
-A coleção `notificacoes` é só de leitura.
+A coleção `notificacoes` é só de leitura. `modelosNotificacao` guarda, por evento, o texto, o canal preferido e se o aviso sai; o Administrador edita `texto`, `canal` e `ativo`, e o texto só aceita `{paciente}`, `{data}`, `{hora}`, `{medico}` e `{local}` (RF21, RF59). Um banco sem modelos recebe os padrão ao subir a API.
 
 ### Anexos
 
@@ -185,10 +185,24 @@ Os alertas (`MINIMO`, `VALIDADE` com a antecedência do X14 e `VENCIDO`) são re
 | Rota | Papéis | O que faz |
 |---|---|---|
 | `POST /tiss/elegibilidade` `{idConsulta}` | Secretária | Consulta a operadora simulada pela carteirinha do atendimento (ou a última conhecida do paciente) e registra a resposta com protocolo; carteirinha terminada em 9 volta `NAO_ELEGIVEL` com o motivo (RF52). Atendimento particular, 422 |
+| `POST /tiss/guias` `{idConsulta}` | Secretária | Gera a guia em rascunho (`EM_DIGITACAO`) de um atendimento de convênio finalizado sem guia ativa, como depois de cancelar a anterior (o número ganha `-2`). A guia também nasce sozinha quando o Médico finaliza o atendimento (RF54). Já tem guia ativa, 409 |
+| `GET /tiss/guias/:id/critica` | Secretária | A guia, os dados do atendimento e a crítica prévia: os oito bloqueios do RF54 (elegibilidade, autorização, validade da autorização, quantidade, código TUSS, CID na SP/SADT, valor da tabela vigente e prazo de apresentação do contrato), cada um com `numero`, `item` e `correcao` (RN-54.1) |
+| `POST /tiss/guias/:id/atualizar` | Secretária | Preenche de novo contrato, elegibilidade, autorização, valor da tabela e CID do prontuário; a guia bloqueada sem bloqueio volta a rascunho. Guia liberada, 409 |
+| `POST /tiss/guias/:id/liberar` | Secretária | Roda a crítica prévia: com bloqueio, a guia fica `BLOQUEADA` e a resposta é 422 com `bloqueios`; sem bloqueio, `LIBERADA` |
 | `POST /tiss/lotes` `{idConvenio, idsGuias}` | Secretária | Monta o lote com guias `LIBERADA`, fora de outro lote, da mesma operadora; numera em sequência, soma o valor apresentado e cria um título a receber da operadora por guia, com vencimento em 60 dias (RF55). A resposta não traz o total do lote (D9) |
+| `POST /tiss/demonstrativo` `{idLoteCobranca}` | Secretária | Demonstrativo de retorno da operadora simulada para o lote `PROTOCOLADO`: a guia de número múltiplo de 4 volta glosada (`GLOSADA`, com glosa `GLOSADO` e o motivo), as outras, `PAGA` (RF56). Uma vez por lote; lote sem protocolo ou já demonstrado, 409 |
 | `POST /tiss/lotes/:id/enviar` | Secretária | Envia o lote `A_ENVIAR`: a operadora simulada devolve o protocolo na hora, o lote fica `PROTOCOLADO` e as guias, `ENVIADA`. Lote já enviado, 409 |
 
+Pela coleção `guiasTiss`, a Secretária só cancela, com `motivoCancelamento` e antes de a guia entrar em lote; criar e liberar passam pelas rotas acima. `contratosOperadora` e `itensTabelaPreco` são do Administrador, com número de contrato único, vigência, versão TISS, meio de transmissão, prazos de 1 a 365 dias e um preço positivo por procedimento em cada contrato (RF51).
+
 O recurso de glosa sai pela coleção `recursosGlosa`: a Secretária cria com `{idGlosa, justificativa, aguardaFundamentacao}`, a API completa prazo (30 dias), rodada e médico e marca a glosa `EM_RECURSO` (RF57). Se espera a fundamentação, só o Médico da consulta a escreve; Secretária e Administrador nunca leem `fundamentacaoClinica`. A justificativa clínica da autorização segue a mesma regra e, preenchida, leva o pedido a `EM_ANALISE` (RF53).
+
+### Conciliação de recebíveis
+
+| Rota | Papéis | O que faz |
+|---|---|---|
+| `POST /financeiro/conciliacao/extrato` `{adquirente?}` | Administrador | Extrato da adquirente simulada para as transações de cartão pendentes: o crédito confere com o líquido esperado, menos nas de NSU múltiplo de 3, em que vem R$ 1,50 a menos e a transação fica `DIVERGENTE` com `valorExtrato` (RF49). Responde quantas foram lidas, conciliadas e divergentes |
+| `POST /financeiro/conciliacao/:id/tratar` `{decisao, observacao}` | Administrador | Divergência `ACEITAR` (o líquido passa a ser o do extrato, `CONCILIADO`) ou `CONTESTAR` (`CONTESTADO`), com observação de ao menos 5 caracteres; o tratamento fica na transação e vai ao log. Transação que não está divergente, 409 |
 
 ### Relatórios
 
@@ -274,5 +288,5 @@ O banco tem as 52 coleções da API do Render, com os mesmos nomes de campos, ma
 - **Publicação manual no Render.** Desde 21/10/2026, `yourclinic-api.onrender.com` roda esta API, a partir do branch `feat/telas-listagem-redesenho` deste repositório, no lugar do json-server aberto. Como o repositório entra no Render como público, um push não publica sozinho: cada versão nova precisa de "Manual Deploy" no painel.
 - As sessões ficam em memória: reiniciar o servidor encerra todas.
 - `autorizacoes.senha` (a senha da operadora TISS) nunca é devolvida, porque nenhuma resposta leva campo `senha*`. As telas de TISS vão precisar de um campo com outro nome.
-- Regras ainda não aplicadas: atraso X10 antes de Não Compareceu, janela X02 na contagem de tentativas de login, sigilo do adolescente (D3, o banco não tem campo que marque o registro), edição de guia e de contrato pela API própria, importação do demonstrativo e do extrato da adquirente.
+- Regras ainda não aplicadas: atraso X10 antes de Não Compareceu, janela X02 na contagem de tentativas de login, sigilo do adolescente (D3, o banco não tem campo que marque o registro), arquivo real de demonstrativo (XML TISS) e de extrato da adquirente, que aqui vêm das simulações.
 - O bloqueio por tentativas vale por conta, não por endereço de origem: quem souber um login pode bloqueá-lo por X03 minutos. No simulado local isso foi aceito.

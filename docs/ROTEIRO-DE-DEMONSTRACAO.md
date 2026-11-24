@@ -40,8 +40,9 @@ O sistema trata 28/09/2026 como "hoje" e usa a hora do relógio. A sessão termi
 5. **Alertas** (menu Estoque): o lote de gaze venceu; **Descartar** registra o descarte com o motivo. Em **Movimentações**, **Registrar saída** sugere o lote que vence primeiro; o Midazolam pede a conferência manual.
 6. Na **Fila do dia**, em "Notificações sem entrega", **Reenviar ou ligar**.
 7. **Elegibilidade e autorização** (menu Faturamento TISS): em um atendimento "A verificar", **Verificar na operadora** na pílula de status; a resposta da operadora simulada fica registrada com o protocolo (carteirinha terminada em 9 volta inelegível).
-8. **Lotes e protocolos**: **+ Novo lote**, escolha a operadora, marque as guias liberadas e **Montar lote**; depois **Enviar lote** na pílula de status registra o protocolo. A Secretária vê o valor de cada guia, mas não o total do lote.
-9. **Glosas e recursos**: em uma glosa, **Abrir recurso** com a justificativa; o recurso pode pedir antes a fundamentação do médico.
+8. **Guias TISS**: em G000000255 (rascunho de hoje), **Editar** abre a revisão; a crítica prévia mostra o bloqueio 7, valor fora da tabela, e como corrigir. **Atualizar dados** traz o valor da tabela e **Liberar guia** libera para o lote. Guia liberada não se edita: a correção é cancelar e gerar outra em **+ Nova guia**.
+9. **Lotes e protocolos**: **+ Novo lote**, escolha a operadora, marque as guias liberadas e **Montar lote**; depois **Enviar lote** na pílula de status registra o protocolo. A Secretária vê o valor de cada guia, mas não o total do lote.
+10. **Glosas e recursos**: **Importar demonstrativo** de um lote protocolado; as guias voltam pagas ou glosadas, com o motivo. Na glosa nova, **Abrir recurso** com a justificativa; o recurso pode pedir antes a fundamentação do médico.
 
 ### 2. Médico (Dra. Sofia Lima Teixeira)
 
@@ -65,11 +66,14 @@ O sistema trata 28/09/2026 como "hoje" e usa a hora do relógio. A sessão termi
 1. **Painel do dia** e **Dashboard gerencial**: indicadores calculados na API, sem dado clínico.
 2. **Painel financeiro**: a receber, cartão em trânsito, contas a pagar e saldo realizado e projetado.
 3. **Cancelamentos e estornos**: aprove o pedido da Secretária; o título reabre e o recibo é cancelado.
-4. **Movimentações** (menu Estoque): aprove ou recuse o pedido de ajuste de inventário.
-5. **Recibos e NFS-e**: **Emitir documento** como NFS-e para Nicolas Barros Dias, que não tem CPF: a nota fica pendente com o erro do ambiente nacional.
-6. **Relatórios**: escolha a dimensão e o período e **Gerar relatório**; fica pronto em segundos, para ver na tela ou baixar em CSV. Recortes com menos de 5 registros ficam de fora.
-7. **Solicitações dos titulares (LGPD)**: abra um pedido e responda ou recuse com o motivo; o titular vê a resposta no portal.
-8. **Log de auditoria**: as ações feitas na apresentação aparecem aqui, com o papel e o resultado.
+4. **Conciliação** (menu Financeiro): **Importar extrato** da adquirente simulada; as transações que não batem ficam divergentes e, na pílula de status, **Aceitar o extrato** ou **Contestar**, com observação.
+5. **Contratos e tabelas** (menu Faturamento TISS): **+ Novo contrato** com operadora, vigência e prazos; em **Ver**, a tabela de preços negociada, ao lado do preço particular.
+6. **Movimentações** (menu Estoque): aprove ou recuse o pedido de ajuste de inventário.
+7. **Recibos e NFS-e**: **Emitir documento** como NFS-e para Nicolas Barros Dias, que não tem CPF: a nota fica pendente com o erro do ambiente nacional.
+8. **Relatórios**: escolha a dimensão e o período e **Gerar relatório**; fica pronto em segundos, para ver na tela ou baixar em CSV. Recortes com menos de 5 registros ficam de fora.
+9. **Notificações** → **Modelos e canais**: edite o texto ou o canal de um aviso; um campo como `{cid}` é recusado, porque o aviso não leva conteúdo clínico.
+10. **Solicitações dos titulares (LGPD)**: abra um pedido e responda ou recuse com o motivo; o titular vê a resposta no portal.
+11. **Log de auditoria**: as ações feitas na apresentação aparecem aqui, com o papel e o resultado.
 
 ### 5. Responsável Legal (Nicolas Gomes Esteves)
 
@@ -78,10 +82,10 @@ Entra no portal em nome da representada, Tatiana Barros Macedo; com `responsavel
 ## O que é simulado
 
 - Pix, maquininha integrada (TEF) e ambiente nacional da NFS-e: respostas previsíveis, sem banco ou prefeitura de verdade.
+- Operadora de saúde: elegibilidade (carteirinha terminada em 9 volta inelegível), protocolo do lote na hora e demonstrativo de retorno (guia de número múltiplo de 4 volta glosada).
+- Adquirente do cartão: extrato em que a transação de NSU múltiplo de 3 vem com R$ 1,50 a menos.
 - Varredura antivírus dos anexos: reprova o arquivo de teste EICAR.
 - E-mails de convite e de nova senha: saem no terminal da API.
 - Os dados são sintéticos; CPFs e telefones não pertencem a ninguém.
 
-## Ainda não implementado
-
-Os botões que mostram "Próxima etapa" levam a funções desta lista: criação e edição de guia TISS, cadastro e edição de contratos com operadoras (e a tabela de preços), importação do demonstrativo de retorno, importação do extrato e tratamento de divergência na conciliação de recebíveis, e edição dos modelos e canais de notificação.
+Todas as ações das telas têm função; nenhum botão leva mais a "Próxima etapa".

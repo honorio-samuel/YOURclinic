@@ -120,6 +120,26 @@ Notificações:
 |---|---|---|
 | Notificações sem entrega (S-06) e Notificações (A-32) | Secretária, Administrador | Reenviar a notificação que falhou ou registrar que avisou por telefone; o detalhe mostra canal, endereço e tentativas, sem conteúdo clínico |
 | Meus dados e privacidade (P-06, R-06) | Paciente, Responsável Legal | Liga e desliga lembretes e avisos de cobrança, com efeito na hora; o aviso de cancelamento pela clínica continua. "Ver" acompanha os pedidos feitos à clínica, com o prazo de resposta |
+| Modelos e canais (A-32) | Administrador | Texto, canal preferido e se o aviso sai, por evento. O texto só aceita {paciente}, {data}, {hora}, {medico} e {local}, sem conteúdo clínico; os avisos de agenda seguem o modelo |
+
+Convênio e faturamento TISS:
+
+| Tela | Papéis | Observação |
+|---|---|---|
+| Elegibilidade e autorização (A-21, S-13) | Secretária, Administrador | "Verificar na operadora" consulta a operadora simulada e guarda a resposta com protocolo; carteirinha terminada em 9 volta inelegível, com o motivo |
+| Guias TISS (A-22, S-14) | Secretária, Administrador | A guia nasce em rascunho quando o médico finaliza o atendimento de convênio. A revisão mostra o que o sistema preencheu (CID só como código) e a crítica prévia, com os oito bloqueios do RF54, cada um com o item e a correção; "Atualizar dados" traz elegibilidade, autorização e valor da tabela de novo. Liberada, a guia só se vê ou cancela; a nova sai em "+ Nova guia" |
+| Lotes e protocolos (A-23, S-15) | Secretária, Administrador | "+ Novo lote" junta guias liberadas de uma operadora; cada guia vira título a receber da operadora. "Enviar lote" registra o protocolo. A Secretária não vê o total do lote |
+| Demonstrativo e glosas (A-24, S-16a) | Secretária, Administrador | "Importar demonstrativo" do lote protocolado: cada guia volta paga ou glosada, com o motivo. "Abrir recurso" na glosa, com a justificativa e, se preciso, a fundamentação do médico |
+| Pendências clínicas (M-06) | Médico | Justificativa clínica da autorização e fundamentação do recurso de glosa; recepção e administração não leem esses textos |
+| Contratos e tabelas (A-20) | Administrador | Cadastro e edição do contrato (número único, vigência, versão TISS, meio de transmissão e prazos) e a tabela de preços negociada, ao lado do preço particular |
+
+Gestão:
+
+| Tela | Papéis | Observação |
+|---|---|---|
+| Conciliação de recebíveis (A-15) | Administrador | "Importar extrato" da adquirente simulada concilia as transações pendentes; a que não bate fica divergente e é aceita (vale o extrato) ou contestada, com observação |
+| Relatórios (A-30) | Administrador | Sete dimensões, período de até um ano; fica pronto em segundos, para ver na tela ou baixar em CSV. Recortes com menos de 5 registros ficam de fora |
+| Solicitações dos titulares (A-33) | Administrador | Detalhe do pedido e resposta ou recusa com motivo; o titular vê a resposta no portal |
 
 Os e-mails de convite e de nova senha saem no terminal da API local, com o link (detalhes em [fake-api/README.md](fake-api/README.md)).
 
