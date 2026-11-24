@@ -21,7 +21,8 @@ const SITUACAO_DO_CAIXA = {
   A_APROVAR: { rotulo: 'Aguardando aprovação', tom: 'aviso' },
   RECONTAGEM: { rotulo: 'Recontagem pedida', tom: 'perigo' },
 };
-const TIPO_MOVIMENTO = { SANGRIA: 'Sangria', REFORCO: 'Reforço' };
+// A devolução nasce da aprovação de um estorno em dinheiro (RF48).
+const TIPO_MOVIMENTO = { SANGRIA: 'Sangria', REFORCO: 'Reforço', DEVOLUCAO: 'Devolução' };
 const DIVERGENCIA = 'Justifique a diferença no fechamento.';
 
 async function carregarCaixa() {

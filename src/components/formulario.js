@@ -119,7 +119,7 @@ export function CampoTexto({
 
 // Valor em reais: "R$" à esquerda e o número alinhado à direita. A máscara
 // (mascararMoeda) vem de quem usa, junto com o tratador do campo.
-export function CampoMoeda({ id, rotulo, valor, aoMudar, erro, ajuda, opcional = false, largura = 'col-md-3' }) {
+export function CampoMoeda({ id, rotulo, valor, aoMudar, erro, ajuda, opcional = false, largura = 'col-md-3', ...resto }) {
   return (
     <div className={largura}>
       <Rotulo id={id} rotulo={rotulo} opcional={opcional} />
@@ -134,6 +134,7 @@ export function CampoMoeda({ id, rotulo, valor, aoMudar, erro, ajuda, opcional =
           aria-invalid={erro ? true : undefined}
           aria-describedby={descricao(id, erro, ajuda)}
           required={!opcional}
+          {...resto}
         />
         <Erro id={id} erro={erro} />
       </div>
