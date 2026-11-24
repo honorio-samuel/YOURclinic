@@ -28,6 +28,7 @@ const {
   lotesParaSaida, recalcularAlertas, inteiroPositivo, dataValida: ehDataValida, texto: textoLimpo, dataBr,
 } = require('./estoque');
 const { MEIOS_DE_DEVOLUCAO, avaliarReversao } = require('./estorno');
+const { aliquotasEm, imposto, proximoNumero, origemDoTitulo, pagadoresPossiveis, montarDocumentoFiscal } = require('./fiscal');
 const { DATA_PADRAO } = require('./seed');
 const { Sessoes, conferirSenha, gerarHash, HASH_DE_ENGANO } = require('./sessao');
 const { filtrar, ordenar, paginar, escolherCampos } = require('./consulta');
@@ -1409,6 +1410,109 @@ function criarApi({
     throw NAO_ENCONTRADO();
   }
 
+  // Recibo (RF33) e NFS-e (RF34). Só de título pago; o servidor numera, monta
+  // e guarda o documento. A NFS-e vai a um ambiente nacional simulado, que
+  // rejeita tomador sem CPF; a rejeição fica pendente, com o código e a
+  // descrição à vista do Administrador, e pode ser reenviada.
+  async function rotaDeDocumentoFiscal(req, res, { partes, sessao, rota }) {
+    const ctx = contexto(sessao, rota);
+    const exigirPapel = (...papeis) => {
+      if (papeis.includes(sessao.papel)) return;
+      auditar({ acao: ACOES[req.method] ?? req.method, sessao, rota, registroAlvo: partes.join('/'), resultado: 'NEGADO', motivo: 'PAPEL' });
+      throw ACESSO_NEGADO();
+    };
+    const hoje = hojeClinica();
+    const responder = (status, doc, acao) => {
+      auditar({ acao, sessao, rota, registroAlvo: `documentosFiscais/${doc.id}`, resultado: 'PERMITIDO', motivo: doc.tipo });
+      if (acao !== 'LER') salvar();
+      return enviar(res, status, montarDocumentoFiscal(db, doc));
+    };
+
+    // O documento, para quem o lê pela coleção (o titular, só o próprio).
+    if (req.method === 'GET' && partes.length === 3) {
+      const regra = regraPara('documentosFiscais', sessao.papel);
+      const doc = ctx.buscar('documentosFiscais', partes[2]);
+      if (!regra || !doc || !regra.ler(doc, ctx)) {
+        auditar({ acao: 'LER', sessao, rota, registroAlvo: `documentosFiscais/${partes[2]}`, resultado: 'NEGADO', motivo: 'FORA_DO_ALCANCE' });
+        throw NAO_ENCONTRADO();
+      }
+      return responder(200, doc, 'LER');
+    }
+    if (req.method !== 'POST') throw NAO_ENCONTRADO();
+    const corpo = await lerCorpo(req);
+
+    const tituloPago = (id) => {
+      const titulo = ctx.buscar('titulosReceber', id);
+      if (!titulo || titulo.idCobranca == null) throw new ErroHttp(422, 'Escolha um título de paciente.');
+      if (titulo.situacao !== 'PAGO') throw new ErroHttp(409, 'O documento só sai depois do pagamento do título.');
+      return titulo;
+    };
+    const existente = (titulo, tipo) =>
+      db.documentosFiscais.find((d) => igual(d.idTituloReceber, titulo.id) && d.tipo === tipo && ['EMITIDO', 'PENDENTE'].includes(d.situacao));
+    const pagadorDe = (idPaciente) => {
+      if (corpo.idPagador == null || corpo.idPagador === '') return idPaciente;
+      if (!pagadoresPossiveis(db, idPaciente).includes(String(corpo.idPagador))) {
+        throw new ErroHttp(422, 'O pagador é o paciente ou um responsável legal dele.');
+      }
+      return Number(corpo.idPagador);
+    };
+    // Ambiente nacional simulado: sem CPF do tomador, a nota é rejeitada.
+    const transmitir = (doc) => {
+      const tomador = db.pessoas.find((p) => igual(p.id, doc.idPagador));
+      if (!tomador?.cpf) {
+        doc.situacao = 'PENDENTE';
+        doc.erro = { codigo: 'SIM-E01', descricao: 'Tomador sem CPF: o ambiente nacional rejeitou a nota. Complete o CPF no cadastro e reenvie.' };
+        return;
+      }
+      doc.situacao = 'EMITIDO';
+      doc.numero = proximoNumero(db, 'NFSE');
+      doc.chaveAcesso = `SIM${doc.dataEmissao.replace(/-/g, '')}${doc.numero}`;
+      doc.erro = null;
+    };
+
+    if (partes[2] === 'recibo' && partes.length === 3) {
+      exigirPapel(SECRETARIA, ADMINISTRADOR);
+      const titulo = tituloPago(corpo.idTituloReceber);
+      const ja = existente(titulo, 'RECIBO');
+      if (ja) throw new ErroHttp(409, `Este título já tem o recibo nº ${ja.numero}.`);
+      const { idPaciente } = origemDoTitulo(db, titulo);
+      const doc = ctx.inserir('documentosFiscais', {
+        tipo: 'RECIBO', numero: proximoNumero(db, 'RECIBO'), dataEmissao: hoje, valor: titulo.valor, ibs: null, cbs: null,
+        situacao: 'EMITIDO', idTituloReceber: titulo.id, idPaciente, idPagador: pagadorDe(idPaciente), chaveAcesso: null, erro: null,
+      });
+      return responder(201, doc, 'CRIAR');
+    }
+
+    if (partes[2] === 'nfse' && partes.length === 3) {
+      exigirPapel(ADMINISTRADOR);
+      const titulo = tituloPago(corpo.idTituloReceber);
+      const ja = existente(titulo, 'NFSE');
+      if (ja) throw new ErroHttp(409, ja.situacao === 'PENDENTE' ? 'Já há uma NFS-e pendente deste título: corrija e reenvie.' : `Este título já tem a NFS-e nº ${ja.numero}.`);
+      // RN-34.2: as alíquotas vêm da tabela vigente, nunca do operador.
+      const aliquotas = aliquotasEm(hoje);
+      if (!aliquotas) throw new ErroHttp(409, 'Não há alíquotas de IBS e CBS vigentes na tabela.');
+      const { idPaciente } = origemDoTitulo(db, titulo);
+      const doc = ctx.inserir('documentosFiscais', {
+        tipo: 'NFSE', numero: null, dataEmissao: hoje, valor: titulo.valor,
+        ibs: imposto(titulo.valor, aliquotas.ibs), cbs: imposto(titulo.valor, aliquotas.cbs),
+        situacao: 'PENDENTE', idTituloReceber: titulo.id, idPaciente, idPagador: pagadorDe(idPaciente), chaveAcesso: null, erro: null,
+      });
+      transmitir(doc);
+      return responder(201, doc, 'CRIAR');
+    }
+
+    if (partes.length === 4 && partes[3] === 'reenviar') {
+      exigirPapel(ADMINISTRADOR);
+      const doc = ctx.buscar('documentosFiscais', partes[2]);
+      if (!doc || doc.tipo !== 'NFSE') throw NAO_ENCONTRADO();
+      if (doc.situacao !== 'PENDENTE') throw new ErroHttp(409, 'Só a NFS-e pendente é reenviada.');
+      transmitir(doc);
+      return responder(200, doc, 'EDITAR');
+    }
+
+    throw NAO_ENCONTRADO();
+  }
+
   // A-12 e A-29: painel financeiro (RF35) e dashboard gerencial (RF41), só
   // do Administrador (RC06, nível 3). O período do dashboard vem em ?de&ate;
   // sem ele, os últimos 30 dias até hoje.
@@ -1608,6 +1712,7 @@ function criarApi({
       if (partes[0] === 'indicadores') return rotaDeIndicadores(req, res, { url, partes, sessao, rota });
       if (partes[0] === 'estoque') return await rotaDeEstoque(req, res, { partes, sessao, rota });
       if (partes[0] === 'financeiro' && partes[1] === 'estornos') return await rotaDeEstorno(req, res, { partes, sessao, rota });
+      if (partes[0] === 'financeiro' && partes[1] === 'documentos') return await rotaDeDocumentoFiscal(req, res, { partes, sessao, rota });
       if (partes[0] === 'usuarios' && partes[2] === 'convite' && partes.length === 3) {
         return await reenviarConvite(req, res, { partes, sessao, rota });
       }

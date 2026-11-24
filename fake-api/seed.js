@@ -828,14 +828,16 @@ function gerarBanco({ data = DATA_PADRAO, contas = lerContas() } = {}) {
   });
 
   // Recibo para os pagamentos dos últimos dez dias; NFS-e para metade deles.
+  // Cada tipo tem a própria numeração, sem lacunas (RN-33.1).
   let numeroFiscal = 1;
+  const proximo = { RECIBO: 1, NFSE: 1 };
   for (const pagamento of db.pagamentos) {
     if (pagamento.dataHora < `${dia(-10)}T00:00:00`) continue;
     const titulo = titulosDaCobranca.get(pagamento.idCobranca);
-    const tipos = numeroFiscal % 2 === 0 ? ['RECIBO', 'NFSE'] : ['RECIBO'];
+    const tipos = numeroFiscal++ % 2 === 0 ? ['RECIBO', 'NFSE'] : ['RECIBO'];
     for (const tipo of tipos) {
       novo('documentosFiscais', {
-        tipo, numero: zeros(numeroFiscal++, 8), dataEmissao: pagamento.dataHora.slice(0, 10), valor: pagamento.valor,
+        tipo, numero: zeros(proximo[tipo]++, 8), dataEmissao: pagamento.dataHora.slice(0, 10), valor: pagamento.valor,
         ibs: tipo === 'NFSE' ? dinheiro(pagamento.valor * 0.001) : null,
         cbs: tipo === 'NFSE' ? dinheiro(pagamento.valor * 0.009) : null,
         situacao: 'EMITIDO', idTituloReceber: titulo.id,

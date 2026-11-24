@@ -1476,9 +1476,11 @@ const politica = {
     [R]: { ler: doPaciente('estornos') },
   },
   // A Secretária emite e consulta recibos; NFS-e só o Administrador (S-11).
+  // A emissão passa pelas rotas /financeiro/documentos, que numeram e
+  // montam o documento (RF33, RF34).
   documentosFiscais: {
-    [A]: { ler: todos, criar: true, editar: true },
-    [S]: { ler: comCampo('tipo', 'RECIBO'), criar: true },
+    [A]: { ler: todos },
+    [S]: { ler: comCampo('tipo', 'RECIBO') },
     [P]: { ler: doPaciente('documentosFiscais') },
     [R]: { ler: doPaciente('documentosFiscais') },
   },
