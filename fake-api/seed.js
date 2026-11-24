@@ -962,7 +962,7 @@ function gerarBanco({ data = DATA_PADRAO, contas = lerContas() } = {}) {
       lote.valorApresentado = dinheiro(lote.valorApresentado + valor);
       novo('titulosReceber', {
         origem: 'CONVENIO', vencimento: somarDias(dataDe(c), 60), valor, situacao: 'ABERTO',
-        idCobranca: null, idLoteCobranca: lote.id, idCoparticipacao: null,
+        idCobranca: null, idLoteCobranca: lote.id, idCoparticipacao: null, idGuiaTiss: guia.id,
       });
     }
   }

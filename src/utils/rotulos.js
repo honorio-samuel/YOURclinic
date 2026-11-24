@@ -130,6 +130,20 @@ export const SITUACAO_GUIA = {
   CANCELADA: { rotulo: 'Cancelada', tom: 'neutro' },
 };
 
+// Faturamento TISS (RF55 a RF57).
+export const SITUACAO_LOTE_TISS = {
+  A_ENVIAR: { rotulo: 'A enviar', tom: 'aviso' },
+  ENVIADO: { rotulo: 'Enviado', tom: 'info' },
+  PROTOCOLADO: { rotulo: 'Protocolado', tom: 'sucesso' },
+};
+
+export const SITUACAO_GLOSA = {
+  GLOSADO: { rotulo: 'Glosado', tom: 'aviso' },
+  EM_RECURSO: { rotulo: 'Em recurso', tom: 'info' },
+  RECUPERADO: { rotulo: 'Recuperado', tom: 'sucesso' },
+  PERDA: { rotulo: 'Baixado como perda', tom: 'neutro' },
+};
+
 export const SITUACAO_NOTIFICACAO = {
   ENTREGUE: { rotulo: 'Entregue', tom: 'sucesso' },
   FALHOU: { rotulo: 'Falhou', tom: 'perigo' },
