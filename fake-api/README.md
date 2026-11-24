@@ -135,6 +135,17 @@ O pedido e a decisão passam por estas rotas; a coleção `estornos` é só de l
 | `POST /financeiro/estornos` `{idPagamento, valor, motivo, chargeback: true}` | Secretária | Registro de chargeback (contestação do portador), só em cartão, sem aprovação e sem efeito no título |
 | `POST /financeiro/estornos/:id/aprovar` e `/recusar` `{motivo}` | Administrador | Aprovar confere de novo o que o meio permite, grava o protocolo, reabre o título, cancela recibo e NFS-e e, em dinheiro, lança a devolução num caixa aberto (o do recebimento ou o de quem pediu). Recusar pede motivo |
 
+### Documentos fiscais
+
+A coleção `documentosFiscais` é só de leitura; a emissão passa por estas rotas.
+
+| Rota | Papéis | O que faz |
+|---|---|---|
+| `GET /financeiro/documentos/:id` | Quem lê o documento pela coleção (o titular, só o próprio) | Recibo ou documento auxiliar da NFS-e montado no servidor: emitente, pagador e paciente com CPF, descrição do serviço sem CID, formas de pagamento, IBS, CBS e chave de acesso |
+| `POST /financeiro/documentos/recibo` `{idTituloReceber, idPagador?}` | Secretária, Administrador | Recibo de título de paciente pago (RF33), um por título, com o número seguinte dos recibos. O pagador é o paciente ou um responsável legal dele (RN-33.2) |
+| `POST /financeiro/documentos/nfse` `{idTituloReceber, idPagador?}` | Administrador | NFS-e de título pago (RF34), com IBS e CBS calculados pela tabela [aliquotas.json](aliquotas.json) (RN-34.2). O ambiente nacional simulado rejeita tomador sem CPF: a nota fica `PENDENTE`, com `erro.codigo` e `erro.descricao` |
+| `POST /financeiro/documentos/:id/reenviar` | Administrador | Reenvia a NFS-e pendente; aceita, ela ganha número e chave de acesso |
+
 ### Estoque
 
 O saldo do lote é a soma das movimentações (RN-36.2): nenhum papel grava em `movimentacoes` ou `lotes` pela coleção. Cada resposta traz a movimentação, do jeito que o papel a vê, e o lote com o saldo novo.

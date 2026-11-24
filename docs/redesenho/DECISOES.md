@@ -320,6 +320,14 @@ O chargeback parte do portador do cartão, e a clínica não o controla (RN-48.3
 
 A justificativa clínica da etapa 1 (RF31) é gravada no orçamento e só o médico autor a lê; Secretária, Administrador e titular recebem o escopo sem ela (RC09). Enviar para valores exige ao menos um procedimento e a justificativa. O banco sintético ganha justificativas fictícias nos orçamentos que já passaram da etapa 1.
 
+### B31 · Emitente, alíquotas e ambiente nacional
+
+Os parâmetros do emitente são os da clínica fictícia da demonstração, fixos na API; a tela de configuração do emitente e do certificado digital (RF34) fica fora desta versão, e o certificado nunca passa pelo navegador (RN-34.1). IBS e CBS saem de uma tabela versionada com vigência, com a alíquota de teste de 2026 (RN-34.2). O ambiente nacional da NFS-e é simulado: aceita a nota com CPF do tomador e a rejeita sem ele, como pendência com código e descrição.
+
+### B32 · Numeração por tipo de documento
+
+Recibo e NFS-e têm cada um a própria sequência, sem lacunas (RN-33.1); o banco sintético usava uma sequência só para os dois. O documento cancelado mantém o número.
+
 ## Estado das telas
 
 Das 112 telas, 108 estão `ok`, 2 em `conflito` e 2 em `lacuna`. S-07d saiu da lista com a decisão B8 e G-04b, com a B16.
