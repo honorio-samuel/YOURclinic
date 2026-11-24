@@ -176,6 +176,7 @@ const TELAS = [
   ['/portal/listagem-documentos', PORTAL, <DocumentosPortal />],
   ['/portal/listagem-cobrancas', PORTAL, <CobrancasPortal />],
   ['/portal/documentos-fiscais/:id', PORTAL, <DocumentoFiscal />],
+  ['/portal/exportacoes/:idExportacao', PORTAL, <DocumentoExportado />],
   ['/portal/orcamentos/:id', PORTAL, <OrcamentoPortal />],
   ['/portal/dados', PORTAL, <DadosPortal />],
   ['/portal/representado', ['RESPONSAVEL_LEGAL'], <SelecionarRepresentado />],

@@ -13,14 +13,14 @@ import { AVISO_CONTROLE_ESPECIAL, CAMPOS_CLINICOS, CLASSIFICACAO } from './comum
 
 const CLINICA = 'Clínica YOURClinic · Rua das Acácias, nº 120, Bairro Centro · (11) 4002-8922';
 
-function BarraDeImpressao({ voltar }) {
+function BarraDeImpressao({ voltar, rotuloVoltar = 'Voltar ao prontuário' }) {
   return (
     <div className='d-flex flex-wrap gap-2 no-print'>
       <button type='button' className='btn btn-primary' onClick={() => window.print()}>
         Imprimir ou salvar em PDF
       </button>
       <Link to={voltar} className='btn btn-outline-secondary'>
-        Voltar ao prontuário
+        {rotuloVoltar}
       </Link>
     </div>
   );
@@ -103,7 +103,11 @@ const MENSAGEM = {
 export function DocumentoExportado() {
   const { id, idExportacao } = useParams();
   const { dados, carregando, erro } = useCarregar(async () => (await api.get(`/exportacoes/${idExportacao}/documento`)).data, [idExportacao]);
-  const voltar = `/medico/prontuario/${id}/exportacoes`;
+  const { sessao } = useSessao();
+  // O titular chega aqui pelo portal (P-04, R-04); o Médico, pelo prontuário.
+  const doPortal = ['PACIENTE', 'RESPONSAVEL_LEGAL'].includes(sessao.usuario.papel);
+  const voltar = doPortal ? '/portal/listagem-documentos' : `/medico/prontuario/${id}/exportacoes`;
+  const rotuloVoltar = doPortal ? 'Voltar aos documentos' : 'Voltar ao prontuário';
 
   if (erro?.status === 404) return <RegistroIndisponivel />;
   if (erro) {
@@ -114,7 +118,7 @@ export function DocumentoExportado() {
         </div>
         <div>
           <Link to={voltar} className='btn btn-outline-secondary'>
-            Voltar ao prontuário
+            {rotuloVoltar}
           </Link>
         </div>
       </Pagina>
@@ -125,7 +129,7 @@ export function DocumentoExportado() {
   const historico = dados.tipo === 'HISTORICO';
   return (
     <Pagina titulo={historico ? 'Histórico de atendimentos' : 'Prontuário completo'} tituloAba='Documento exportado'>
-      <BarraDeImpressao voltar={voltar} />
+      <BarraDeImpressao voltar={voltar} rotuloVoltar={rotuloVoltar} />
       <article className='card card-body documento-impresso'>
         <p className='small text-body-secondary mb-1'>{CLINICA}</p>
         <h2 className='h4'>{historico ? 'Histórico de atendimentos' : 'Prontuário completo'}</h2>

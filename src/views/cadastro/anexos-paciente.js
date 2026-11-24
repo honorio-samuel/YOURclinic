@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import Pagina from '../../components/pagina';
 import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
-import { emBreve } from '../../components/confirmacao';
+import { BotaoEnviarArquivo } from '../../components/anexos';
 import { RegistroIndisponivel } from '../geral/avisos';
 import { buscar, listar } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
@@ -34,15 +34,11 @@ function AnexosRecepcao() {
     <Pagina
       titulo={`Paciente · ${dados?.nome ?? '…'}`}
       tituloAba='Anexos do paciente'
-      acoes={
-        <button type='button' className='btn btn-primary' onClick={() => emBreve('O envio de arquivo')}>
-          Enviar arquivo
-        </button>
-      }
+      acoes={<BotaoEnviarArquivo idPaciente={idPaciente} aoEnviar={recarregar} ajuda='PDF, JPG ou PNG de até 5 MB' />}
     >
       <AbasPaciente id={idPaciente} ativa='anexos' />
       <div className='alert alert-info mb-0' role='status'>
-        O conteúdo dos anexos é do médico e do paciente. Aqui aparecem só os dados de envio.
+        O conteúdo dos anexos é do médico e do paciente. Aqui aparecem só os dados de envio, inclusive do arquivo que você acabou de enviar.
       </div>
       <Listagem
         carregando={carregando}
