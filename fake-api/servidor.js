@@ -30,6 +30,7 @@ const {
 const { MEIOS_DE_DEVOLUCAO, avaliarReversao } = require('./estorno');
 const { aliquotasEm, imposto, proximoNumero, origemDoTitulo, pagadoresPossiveis, montarDocumentoFiscal } = require('./fiscal');
 const { detectarTipo, tipoPelaExtensao, reprovadoNaVarredura, nomeSeguro, arquivoDeDemonstracao } = require('./anexo');
+const { montarRelatorio, paraCsv } = require('./relatorios');
 const { DATA_PADRAO } = require('./seed');
 const { Sessoes, conferirSenha, gerarHash, HASH_DE_ENGANO } = require('./sessao');
 const { filtrar, ordenar, paginar, escolherCampos } = require('./consulta');
@@ -896,6 +897,15 @@ function criarApi({
     if (!(segundos >= 0)) return;
     const agora = agoraClinica();
     let mudou = false;
+    // RF42: o relatório pedido fica pronto no mesmo prazo da exportação.
+    for (const r of db.relatorios) {
+      if (r.situacao !== 'GERANDO') continue;
+      if (!r.pedidoEm || Date.parse(`${agora}Z`) - Date.parse(`${r.pedidoEm}Z`) >= segundos * 1000) {
+        r.situacao = 'PRONTO';
+        r.geradoEm = agora;
+        mudou = true;
+      }
+    }
     for (const e of db.exportacoes) {
       if (e.situacao !== 'SOLICITADA' || !e.dataSolicitacao) continue;
       if (Date.parse(`${agora}Z`) - Date.parse(`${e.dataSolicitacao}Z`) >= segundos * 1000) {
@@ -1742,6 +1752,32 @@ function criarApi({
     return enviar(res, 201, elegibilidade);
   }
 
+  // RF42: conteúdo do relatório, só do Administrador: a tabela para ver na
+  // tela e o CSV para baixar. Cada leitura e cada download vão ao log.
+  function rotaDeRelatorio(req, res, { partes, sessao, rota }) {
+    const alvo = `relatorios/${partes[1]}`;
+    if (sessao.papel !== ADMINISTRADOR) {
+      auditar({ acao: 'LER', sessao, rota, registroAlvo: alvo, resultado: 'NEGADO', motivo: 'PAPEL' });
+      throw ACESSO_NEGADO();
+    }
+    if (req.method !== 'GET') throw NAO_ENCONTRADO();
+    const relatorio = db.relatorios.find((r) => igual(r.id, partes[1]));
+    if (!relatorio) throw NAO_ENCONTRADO();
+    if (relatorio.situacao !== 'PRONTO') throw new ErroHttp(409, 'O relatório ainda está sendo gerado.');
+    const conteudo = montarRelatorio(db, relatorio);
+    if (partes[2] === 'dados') {
+      auditar({ acao: 'LER', sessao, rota, registroAlvo: alvo, resultado: 'PERMITIDO' });
+      return enviar(res, 200, { ...conteudo, nome: relatorio.nome, periodoInicio: relatorio.periodoInicio, periodoFim: relatorio.periodoFim });
+    }
+    auditar({ acao: 'BAIXAR', sessao, rota, registroAlvo: alvo, resultado: 'PERMITIDO' });
+    const nome = `${relatorio.nome}-${relatorio.periodoInicio}-a-${relatorio.periodoFim}.csv`;
+    res.writeHead(200, {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(nome)}`,
+    });
+    return res.end(paraCsv(conteudo));
+  }
+
   // A-12 e A-29: painel financeiro (RF35) e dashboard gerencial (RF41), só
   // do Administrador (RC06, nível 3). O período do dashboard vem em ?de&ate;
   // sem ele, os últimos 30 dias até hoje.
@@ -1944,6 +1980,7 @@ function criarApi({
       if (partes[0] === 'financeiro' && partes[1] === 'documentos') return await rotaDeDocumentoFiscal(req, res, { partes, sessao, rota });
       if (partes[0] === 'anexos' && (partes[1] === 'envio' || partes[2] === 'arquivo')) return await rotaDeAnexo(req, res, { partes, sessao, rota });
       if (partes[0] === 'tiss' && partes[1] === 'elegibilidade') return await rotaDeElegibilidade(req, res, { partes, sessao, rota });
+      if (partes[0] === 'relatorios' && partes.length === 3 && ['dados', 'arquivo'].includes(partes[2])) return rotaDeRelatorio(req, res, { partes, sessao, rota });
       if ((partes[0] === 'notificacoes' && partes.length === 3) || (partes[0] === 'portal' && partes[1] === 'preferencias')) {
         return await rotaDeNotificacao(req, res, { partes, sessao, rota });
       }

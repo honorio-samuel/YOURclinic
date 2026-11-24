@@ -13,6 +13,7 @@
 
 const { afetadasPeloBloqueio, conferirHorario, horasEntre, somarDias } = require('./agenda');
 const { TIPOS_COM_LOTE } = require('./estoque');
+const { DIMENSOES } = require('./relatorios');
 
 const A = 'ADMINISTRADOR';
 const M = 'MEDICO';
@@ -419,6 +420,15 @@ function validarDecisaoDoExame(novo, antigo) {
   if (antigo.situacao !== 'A_ACEITAR') return 'Só o exame que espera o aceite muda de situação.';
   if (!['ACEITO', 'RECUSADO'].includes(novo.situacao)) return 'Aceite ou recuse o exame.';
   if (novo.situacao === 'RECUSADO' && !preenchido(novo.motivoRecusa, 5)) return 'Escreva o motivo da recusa; o titular vê no portal.';
+  return null;
+}
+
+// RF42: dimensão conhecida e período de até um ano.
+function validarRelatorio(novo) {
+  if (!Object.keys(DIMENSOES).includes(novo.nome)) return 'Escolha a dimensão do relatório.';
+  const data = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+  if (!data(novo.periodoInicio) || !data(novo.periodoFim) || novo.periodoInicio > novo.periodoFim) return 'Informe um período válido.';
+  if ((Date.parse(novo.periodoFim) - Date.parse(novo.periodoInicio)) / 86400000 > 366) return 'O período vai até um ano.';
   return null;
 }
 
@@ -1604,11 +1614,14 @@ const politica = {
   },
 
   // ── Gestão ───────────────────────────────────────────────────────────────
+  // RF42: o pedido nasce gerando; a API o conclui em segundos (RNF13) e
+  // monta o conteúdo agregado em /relatorios/:id/dados e /arquivo.
   relatorios: {
     [A]: {
       ler: todos,
       criar: true,
-      fixar: (ctx) => ({ idUsuario: ctx.sessao.idUsuario, situacao: 'GERANDO', geradoEm: null }),
+      fixar: (ctx) => ({ idUsuario: ctx.sessao.idUsuario, situacao: 'GERANDO', geradoEm: null, pedidoEm: ctx.agoraClinica(), formato: 'CSV' }),
+      validar: validarRelatorio,
     },
   },
 };
