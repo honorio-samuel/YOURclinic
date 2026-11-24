@@ -48,3 +48,15 @@ export function novaChave() {
   if (window.crypto?.randomUUID) return window.crypto.randomUUID();
   return `tef-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
 }
+
+// P-05a e R-05a: o titular paga a própria cobrança por Pix no PSP simulado.
+// Pagar de novo devolve o QR que ainda espera.
+export async function pagarPeloPortal(idCobranca) {
+  const { data } = await api.post(`/checkout/${idCobranca}/pix-portal`);
+  return data;
+}
+
+export async function verificarPixDoPortal(idPagamento) {
+  const { data } = await api.post(`/checkout/pix/${idPagamento}/verificar`);
+  return data;
+}
