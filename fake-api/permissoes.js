@@ -1132,9 +1132,11 @@ const politica = {
       fixar: (ctx) => ({ ...fixarTitular(ctx), situacao: 'ABERTA', dataSolicitacao: ctx.agoraTexto(), dataResposta: null }),
     },
   },
+  // RF59: reenvio e aviso por telefone passam por /notificacoes/:id/…, que
+  // registram quem tratou; a coleção é só de leitura.
   notificacoes: {
-    [A]: { ler: todos, criar: true, editar: true },
-    [S]: { ler: todos, editar: true, editaveis: ['situacao', 'tentativas'] },
+    [A]: { ler: todos },
+    [S]: { ler: todos },
     [P]: { ler: ou(doPaciente('notificacoes'), (r, ctx) => igual(r.idPessoa, ctx.sessao.idPessoa)) },
     [R]: { ler: ou(doPaciente('notificacoes'), (r, ctx) => igual(r.idPessoa, ctx.sessao.idPessoa)) },
   },

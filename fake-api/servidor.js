@@ -1659,6 +1659,52 @@ function criarApi({
     throw NAO_ENCONTRADO();
   }
 
+  // RF59: a recepção reenvia a notificação que falhou, ou registra que avisou
+  // por telefone; o titular escolhe os avisos que não são obrigatórios.
+  async function rotaDeNotificacao(req, res, { partes, sessao, rota }) {
+    const ctx = contexto(sessao, rota);
+    const exigirPapel = (...papeis) => {
+      if (papeis.includes(sessao.papel)) return;
+      auditar({ acao: ACOES[req.method] ?? req.method, sessao, rota, registroAlvo: partes.join('/'), resultado: 'NEGADO', motivo: 'PAPEL' });
+      throw ACESSO_NEGADO();
+    };
+
+    // Preferência de aviso do titular (RF39, RN-59.2): lembretes e avisos de
+    // cobrança podem ser desligados; o aviso de cancelamento pela clínica não.
+    if (partes[0] === 'portal' && partes[1] === 'preferencias' && partes.length === 2) {
+      exigirPapel(PACIENTE, RESPONSAVEL_LEGAL);
+      const paciente = ctx.buscar('pacientes', ctx.titular());
+      if (!paciente) throw new ErroHttp(409, 'Escolha o representado.');
+      if (req.method === 'PUT') {
+        const corpo = await lerCorpo(req);
+        if (typeof corpo.lembretes !== 'boolean' || typeof corpo.cobrancas !== 'boolean') throw new ErroHttp(422, 'Informe as duas preferências.');
+        paciente.preferenciasAviso = { lembretes: corpo.lembretes, cobrancas: corpo.cobrancas };
+        auditar({ acao: 'EDITAR', sessao, rota, registroAlvo: `pacientes/${paciente.id}`, resultado: 'PERMITIDO', motivo: 'PREFERENCIA_DE_AVISO' });
+        salvar();
+      } else if (req.method !== 'GET') throw NAO_ENCONTRADO();
+      return enviar(res, 200, { lembretes: true, cobrancas: true, ...(paciente.preferenciasAviso ?? {}) });
+    }
+
+    if (req.method !== 'POST' || partes.length !== 3) throw NAO_ENCONTRADO();
+    exigirPapel(SECRETARIA, ADMINISTRADOR);
+    const notificacao = ctx.buscar('notificacoes', partes[1]);
+    if (!notificacao) throw NAO_ENCONTRADO();
+    if (!['FALHA', 'FALHOU'].includes(notificacao.situacao)) throw new ErroHttp(409, 'Só a notificação que falhou é tratada aqui.');
+    const tratamento = { idUsuario: sessao.idUsuario, dataHora: agoraClinica() };
+    if (partes[2] === 'reenviar') {
+      if (!notificacao.destino) throw new ErroHttp(409, 'Sem telefone ou e-mail cadastrado: avise o paciente por telefone e registre o aviso.');
+      // Provedor simulado: o reenvio entrega.
+      Object.assign(notificacao, { situacao: 'ENVIADA', tentativas: (notificacao.tentativas ?? 0) + 1, dataEnvio: tratamento.dataHora, reenvio: tratamento });
+    } else if (partes[2] === 'aviso-por-telefone') {
+      Object.assign(notificacao, { situacao: 'AVISADO_POR_TELEFONE', reenvio: tratamento });
+    } else {
+      throw NAO_ENCONTRADO();
+    }
+    auditar({ acao: 'EDITAR', sessao, rota, registroAlvo: `notificacoes/${notificacao.id}`, resultado: 'PERMITIDO', motivo: partes[2] === 'reenviar' ? 'REENVIO' : 'AVISO_POR_TELEFONE' });
+    salvar();
+    return enviar(res, 200, notificacao);
+  }
+
   // A-12 e A-29: painel financeiro (RF35) e dashboard gerencial (RF41), só
   // do Administrador (RC06, nível 3). O período do dashboard vem em ?de&ate;
   // sem ele, os últimos 30 dias até hoje.
@@ -1860,6 +1906,9 @@ function criarApi({
       if (partes[0] === 'financeiro' && partes[1] === 'estornos') return await rotaDeEstorno(req, res, { partes, sessao, rota });
       if (partes[0] === 'financeiro' && partes[1] === 'documentos') return await rotaDeDocumentoFiscal(req, res, { partes, sessao, rota });
       if (partes[0] === 'anexos' && (partes[1] === 'envio' || partes[2] === 'arquivo')) return await rotaDeAnexo(req, res, { partes, sessao, rota });
+      if ((partes[0] === 'notificacoes' && partes.length === 3) || (partes[0] === 'portal' && partes[1] === 'preferencias')) {
+        return await rotaDeNotificacao(req, res, { partes, sessao, rota });
+      }
       if (partes[0] === 'usuarios' && partes[2] === 'convite' && partes.length === 3) {
         return await reenviarConvite(req, res, { partes, sessao, rota });
       }
