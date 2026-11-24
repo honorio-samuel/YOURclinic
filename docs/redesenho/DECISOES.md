@@ -280,6 +280,30 @@ O painel financeiro e o dashboard gerencial saem de duas rotas só do Administra
 
 Cada mudança de status da consulta grava a hora em que aconteceu. É o carimbo que o RF41 pede para o tempo médio de espera e que a Fila do dia usa na coluna Espera. O banco sintético ganha esses carimbos nas consultas já atendidas, calculados pelo id, para não mudar o resto dos dados.
 
+### B21 · Saldo pela soma das movimentações
+
+O saldo de cada lote é a soma das movimentações (RN-36.2). O lote guarda o resultado, refeito a cada movimentação. Entrada, saída e ajuste passam por rotas próprias da API, e nenhum papel grava movimentação ou lote pela coleção genérica. O lote nasce da entrada e não se edita: mudar a validade contornaria o bloqueio do lote vencido (RN-38.1). Produto sem controle de lote tem um lote único, sem número nem validade.
+
+### B22 · Paciente da saída
+
+A saída para paciente vai para alguém atendido hoje. A Secretária escolhe entre quem está ou esteve na clínica no dia; o Médico, entre os próprios atendimentos em curso ou finalizados. A ligação passa pela consulta, como no resto do sistema, e o nome do paciente aparece só na confirmação do ato (RN-37.1). Da dispensação, Administrador e Secretária não leem o paciente nem a justificativa da troca de lote, que pode falar da saúde dele.
+
+### B23 · Descarte por vencimento
+
+O motivo "Vencimento" só vale para lote vencido. Lote vencido não sai para paciente em nenhum papel, e, como o Administrador não registra saída (RF37), o descarte é da Secretária ou do Médico. O saldo de lote vencido não conta para o estoque mínimo.
+
+### B24 · Ajuste pela contagem
+
+O ajuste parte da contagem física: a diferença para o saldo vira a movimentação, com motivo. O do Administrador vale na hora. O da Secretária espera o Administrador, que aprova ou recusa com motivo; enquanto houver pedido aberto, o lote não recebe outro ajuste. A aprovação que deixaria o saldo negativo é recusada.
+
+### B25 · Antecedência do alerta de validade
+
+O banco sintético guardava a antecedência do alerta de validade com o código X46, que na especificação é o estoque mínimo de cada produto. A antecedência passa a X14, com 60 dias e a faixa de 7 a 180 da especificação; o X46 segue como campo do produto. Os alertas são refeitos a cada movimentação, a cada mudança do produto ou do X14 e no primeiro pedido de cada dia da clínica (RN-38.2). O Médico vê os de validade e de lote vencido em Atendimentos do dia (RN-38.3).
+
+### B26 · Item de controle especial
+
+O produto ganha a marca de controle especial. A saída desse item pede a conferência manual (RN-37.3), gravada com o usuário que registrou a saída. O banco sintético inclui um item assim, para a demonstração.
+
 ## Estado das telas
 
 Das 112 telas, 108 estão `ok`, 2 em `conflito` e 2 em `lacuna`. S-07d saiu da lista com a decisão B8 e G-04b, com a B16.

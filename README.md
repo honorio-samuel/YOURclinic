@@ -98,6 +98,15 @@ Acesso e conta:
 | Acesso encerrado por maioridade (R-07) | O Responsável sem representado em vigor vê o aviso, sem o nome de quem fez 18 anos |
 | Reenviar convite | Na conta pendente do cadastro de médico e de equipe |
 
+Estoque:
+
+| Tela | Papéis | Observação |
+|---|---|---|
+| Movimentações (A-27, S-18) | Administrador, Secretária | Entrada por lote, com validade e origem; o Administrador liga a compra ao título a pagar. Ajuste pela contagem física: o do Administrador vale na hora; o da Secretária vai para ele aprovar ou recusar, na mesma tela |
+| Saída por lote (S-18, M-05b) | Secretária, Médico | Para quem foi atendido hoje ou descarte com motivo. Sugere o lote que vence primeiro, e trocar pede justificativa. Lote vencido só sai por descarte. Item de controle especial pede a conferência manual. O nome do paciente aparece só na confirmação |
+| Produtos e lotes (A-26, S-17) e Estoque (M-05a) | Administrador, Secretária, Médico | Saldo que pode sair, com o vencido à parte, e a situação de cada lote pelo X14. Medicamento e amostra sempre controlam lote |
+| Alertas (A-28, S-19) | Administrador, Secretária | Estoque mínimo, lote a vencer e lote vencido; cada alerta leva à entrada ou ao descarte. O Médico vê os de validade em Atendimentos do dia |
+
 Os e-mails de convite e de nova senha saem no terminal da API local, com o link (detalhes em [fake-api/README.md](fake-api/README.md)).
 
 O Pix e a maquininha integrada são simulados pela API local: o Pix é pago sozinho uns segundos depois de gerado, e valores terminados em ,13 simulam cartão negado (detalhes em [fake-api/README.md](fake-api/README.md#checkout-simulado)). Finalizar uma consulta particular gera a cobrança na hora.
