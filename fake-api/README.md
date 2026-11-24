@@ -180,6 +180,25 @@ O saldo do lote é a soma das movimentações (RN-36.2): nenhum papel grava em `
 
 Os alertas (`MINIMO`, `VALIDADE` com a antecedência do X14 e `VENCIDO`) são refeitos a cada movimentação, a cada mudança de produto ou do X14 e no primeiro pedido de cada dia da clínica (RN-38.2). Produto inativo não gera alerta, e lote vencido não conta para o mínimo. O Médico lê só os alertas de validade.
 
+### Faturamento TISS
+
+| Rota | Papéis | O que faz |
+|---|---|---|
+| `POST /tiss/elegibilidade` `{idConsulta}` | Secretária | Consulta a operadora simulada pela carteirinha do atendimento (ou a última conhecida do paciente) e registra a resposta com protocolo; carteirinha terminada em 9 volta `NAO_ELEGIVEL` com o motivo (RF52). Atendimento particular, 422 |
+| `POST /tiss/lotes` `{idConvenio, idsGuias}` | Secretária | Monta o lote com guias `LIBERADA`, fora de outro lote, da mesma operadora; numera em sequência, soma o valor apresentado e cria um título a receber da operadora por guia, com vencimento em 60 dias (RF55). A resposta não traz o total do lote (D9) |
+| `POST /tiss/lotes/:id/enviar` | Secretária | Envia o lote `A_ENVIAR`: a operadora simulada devolve o protocolo na hora, o lote fica `PROTOCOLADO` e as guias, `ENVIADA`. Lote já enviado, 409 |
+
+O recurso de glosa sai pela coleção `recursosGlosa`: a Secretária cria com `{idGlosa, justificativa, aguardaFundamentacao}`, a API completa prazo (30 dias), rodada e médico e marca a glosa `EM_RECURSO` (RF57). Se espera a fundamentação, só o Médico da consulta a escreve; Secretária e Administrador nunca leem `fundamentacaoClinica`. A justificativa clínica da autorização segue a mesma regra e, preenchida, leva o pedido a `EM_ANALISE` (RF53).
+
+### Relatórios
+
+| Rota | Papéis | O que faz |
+|---|---|---|
+| `GET /relatorios/:id/dados` | Administrador | Tabela do relatório pronto: colunas, linhas agregadas e quantos recortes ficaram de fora por ter menos de 5 registros (RF42). Sem dado clínico |
+| `GET /relatorios/:id/arquivo` | Administrador | O mesmo conteúdo em CSV (separador `;`, vírgula decimal, com BOM para abrir no Excel) |
+
+O pedido entra pela coleção `relatorios` com `{nome, periodoInicio, periodoFim}` (período de até um ano) e fica `PRONTO` `EXPORTACAO_SEGUNDOS` depois. Enquanto gera, as duas rotas respondem 409.
+
 ### Documento exportado
 
 | Rota | Papéis | O que faz |
@@ -255,5 +274,5 @@ O banco tem as 52 coleções da API do Render, com os mesmos nomes de campos, ma
 - **Publicação manual no Render.** Desde 21/10/2026, `yourclinic-api.onrender.com` roda esta API, a partir do branch `feat/telas-listagem-redesenho` deste repositório, no lugar do json-server aberto. Como o repositório entra no Render como público, um push não publica sozinho: cada versão nova precisa de "Manual Deploy" no painel.
 - As sessões ficam em memória: reiniciar o servidor encerra todas.
 - `autorizacoes.senha` (a senha da operadora TISS) nunca é devolvida, porque nenhuma resposta leva campo `senha*`. As telas de TISS vão precisar de um campo com outro nome.
-- Regras ainda não aplicadas: atraso X10 antes de Não Compareceu, janela X02 na contagem de tentativas de login, sigilo do adolescente (D3, o banco não tem campo que marque o registro), envelope clínico do recurso de glosa e conteúdo real de anexos e exportações.
+- Regras ainda não aplicadas: atraso X10 antes de Não Compareceu, janela X02 na contagem de tentativas de login, sigilo do adolescente (D3, o banco não tem campo que marque o registro), edição de guia e de contrato pela API própria, importação do demonstrativo e do extrato da adquirente.
 - O bloqueio por tentativas vale por conta, não por endereço de origem: quem souber um login pode bloqueá-lo por X03 minutos. No simulado local isso foi aceito.

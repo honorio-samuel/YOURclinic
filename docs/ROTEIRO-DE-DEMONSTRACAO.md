@@ -39,6 +39,9 @@ O sistema trata 28/09/2026 como "hoje" e usa a hora do relógio. A sessão termi
 4. **Recibos** (menu Caixa e cobranças): **Emitir recibo** para o título que acabou de ser pago; o recibo abre pronto para imprimir ou salvar em PDF.
 5. **Alertas** (menu Estoque): o lote de gaze venceu; **Descartar** registra o descarte com o motivo. Em **Movimentações**, **Registrar saída** sugere o lote que vence primeiro; o Midazolam pede a conferência manual.
 6. Na **Fila do dia**, em "Notificações sem entrega", **Reenviar ou ligar**.
+7. **Elegibilidade e autorização** (menu Faturamento TISS): em um atendimento "A verificar", **Verificar na operadora** na pílula de status; a resposta da operadora simulada fica registrada com o protocolo (carteirinha terminada em 9 volta inelegível).
+8. **Lotes e protocolos**: **+ Novo lote**, escolha a operadora, marque as guias liberadas e **Montar lote**; depois **Enviar lote** na pílula de status registra o protocolo. A Secretária vê o valor de cada guia, mas não o total do lote.
+9. **Glosas e recursos**: em uma glosa, **Abrir recurso** com a justificativa; o recurso pode pedir antes a fundamentação do médico.
 
 ### 2. Médico (Dra. Sofia Lima Teixeira)
 
@@ -47,6 +50,7 @@ O sistema trata 28/09/2026 como "hoje" e usa a hora do relógio. A sessão termi
 3. Volte a **Atendimentos do dia** e use **Finalizar e selar**: o registro fica selado e só muda por retificação.
 4. Em **Meus pacientes**, abra o prontuário de Carlos Barros Queiroz e vá à aba **Anexos**: abra o hemograma e aceite ou recuse o exame que o paciente enviou pelo portal (a recusa pede motivo).
 5. **Orçamentos**: **+ Novo orçamento** com procedimentos do catálogo e a justificativa clínica, sem nenhum preço, e envie para valores.
+6. **Pendências clínicas**: **Preencher** a justificativa de uma autorização (o pedido segue para a operadora) e **Fundamentar** o recurso de glosa que espera o médico. Recepção e administração não leem esses textos.
 
 ### 3. Paciente (Carlos Barros Queiroz)
 
@@ -63,7 +67,9 @@ O sistema trata 28/09/2026 como "hoje" e usa a hora do relógio. A sessão termi
 3. **Cancelamentos e estornos**: aprove o pedido da Secretária; o título reabre e o recibo é cancelado.
 4. **Movimentações** (menu Estoque): aprove ou recuse o pedido de ajuste de inventário.
 5. **Recibos e NFS-e**: **Emitir documento** como NFS-e para Nicolas Barros Dias, que não tem CPF: a nota fica pendente com o erro do ambiente nacional.
-6. **Log de auditoria**: as ações feitas na apresentação aparecem aqui, com o papel e o resultado.
+6. **Relatórios**: escolha a dimensão e o período e **Gerar relatório**; fica pronto em segundos, para ver na tela ou baixar em CSV. Recortes com menos de 5 registros ficam de fora.
+7. **Solicitações dos titulares (LGPD)**: abra um pedido e responda ou recuse com o motivo; o titular vê a resposta no portal.
+8. **Log de auditoria**: as ações feitas na apresentação aparecem aqui, com o papel e o resultado.
 
 ### 5. Responsável Legal (Nicolas Gomes Esteves)
 
@@ -78,4 +84,4 @@ Entra no portal em nome da representada, Tatiana Barros Macedo; com `responsavel
 
 ## Ainda não implementado
 
-Os botões que mostram "Próxima etapa" levam a funções desta lista: faturamento de convênio (guias, lotes, demonstrativos, glosas, recursos, contratos e consulta de elegibilidade), conciliação de recebíveis, relatórios, resposta às solicitações LGPD e edição dos modelos de notificação.
+Os botões que mostram "Próxima etapa" levam a funções desta lista: criação e edição de guia TISS, cadastro e edição de contratos com operadoras (e a tabela de preços), importação do demonstrativo de retorno, importação do extrato e tratamento de divergência na conciliação de recebíveis, e edição dos modelos e canais de notificação.
