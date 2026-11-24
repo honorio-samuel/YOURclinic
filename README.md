@@ -87,6 +87,7 @@ Prontuário (Médico):
 | Anotações privadas (M-02f) | Criar, editar e excluir, só o autor |
 | Exportações (M-02g) | Histórico e prontuário completo, gerados em segundos; o documento abre numa página própria para imprimir ou salvar em PDF |
 | Acesso de exceção (M-02h) | Em Meus pacientes ou no prontuário sem vínculo, com justificativa; o prontuário mostra até quando vale |
+| Orçamentos · escopo clínico (M-04) | Novo orçamento para paciente com vínculo: procedimentos do catálogo, quantidade e justificativa clínica, sem nenhum preço. Rascunho editável até enviar para valores, e de novo se a Secretária devolver |
 
 Acesso e conta:
 

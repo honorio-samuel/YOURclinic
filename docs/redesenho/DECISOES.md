@@ -316,6 +316,10 @@ O Pix aceita devolução pelo PSP até 90 dias, o prazo do arranjo, já que a es
 
 O chargeback parte do portador do cartão, e a clínica não o controla (RN-48.3). A Secretária o registra com valor e descrição, sem aprovação e sem mexer no título; o efeito financeiro chega pela conciliação.
 
+### B30 · Justificativa clínica do orçamento
+
+A justificativa clínica da etapa 1 (RF31) é gravada no orçamento e só o médico autor a lê; Secretária, Administrador e titular recebem o escopo sem ela (RC09). Enviar para valores exige ao menos um procedimento e a justificativa. O banco sintético ganha justificativas fictícias nos orçamentos que já passaram da etapa 1.
+
 ## Estado das telas
 
 Das 112 telas, 108 estão `ok`, 2 em `conflito` e 2 em `lacuna`. S-07d saiu da lista com a decisão B8 e G-04b, com a B16.
