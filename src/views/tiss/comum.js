@@ -9,13 +9,15 @@ export const opcoesOperadora = (linhas) => [['', 'Todas'], ...[...new Map((linha
 
 // Guias com consulta, paciente, operadora e procedimento.
 export async function carregarGuias() {
-  const [guias, consultas, contratos, convenios, procedimentos] = await Promise.all([
+  const [guias, consultas, contratos, convenios, procedimentos, lotes] = await Promise.all([
     listar('guiasTiss', { _sort: 'numero', _order: 'desc' }),
     listar('consultas'),
     listar('contratosOperadora'),
     listar('convenios'),
     listar('procedimentos'),
+    listar('lotesCobranca').catch(() => []),
   ]);
+  const lote = porId(lotes);
   const consulta = porId(consultas);
   const contrato = porId(contratos);
   const convenio = porId(convenios);
@@ -29,6 +31,7 @@ export async function carregarGuias() {
       paciente: pessoas[c?.idPaciente]?.nome ?? '—',
       operadora: nomeOperadora(convenio[contrato[g.idContratoOperadora]?.idConvenio]),
       item: p ? `${p.codigo} · ${p.nome}` : '—',
+      lote: lote[g.idLoteCobranca]?.numero ?? null,
     };
   });
 }

@@ -181,7 +181,10 @@ function DadosPortal() {
                 { titulo: 'Situação', render: (p) => SITUACAO_PEDIDO[p.situacao] ?? p.situacao },
                 {
                   titulo: 'Resposta',
-                  render: (p) => (p.dataResposta ? `Em ${data(p.dataResposta)}` : `Prevista até ${data(somarDias(p.dataSolicitacao.slice(0, 10), 15))}`),
+                  render: (p) =>
+                    p.dataResposta
+                      ? `Em ${data(p.dataResposta)}${p.resposta ? `: ${p.resposta}` : ''}${p.motivoRecusa ? `: ${p.motivoRecusa}` : ''}`
+                      : `Prevista até ${data(somarDias(p.dataSolicitacao.slice(0, 10), 15))}`,
                 },
               ]}
             />

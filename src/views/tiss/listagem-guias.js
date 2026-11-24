@@ -5,9 +5,10 @@ import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
 import { CampoBusca, CampoSelect, Filtros } from '../../components/campos';
+import JanelaDetalhe from '../../components/janela-detalhe';
 import { emBreve, salvarComAviso, useConfirmacao } from '../../components/confirmacao';
 import { useCarregar } from '../../hooks/use-carregar';
-import { corresponde, moeda } from '../../utils/formatos';
+import { corresponde, data, moeda } from '../../utils/formatos';
 import { rotuloDe, SITUACAO_GUIA } from '../../utils/rotulos';
 import { carregarGuias, opcoesOperadora, useEhAdmin } from './comum';
 
@@ -20,6 +21,7 @@ function Guias() {
   const [busca, setBusca] = React.useState('');
   const [operadora, setOperadora] = React.useState('');
   const [situacao, setSituacao] = React.useState('');
+  const [aberta, setAberta] = React.useState(null);
 
   const liberar = async (g) => {
     const ok = await confirmar({ titulo: `Liberar a guia ${g.numero}?`, texto: 'A crítica prévia confere os oito bloqueios do faturamento antes de liberar.', rotuloConfirmar: 'Liberar' });
@@ -81,7 +83,7 @@ function Guias() {
             titulo: 'Ações',
             render: (g) => {
               const alvo = `guia ${g.numero}`;
-              const ver = { tipo: 'ver', alvo, aoClicar: () => emBreve('O detalhe da guia') };
+              const ver = { tipo: 'ver', alvo, aoClicar: () => setAberta(g) };
               if (ehAdmin || !['RASCUNHO', 'EM_DIGITACAO', 'BLOQUEADA', 'LIBERADA'].includes(g.situacao)) return <AcoesLinha acoes={[ver]} />;
               return (
                 <AcoesLinha
@@ -92,6 +94,25 @@ function Guias() {
           },
         ]}
       />
+      {aberta && (
+        <JanelaDetalhe
+          titulo={`Guia ${aberta.numero}`}
+          aoFechar={() => setAberta(null)}
+          itens={[
+            ['Tipo', aberta.tipo === 'CONSULTA' ? 'Consulta' : 'SP/SADT'],
+            ['Paciente', aberta.paciente],
+            ['Operadora', aberta.operadora],
+            ['Procedimento', aberta.item],
+            ['Emissão', data(aberta.dataEmissao)],
+            ['Versão TISS', aberta.versaoTiss],
+            ['CID', aberta.cid],
+            ['Valor', moeda(aberta.valor)],
+            ['Lote', aberta.lote ?? 'Ainda fora de lote'],
+            ['Situação', rotuloDe(SITUACAO_GUIA, aberta.situacao).rotulo],
+            ['Motivo do cancelamento', aberta.motivoCancelamento ?? undefined],
+          ]}
+        />
+      )}
       {modal}
     </Pagina>
   );

@@ -5,10 +5,11 @@ import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
 import { CampoSelect, Filtros } from '../../components/campos';
+import JanelaDetalhe from '../../components/janela-detalhe';
 import { emBreve } from '../../components/confirmacao';
 import { listar, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
-import { moeda } from '../../utils/formatos';
+import { data, moeda } from '../../utils/formatos';
 import { rotuloDe } from '../../utils/rotulos';
 import { carregarGuias, opcoesOperadora, useEhAdmin } from './comum';
 
@@ -24,13 +25,24 @@ const SITUACAO_GLOSA = {
 function Glosas() {
   const ehAdmin = useEhAdmin();
   const carregar = async () => {
-    const [glosas, guias] = await Promise.all([listar('glosas', { _sort: 'dataDemonstrativo', _order: 'desc' }), carregarGuias()]);
+    const [glosas, guias, recursos] = await Promise.all([
+      listar('glosas', { _sort: 'dataDemonstrativo', _order: 'desc' }),
+      carregarGuias(),
+      listar('recursosGlosa').catch(() => []),
+    ]);
     const guia = porId(guias);
-    return glosas.map((g) => ({ ...g, guia: guia[g.idGuiaTiss]?.numero ?? '—', operadora: guia[g.idGuiaTiss]?.operadora ?? '—', item: guia[g.idGuiaTiss]?.item ?? '—' }));
+    return glosas.map((g) => ({
+      ...g,
+      guia: guia[g.idGuiaTiss]?.numero ?? '—',
+      operadora: guia[g.idGuiaTiss]?.operadora ?? '—',
+      item: guia[g.idGuiaTiss]?.item ?? '—',
+      recurso: recursos.filter((r) => r.idGlosa === g.id).sort((a, b) => (b.rodada ?? 1) - (a.rodada ?? 1))[0] ?? null,
+    }));
   };
   const { dados, carregando, erro, recarregar } = useCarregar(carregar);
   const [operadora, setOperadora] = React.useState('');
   const [situacao, setSituacao] = React.useState(ehAdmin ? '' : 'GLOSADO');
+  const [aberta, setAberta] = React.useState(null);
   const linhas = (dados ?? []).filter((g) => (!operadora || g.operadora === operadora) && (!situacao || g.situacao === situacao));
 
   return (
@@ -75,9 +87,25 @@ function Glosas() {
               />
             ),
           },
-          ...(ehAdmin ? [{ titulo: 'Ações', render: (g) => <AcoesLinha acoes={[{ tipo: 'ver', alvo: `glosa da guia ${g.guia}`, aoClicar: () => emBreve('O detalhe da glosa') }]} /> }] : []),
+          ...(ehAdmin ? [{ titulo: 'Ações', render: (g) => <AcoesLinha acoes={[{ tipo: 'ver', alvo: `glosa da guia ${g.guia}`, aoClicar: () => setAberta(g) }]} /> }] : []),
         ]}
       />
+      {aberta && (
+        <JanelaDetalhe
+          titulo={`Glosa da guia ${aberta.guia}`}
+          aoFechar={() => setAberta(null)}
+          itens={[
+            ['Operadora', aberta.operadora],
+            ['Item', aberta.item],
+            ['Código', aberta.codigo],
+            ['Motivo', aberta.motivo],
+            ['Valor glosado', moeda(aberta.valorGlosado)],
+            ['Demonstrativo de', data(aberta.dataDemonstrativo)],
+            ['Situação', rotuloDe(SITUACAO_GLOSA, aberta.situacao).rotulo],
+            ['Recurso', aberta.recurso ? `${aberta.recurso.rodada ?? 1}ª rodada, interposto em ${data(aberta.recurso.dataInterposicao)}` : 'Sem recurso'],
+          ]}
+        />
+      )}
     </Pagina>
   );
 }

@@ -5,11 +5,12 @@ import Listagem from '../../components/listagem';
 import PilulaStatus from '../../components/pilula-status';
 import AcoesLinha from '../../components/acoes-linha';
 import { CampoSelect, Filtros } from '../../components/campos';
-import { emBreve, salvarComAviso, useConfirmacao } from '../../components/confirmacao';
+import JanelaDetalhe from '../../components/janela-detalhe';
+import { salvarComAviso, useConfirmacao } from '../../components/confirmacao';
 import { DATA_DE_HOJE } from '../../config/axios';
 import { listar, porId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
-import { diasEntre, moeda } from '../../utils/formatos';
+import { data, diasEntre, moeda } from '../../utils/formatos';
 import { rotuloDe } from '../../utils/rotulos';
 import { carregarGuias, opcoesOperadora } from './comum';
 
@@ -33,13 +34,14 @@ function RecursosGlosa() {
     return recursos.map((r) => {
       const gl = glosa[r.idGlosa];
       const gu = guia[gl?.idGuiaTiss];
-      return { ...r, item: gu?.item ?? '—', operadora: gu?.operadora ?? '—', valor: gl?.valorGlosado };
+      return { ...r, item: gu?.item ?? '—', operadora: gu?.operadora ?? '—', valor: gl?.valorGlosado, guia: gu?.numero ?? '—', motivoGlosa: gl?.motivo ?? '—' };
     });
   };
   const { dados, carregando, erro, recarregar } = useCarregar(carregar);
   const [modal, confirmar] = useConfirmacao();
   const [situacao, setSituacao] = React.useState('');
   const [operadora, setOperadora] = React.useState('');
+  const [aberto, setAberto] = React.useState(null);
 
   const insistir = async (r) => {
     const ok = await confirmar({ titulo: 'Insistir em nova rodada?', texto: 'O recurso volta para a Secretária preparar a próxima rodada.', rotuloConfirmar: 'Insistir' });
@@ -91,9 +93,29 @@ function RecursosGlosa() {
               />
             ),
           },
-          { titulo: 'Ações', render: (r) => <AcoesLinha acoes={[{ tipo: 'ver', alvo: `recurso de ${r.item}`, aoClicar: () => emBreve('O detalhe do recurso') }]} /> },
+          { titulo: 'Ações', render: (r) => <AcoesLinha acoes={[{ tipo: 'ver', alvo: `recurso de ${r.item}`, aoClicar: () => setAberto(r) }]} /> },
         ]}
       />
+      {aberto && (
+        <JanelaDetalhe
+          titulo={`Recurso da guia ${aberto.guia}`}
+          aoFechar={() => setAberto(null)}
+          itens={[
+            ['Item glosado', aberto.item],
+            ['Operadora', aberto.operadora],
+            ['Motivo da glosa', aberto.motivoGlosa],
+            ['Valor glosado', moeda(aberto.valor)],
+            ['Rodada', `${aberto.rodada ?? 1}ª`],
+            ['Interposto em', aberto.dataInterposicao ? data(aberto.dataInterposicao) : null],
+            ['Prazo', aberto.prazo ? data(aberto.prazo) : null],
+            ['Justificativa', aberto.justificativa],
+            ['Fundamentação do médico', aberto.aguardaFundamentacao ? 'Aguardando' : 'Recebida ou dispensada'],
+            ['Situação', rotuloDe(SITUACAO_RECURSO, aberto.situacao).rotulo],
+            ['Valor recuperado', aberto.valorRecuperado != null ? moeda(aberto.valorRecuperado) : undefined],
+            ['Justificativa da perda', aberto.justificativaPerda ?? undefined],
+          ]}
+        />
+      )}
       {modal}
     </Pagina>
   );
