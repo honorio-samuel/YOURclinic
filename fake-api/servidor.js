@@ -659,6 +659,76 @@ function criarApi({
       return enviar(res, status, { pagamento: projetarPagamento(pagamento), ...detalhe(cobranca) });
     }
 
+    // RF44: QR dinâmico com txid próprio e expiração X31.
+    function gerarPix(cobranca, valor) {
+      const pagamento = registrar(cobranca, 'PIX', valor, 'PENDENTE');
+      const agoraMs = relogio().getTime();
+      const minutos = parametro('X31', 30);
+      const txid = `YC${String(cobranca.id).padStart(6, '0')}${String(pagamento.id).padStart(8, '0')}${agoraMs.toString(36).toUpperCase()}`;
+      db.pagamentosPix.push({
+        id: pagamento.id, txid, brcode: brcodeSimulado(txid, valor), endToEndId: null,
+        expiracao: `${hojeClinica()}T${agoraTexto(minutos).slice(11)}`,
+        geradoEm: agoraMs, expiraEm: agoraMs + minutos * 60 * 1000,
+      });
+      return pagamento;
+    }
+
+    // RF44: consulta ao PSP simulado pelo txid: pago depois de PIX_SEGUNDOS,
+    // vencido depois do X31.
+    function verificarPix(pagamento, pix, cobranca, cancelar = false) {
+      if (pagamento.situacao !== 'PENDENTE') return;
+      const agoraMs = relogio().getTime();
+      if (agoraMs >= pix.expiraEm) pagamento.situacao = 'EXPIRADO';
+      else if (agoraMs - pix.geradoEm >= simulacao.pixSegundos * 1000) {
+        pagamento.situacao = 'CONFIRMADO';
+        pagamento.dataHora = agoraClinica();
+        pix.endToEndId = `E${String(pagamento.id).padStart(8, '0')}${agoraMs}`;
+        quitarSePago(cobranca);
+      } else if (cancelar) {
+        pagamento.situacao = 'CANCELADO';
+      }
+    }
+
+    // P-05a e R-05a: o titular paga a própria cobrança por Pix, no ambiente do
+    // PSP simulado; nenhuma tela tem campo de cartão. Pagar de novo devolve o
+    // QR que ainda espera, em vez de gerar outro.
+    if ([PACIENTE, RESPONSAVEL_LEGAL].includes(sessao.papel)) {
+      const doTitular = (cobranca) => Boolean(cobranca) && igual(pacienteDaCobranca(cobranca), ctx.titular());
+      const paraOTitular = (status, cobranca, pagamento) => {
+        salvar();
+        const pix = pixDe(pagamento.id);
+        return enviar(res, status, {
+          pagamento: {
+            id: pagamento.id, valor: pagamento.valor, situacao: pagamento.situacao, txid: pix?.txid,
+            brcode: pagamento.situacao === 'PENDENTE' ? pix?.brcode : null, expiracao: pix?.expiracao,
+          },
+          cobranca: { id: cobranca.id, situacao: cobranca.situacao, saldo: resumoDaCobranca(db, cobranca).saldo },
+        });
+      };
+      if (req.method === 'POST' && partes[2] === 'pix-portal' && partes.length === 3) {
+        const cobranca = ctx.buscar('cobrancas', partes[1]);
+        if (!doTitular(cobranca)) throw NAO_ENCONTRADO();
+        if (cobranca.situacao !== 'ABERTA') throw new ErroHttp(409, 'Esta cobrança já está quitada.');
+        const espera = db.pagamentos.find((p) => igual(p.idCobranca, cobranca.id) && p.meio === 'PIX' && p.situacao === 'PENDENTE');
+        if (espera) {
+          verificarPix(espera, pixDe(espera.id), cobranca);
+          if (espera.situacao === 'PENDENTE') return paraOTitular(200, cobranca, espera);
+        }
+        const { disponivel } = resumoDaCobranca(db, cobranca);
+        if (!(disponivel > 0)) throw new ErroHttp(409, 'Há um pagamento em andamento na recepção para esta cobrança.');
+        return paraOTitular(201, cobranca, gerarPix(cobranca, disponivel));
+      }
+      if (req.method === 'POST' && partes[1] === 'pix' && partes[3] === 'verificar' && partes.length === 4) {
+        const pagamento = ctx.buscar('pagamentos', partes[2]);
+        const pix = pixDe(partes[2]);
+        const cobranca = pagamento ? ctx.buscar('cobrancas', pagamento.idCobranca) : null;
+        if (!pix || !doTitular(cobranca)) throw NAO_ENCONTRADO();
+        verificarPix(pagamento, pix, cobranca);
+        return paraOTitular(200, cobranca, pagamento);
+      }
+      exigirPapel(SECRETARIA);
+    }
+
     // Lançamentos da maquininha avulsa que esperam conferência.
     if (req.method === 'GET' && partes[1] === 'conferencias' && partes.length === 2) {
       exigirPapel(ADMINISTRADOR, SECRETARIA);
@@ -706,18 +776,7 @@ function criarApi({
       const pix = pixDe(partes[2]);
       if (!pagamento || !pix || pagamento.meio !== 'PIX') throw NAO_ENCONTRADO();
       const cobranca = cobrancaDe(pagamento.idCobranca);
-      if (pagamento.situacao === 'PENDENTE') {
-        const agoraMs = relogio().getTime();
-        if (agoraMs >= pix.expiraEm) pagamento.situacao = 'EXPIRADO';
-        else if (agoraMs - pix.geradoEm >= simulacao.pixSegundos * 1000) {
-          pagamento.situacao = 'CONFIRMADO';
-          pagamento.dataHora = agoraClinica();
-          pix.endToEndId = `E${String(pagamento.id).padStart(8, '0')}${agoraMs}`;
-          quitarSePago(cobranca);
-        } else if (partes[3] === 'cancelar') {
-          pagamento.situacao = 'CANCELADO';
-        }
-      }
+      verificarPix(pagamento, pix, cobranca, partes[3] === 'cancelar');
       return responder(200, cobranca, pagamento);
     }
 
@@ -767,16 +826,7 @@ function criarApi({
 
       // RF44: QR dinâmico com txid próprio e expiração X31.
       if (partes[2] === 'pix') {
-        const valor = valorDoMeio(cobranca, corpo.valor);
-        const pagamento = registrar(cobranca, 'PIX', valor, 'PENDENTE');
-        const agoraMs = relogio().getTime();
-        const minutos = parametro('X31', 30);
-        const txid = `YC${String(cobranca.id).padStart(6, '0')}${String(pagamento.id).padStart(8, '0')}${agoraMs.toString(36).toUpperCase()}`;
-        db.pagamentosPix.push({
-          id: pagamento.id, txid, brcode: brcodeSimulado(txid, valor), endToEndId: null,
-          expiracao: `${hojeClinica()}T${agoraTexto(minutos).slice(11)}`,
-          geradoEm: agoraMs, expiraEm: agoraMs + minutos * 60 * 1000,
-        });
+        const pagamento = gerarPix(cobranca, valorDoMeio(cobranca, corpo.valor));
         return responder(201, cobranca, pagamento);
       }
 
