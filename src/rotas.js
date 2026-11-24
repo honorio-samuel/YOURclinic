@@ -6,7 +6,7 @@ import Login from './views/geral/login';
 import SelecionarRepresentado from './views/geral/selecionar-representado';
 import { PrimeiroAcesso, RecuperarSenha, RedefinirSenha } from './views/geral/credencial';
 import MeuPerfil from './views/geral/perfil';
-import { EmBreve, RegistroIndisponivel } from './views/geral/avisos';
+import { RegistroIndisponivel } from './views/geral/avisos';
 import Pacientes from './views/cadastro/listagem-pacientes';
 import Medicos from './views/cadastro/listagem-medicos';
 import Equipe from './views/cadastro/listagem-equipe';
@@ -53,6 +53,8 @@ import Produtos from './views/estoque/listagem-produtos';
 import Movimentacoes from './views/estoque/listagem-movimentacoes';
 import Alertas from './views/estoque/listagem-alertas';
 import PainelDoDia from './views/gestao/painel-do-dia';
+import PainelFinanceiro from './views/gestao/painel-financeiro';
+import Dashboard from './views/gestao/dashboard';
 import Relatorios from './views/gestao/listagem-relatorios';
 import LogAuditoria from './views/gestao/listagem-log-auditoria';
 import Notificacoes from './views/gestao/listagem-notificacoes';
@@ -100,7 +102,7 @@ const TELAS = [
   ['/admin/listagem-bloqueios', A, <Bloqueios />],
   ['/admin/cadastro-bloqueios/:idParam?', A, <CadastroBloqueio />],
   ['/admin/cadastro-bloqueios/:idParam/consultas-afetadas', A, <ConsultasAfetadas />],
-  ['/admin/painel-financeiro', A, <EmBreve codigo='A-12' titulo='Painel financeiro' />],
+  ['/admin/painel-financeiro', A, <PainelFinanceiro />],
   ['/admin/listagem-contas-receber', A, <ContasReceber />],
   ['/admin/cadastro-cobrancas/:idParam?', A, <CadastroCobranca />],
   ['/admin/listagem-contas-pagar', A, <ContasPagar />],
@@ -120,7 +122,7 @@ const TELAS = [
   ['/admin/cadastro-produtos/:idParam?', A, <CadastroProduto />],
   ['/admin/listagem-movimentacoes', A, <Movimentacoes />],
   ['/admin/listagem-alertas', A, <Alertas />],
-  ['/admin/dashboard', A, <EmBreve codigo='A-29' titulo='Dashboard gerencial' />],
+  ['/admin/dashboard', A, <Dashboard />],
   ['/admin/listagem-relatorios', A, <Relatorios />],
   ['/admin/listagem-log-auditoria', A, <LogAuditoria />],
   ['/admin/listagem-notificacoes', A, <Notificacoes />],

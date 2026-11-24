@@ -373,3 +373,17 @@ fieldset:disabled .form-control {
     padding: 0;
   }
 }
+
+/* Painéis (A-12, A-29): barra de proporção com legenda em texto. */
+
+.barra-proporcao {
+  height: 0.875rem;
+}
+
+.amostra-indicador {
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 2px;
+  vertical-align: -0.0625rem;
+}

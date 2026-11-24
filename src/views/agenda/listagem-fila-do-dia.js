@@ -11,7 +11,19 @@ import { listar, pessoasPorId } from '../../servicos/dados';
 import { useCarregar } from '../../hooks/use-carregar';
 import { useSessao } from '../../sessao/sessao';
 import { data, hora } from '../../utils/formatos';
-import { carregarConsultas, doDia, MOTIVOS_DA_CLINICA, opcoesDeMedico, useMudarStatus } from './comum';
+import { agoraDaClinica, carregarConsultas, doDia, MOTIVOS_DA_CLINICA, opcoesDeMedico, useMudarStatus } from './comum';
+
+// Espera: da chegada (Na Recepção) ao chamado (Em Atendimento), pelos
+// carimbos da API; enquanto espera, conta até agora.
+function espera(c, agora) {
+  const k = c.carimbos ?? {};
+  if (!k.NA_RECEPCAO) return '—';
+  const fim = k.EM_ATENDIMENTO ?? (c.status === 'NA_RECEPCAO' ? agora : null);
+  if (!fim) return '—';
+  const minutos = Math.max(0, Math.round((Date.parse(fim) - Date.parse(k.NA_RECEPCAO)) / 60000));
+  const texto = minutos >= 60 ? `${Math.floor(minutos / 60)} h ${minutos % 60} min` : `${minutos} min`;
+  return c.status === 'NA_RECEPCAO' ? `${texto}, esperando` : texto;
+}
 
 async function carregarPendenciasRecepcao(consultasDoDia) {
   const [notificacoes, alertas, representacoes] = await Promise.all([
@@ -47,6 +59,19 @@ function FilaDoDia() {
   const [modal, mudar] = useMudarStatus(recarregar);
   const [medico, setMedico] = React.useState('');
   const linhas = (dados ?? []).filter((c) => !medico || String(c.idMedico) === medico);
+  const agora = `${agoraDaClinica()}:00`;
+
+  // RNF15: a fila se atualiza sozinha a cada X28 segundos.
+  const [intervalo, setIntervalo] = React.useState(30);
+  React.useEffect(() => {
+    listar('parametros', { chave: 'X28' })
+      .then((p) => setIntervalo(Number(p[0]?.valor) || 30))
+      .catch(() => {});
+  }, []);
+  React.useEffect(() => {
+    const relogio = setInterval(recarregar, intervalo * 1000);
+    return () => clearInterval(relogio);
+  }, [recarregar, intervalo]);
 
   const transicoes = (c) => {
     if (!ehSecretaria) return null;
@@ -71,6 +96,7 @@ function FilaDoDia() {
   const colunas = [
     { titulo: 'Paciente', render: (c) => c.paciente },
     { titulo: 'Horário', render: (c) => hora(c.dataHora) },
+    { titulo: 'Espera', render: (c) => espera(c, agora) },
     { titulo: 'Médico', render: (c) => c.medico },
     { titulo: 'Atendimento', render: (c) => c.atendimento },
     { titulo: 'Status', render: (c) => <PilulaStatus estado={c.status} transicoes={transicoes(c)} /> },
@@ -97,6 +123,7 @@ function FilaDoDia() {
           <span className='form-label d-block'>Data</span>
           <span className='form-control-plaintext'>Hoje, {data(DATA_DE_HOJE)}</span>
         </div>
+        <p className='small text-body-secondary mb-2'>Atualiza sozinha a cada {intervalo} s.</p>
       </Filtros>
       <Listagem
         carregando={carregando}
